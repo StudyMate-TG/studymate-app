@@ -19,7 +19,7 @@ Além disso, o software incorpora um sistema de gamificação, utilizando recomp
 
 ## **Modelo de Negócio:**
 
-![Modelo de Negócios](docs/canvas.png)
+![Modelo de Negócios](docs/canvas_studymate.png)
 
 ## **Requisitos de Alto Nível:**
 ### O sistema deve: 
