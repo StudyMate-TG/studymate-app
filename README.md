@@ -19,7 +19,7 @@ Além disso, o software incorpora um sistema de gamificação, utilizando recomp
 
 ## **Modelo de Negócio:**
 
-![Modelo de Negócios](docs/Canvas_StudyMate.png)
+![Modelo de Negócios](docs/canvas.png)
 
 ## **Requisitos de Alto Nível:**
 ### O sistema deve: 
@@ -34,7 +34,7 @@ Além disso, o software incorpora um sistema de gamificação, utilizando recomp
 - Permitir acesso por aplicativo mobile (iOS e Android) e versão web. 
 - Integrar com redes sociais e canais digitais para divulgação.
 
-Acesse os [Requisitos de Alto Nível](docs/Requisitos-Alto-Nivel.md).
+Acesse os [Requisitos de Alto Nível](docs/high_level_requirements.md).
 
 ## **Protótipo Final do Projeto**
 
@@ -43,10 +43,10 @@ Acesse os [Requisitos de Alto Nível](docs/Requisitos-Alto-Nivel.md).
 
 ## **Documentação**
 
-- [Backlog e Casos de Uso](docs/Backlog-de-Produto-por-Casos-de-Uso.md)
-- [Diagrama de Classes](docs/Diagrama_Classes.png)
-- [Diagrama Entidade Relacionamento](docs/DiagramaER.png)
-- [Resultado de Pesquisa de Opinião](docs/Resultado_Pesquisa.md)
+- [Backlog e Casos de Uso](docs/backlog.md)
+- [Diagrama de Classes](docs/class_diagram.png)
+- [Diagrama Entidade Relacionamento](docs/er_diagram.png)
+- [Resultado de Pesquisa de Opinião](docs/user_research_results.md)
 
 ## **Tecnologias que serão usadas:**
 <img 
