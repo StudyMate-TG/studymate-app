@@ -44,7 +44,7 @@ Acesse os [Requisitos de Alto Nível](docs/high_level_requirements.md).
 ## **Documentação**
 
 - [Backlog e Casos de Uso](docs/backlog.md)
-- [Diagrama de Classes](docs/class_diagram.png)
+- [Diagrama de Classes](docs/class_diagram.jpg)
 - [Diagrama Entidade Relacionamento](docs/er_diagram.jpg)
 - [Resultado de Pesquisa de Opinião](docs/user_research_results.md)
 
