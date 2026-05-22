@@ -1,0 +1,42 @@
+flowchart LR
+    Estudante["👤 Estudante"]
+
+    subgraph Sistema["Sistema StudyMate"]
+        UC01([Cadastrar usuário])
+        UC02([Realizar login])
+        UC03([Gerenciar calendário])
+        UC04([Gerenciar período letivo])
+        UC05([Gerenciar disciplinas])
+        UC06([Gerenciar horários de aula])
+        UC07([Gerenciar tarefas])
+        UC08([Concluir tarefa])
+        UC09([Registrar avaliações e notas])
+        UC10([Registrar faltas])
+        UC11([Visualizar agenda])
+        UC12([Visualizar notificações])
+        UC13([Visualizar progresso])
+        UC14([Visualizar conquistas])
+    end
+
+    Estudante --- UC01
+    Estudante --- UC02
+    Estudante --- UC03
+    Estudante --- UC04
+    Estudante --- UC05
+    Estudante --- UC06
+    Estudante --- UC07
+    Estudante --- UC08
+    Estudante --- UC09
+    Estudante --- UC10
+    Estudante --- UC11
+    Estudante --- UC12
+    Estudante --- UC13
+    Estudante --- UC14
+
+    UC05 -. "<<include>>" .-> UC06
+    UC07 -. "<<include>>" .-> UC08
+    UC11 -. "<<include>>" .-> UC07
+    UC10 -. "<<extend>>" .-> UC12
+    UC09 -. "<<extend>>" .-> UC12
+    UC08 -. "<<include>>" .-> UC13
+    UC08 -. "<<extend>>" .-> UC14
