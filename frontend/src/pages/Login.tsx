@@ -1,3 +1,4 @@
+import { cadastrarUsuario, loginUsuario } from "@/services/authService";
 import { useState, type FormEvent } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -17,26 +18,63 @@ const Login = () => {
   const navigate = useNavigate();
   const [isLoading, setIsLoading] = useState(false);
 
+  const [formularioLogin, setFormularioLogin] = useState({
+    email: "",
+    senha: "",
+  });
+
+  const [formularioCadastro, setFormularioCadastro] = useState({
+    nome: "",
+    email: "",
+    senha: "",
+    confirmarSenha: "",
+  });
+
   const handleLogin = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setIsLoading(true);
 
-    // TODO: integrar autenticação com backend
-    setTimeout(() => {
-      setIsLoading(false);
+    try {
+      const usuario = await loginUsuario({
+        email: formularioLogin.email,
+        senha: formularioLogin.senha,
+      });
+
+      localStorage.setItem("studymate_current_user", JSON.stringify(usuario));
+
       navigate("/");
-    }, 1000);
+    } catch (error) {
+      alert(error instanceof Error ? error.message : "Erro ao fazer login.");
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const handleSignup = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
+
+    if (formularioCadastro.senha !== formularioCadastro.confirmarSenha) {
+      alert("As senhas não conferem.");
+      return;
+    }
+
     setIsLoading(true);
 
-    // TODO: integrar cadastro com backend
-    setTimeout(() => {
-      setIsLoading(false);
+    try {
+      const usuario = await cadastrarUsuario({
+        nome: formularioCadastro.nome,
+        email: formularioCadastro.email,
+        senha: formularioCadastro.senha,
+      });
+
+      localStorage.setItem("studymate_current_user", JSON.stringify(usuario));
+
       navigate("/");
-    }, 1000);
+    } catch (error) {
+      alert(error instanceof Error ? error.message : "Erro ao cadastrar usuário.");
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -79,6 +117,13 @@ const Login = () => {
                       id="email"
                       type="email"
                       placeholder="Digite seu e-mail"
+                      value={formularioLogin.email}
+                      onChange={(e) =>
+                        setFormularioLogin({
+                          ...formularioLogin,
+                          email: e.target.value,
+                        })
+                      }
                       required
                     />
                   </div>
@@ -89,6 +134,13 @@ const Login = () => {
                       id="password"
                       type="password"
                       placeholder="Digite sua senha"
+                      value={formularioLogin.senha}
+                      onChange={(e) =>
+                        setFormularioLogin({
+                          ...formularioLogin,
+                          senha: e.target.value,
+                        })
+                      }
                       required
                     />
                   </div>
@@ -122,6 +174,13 @@ const Login = () => {
                       id="name"
                       type="text"
                       placeholder="Digite seu nome completo"
+                      value={formularioCadastro.nome}
+                      onChange={(e) =>
+                        setFormularioCadastro({
+                          ...formularioCadastro,
+                          nome: e.target.value,
+                        })
+                      }
                       required
                     />
                   </div>
@@ -132,6 +191,13 @@ const Login = () => {
                       id="signup-email"
                       type="email"
                       placeholder="Digite seu e-mail"
+                      value={formularioCadastro.email}
+                      onChange={(e) =>
+                        setFormularioCadastro({
+                          ...formularioCadastro,
+                          email: e.target.value,
+                        })
+                      }
                       required
                     />
                   </div>
@@ -142,6 +208,13 @@ const Login = () => {
                       id="signup-password"
                       type="password"
                       placeholder="Digite sua senha"
+                      value={formularioCadastro.senha}
+                      onChange={(e) =>
+                        setFormularioCadastro({
+                          ...formularioCadastro,
+                          senha: e.target.value,
+                        })
+                      }
                       required
                     />
                   </div>
@@ -152,6 +225,13 @@ const Login = () => {
                       id="confirm-password"
                       type="password"
                       placeholder="Confirme sua senha"
+                      value={formularioCadastro.confirmarSenha}
+                      onChange={(e) =>
+                        setFormularioCadastro({
+                          ...formularioCadastro,
+                          confirmarSenha: e.target.value,
+                        })
+                      }
                       required
                     />
                   </div>
