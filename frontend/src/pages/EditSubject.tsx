@@ -1,5 +1,5 @@
-import { useState, type FormEvent } from "react";
-import { useNavigate } from "react-router-dom";
+import { useEffect, useState, type FormEvent } from "react";
+import { useNavigate, useParams } from "react-router-dom";
 import { ArrowLeft, Save } from "lucide-react";
 
 import MobileHeader from "@/components/MobileHeader";
@@ -8,10 +8,15 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent } from "@/components/ui/card";
 
-import { cadastrarDisciplina } from "@/services/disciplinaService";
+import {
+  atualizarDisciplina,
+  buscarDisciplinaPorId,
+} from "@/services/disciplinaService";
 
-const NewSubject = () => {
+const EditSubject = () => {
   const navigate = useNavigate();
+  const { id } = useParams();
+
   const [isLoading, setIsLoading] = useState(false);
 
   const [formularioDisciplina, setFormularioDisciplina] = useState({
@@ -22,8 +27,47 @@ const NewSubject = () => {
     limiteFaltas: 20,
   });
 
+  useEffect(() => {
+    const carregarDisciplina = async () => {
+      if (!id) {
+        return;
+      }
+
+      setIsLoading(true);
+
+      try {
+        const disciplina = await buscarDisciplinaPorId(Number(id));
+
+        setFormularioDisciplina({
+          idPeriodo: disciplina.idPeriodo,
+          nome: disciplina.nome,
+          professor: disciplina.professor || "",
+          mediaAprovacao: disciplina.mediaAprovacao,
+          limiteFaltas: disciplina.limiteFaltas,
+        });
+      } catch (error) {
+        alert(
+          error instanceof Error
+            ? error.message
+            : "Erro ao carregar disciplina."
+        );
+
+        navigate("/subjects");
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    carregarDisciplina();
+  }, [id, navigate]);
+
   const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
+
+    if (!id) {
+      alert("ID da disciplina não encontrado.");
+      return;
+    }
 
     if (!formularioDisciplina.nome.trim()) {
       alert("O nome da disciplina é obrigatório.");
@@ -33,7 +77,7 @@ const NewSubject = () => {
     setIsLoading(true);
 
     try {
-      await cadastrarDisciplina({
+      await atualizarDisciplina(Number(id), {
         idPeriodo: Number(formularioDisciplina.idPeriodo),
         nome: formularioDisciplina.nome,
         professor: formularioDisciplina.professor,
@@ -41,13 +85,13 @@ const NewSubject = () => {
         limiteFaltas: Number(formularioDisciplina.limiteFaltas),
       });
 
-      alert("Disciplina cadastrada com sucesso!");
+      alert("Disciplina atualizada com sucesso!");
       navigate("/subjects");
     } catch (error) {
       alert(
         error instanceof Error
           ? error.message
-          : "Erro ao cadastrar disciplina."
+          : "Erro ao atualizar disciplina."
       );
     } finally {
       setIsLoading(false);
@@ -56,7 +100,7 @@ const NewSubject = () => {
 
   return (
     <div className="min-h-screen bg-background pb-20 pt-16">
-      <MobileHeader title="Nova Disciplina" />
+      <MobileHeader title="Editar Disciplina" />
 
       <div className="px-4 py-6 space-y-4">
         <Button
@@ -92,7 +136,6 @@ const NewSubject = () => {
                 <Input
                   id="nome"
                   type="text"
-                  placeholder="Ex: Banco de Dados"
                   value={formularioDisciplina.nome}
                   onChange={(e) =>
                     setFormularioDisciplina({
@@ -109,7 +152,6 @@ const NewSubject = () => {
                 <Input
                   id="professor"
                   type="text"
-                  placeholder="Ex: Prof. Carlos"
                   value={formularioDisciplina.professor}
                   onChange={(e) =>
                     setFormularioDisciplina({
@@ -158,7 +200,7 @@ const NewSubject = () => {
 
               <Button type="submit" className="w-full" disabled={isLoading}>
                 <Save className="w-4 h-4 mr-2" />
-                {isLoading ? "Salvando..." : "Salvar disciplina"}
+                {isLoading ? "Salvando..." : "Salvar alterações"}
               </Button>
             </form>
           </CardContent>
@@ -168,4 +210,4 @@ const NewSubject = () => {
   );
 };
 
-export default NewSubject;
+export default EditSubject;

@@ -1,14 +1,34 @@
 import { Card, CardContent } from "@/components/ui/card";
-import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Book, Clock, CalendarClock, ChevronRight, Plus, Trophy } from "lucide-react";
 import MobileHeader from "@/components/MobileHeader";
+import { Clock, ChevronRight, Plus } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import type { ElementType } from "react";
+import { useEffect, useState } from "react";
+
+  type UsuarioLogado = {
+  idUsuario: number;
+  nome: string;
+  email: string;
+  curso: string | null;
+  semestre: string | null;
+  matricula: string | null;
+  instituicao: string | null;
+  };
 
 const Home = () => {
   const navigate = useNavigate();
+
+   const [usuarioLogado, setUsuarioLogado] = useState<UsuarioLogado | null>(null);
+
+    useEffect(() => {
+      const usuarioSalvo = localStorage.getItem("studymate_current_user");
+
+      if (usuarioSalvo) {
+        setUsuarioLogado(JSON.parse(usuarioSalvo));
+      }
+    }, []);
 
   type DashboardStat = {
     label: string;
@@ -43,7 +63,9 @@ const Home = () => {
                 👨‍🎓
               </div>
               <div>
-                <h2 className="text-xl font-bold">Bem-vindo ao StudyMate!</h2>
+                <h2 className="text-xl font-bold">
+                  Bem-vindo de volta, {usuarioLogado?.nome || "estudante"}!
+              </h2>
                 <p className="text-sm text-muted-foreground">Seu progresso será exibido futuramente...</p>
               </div>
             </div>

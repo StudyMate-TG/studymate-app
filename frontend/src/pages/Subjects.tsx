@@ -1,27 +1,76 @@
+import { useEffect, useState, type FormEvent } from "react";
+import { useNavigate } from "react-router-dom";
+import { Search, Users, Clock, Plus, Trash2, Pencil } from "lucide-react";
+
+import MobileHeader from "@/components/MobileHeader";
+
 import { Card, CardContent } from "@/components/ui/card";
-import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { ChevronRight, Users, Clock, Plus } from "lucide-react";
-import MobileHeader from "@/components/MobileHeader";
-import { useNavigate } from "react-router-dom";
+import { Input } from "@/components/ui/input";
+
+import {
+  excluirDisciplina,
+  listarDisciplinas,
+  type DisciplinaResponse,
+} from "@/services/disciplinaService";
 
 const Subjects = () => {
   const navigate = useNavigate();
-  
-  type Subject = {
-    id: number;
-    name: string;
-    professor: string;
-    schedule: string;
-    grade: number;
-    progress: number;
-    color: string;
-    attendance: string;
-    nextClass: string;
+
+  const [disciplinas, setDisciplinas] = useState<DisciplinaResponse[]>([]);
+  const [termoBusca, setTermoBusca] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
+
+  const carregarDisciplinas = async (termo?: string) => {
+    setIsLoading(true);
+
+    try {
+      const dados = await listarDisciplinas(termo);
+      setDisciplinas(dados);
+    } catch (error) {
+      alert(
+        error instanceof Error
+          ? error.message
+          : "Erro ao carregar disciplinas."
+      );
+    } finally {
+      setIsLoading(false);
+    }
   };
 
-  const subjects: Subject[] = [];
+  const handlePesquisar = (e: FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    carregarDisciplinas(termoBusca);
+  };
+
+  const handleLimparBusca = () => {
+    setTermoBusca("");
+    carregarDisciplinas();
+  };
+
+  const handleExcluir = async (idDisciplina: number) => {
+    const confirmou = confirm("Deseja realmente excluir esta disciplina?");
+
+    if (!confirmou) {
+      return;
+    }
+
+    try {
+      await excluirDisciplina(idDisciplina);
+      carregarDisciplinas(termoBusca);
+    } catch (error) {
+      alert(
+        error instanceof Error
+          ? error.message
+          : "Erro ao excluir disciplina."
+      );
+    }
+  };
+
+  useEffect(() => {
+    carregarDisciplinas();
+  }, []);
 
   return (
     <div className="min-h-screen bg-background pb-20 pt-16">
@@ -31,86 +80,161 @@ const Subjects = () => {
         <div className="flex items-center justify-between mb-2">
           <div>
             <h2 className="text-2xl font-bold">Minhas Disciplinas</h2>
+            <p className="text-sm text-muted-foreground">
+              Cadastre, pesquise e gerencie suas disciplinas.
+            </p>
           </div>
         </div>
 
-    {subjects.length === 0 ? (
-      <Card>
-        <CardContent className="p-6 text-center space-y-4">
-          <div>
-            <h3 className="font-semibold text-lg">
-              Nenhuma disciplina cadastrada
-            </h3>
-            <p className="text-sm text-muted-foreground mt-1">
-              As disciplinas serão exibidas aqui após o cadastro.
-            </p>
-          </div>
-
-          <Button onClick={() => navigate("/subjects/new")}>
-            <Plus className="w-4 h-4 mr-2" />
-            Cadastrar disciplina
-          </Button>
-        </CardContent>
-      </Card>
-    ) : (
-      subjects.map((subject, index) => (
-        <Card key={index} className="hover:shadow-lg transition-all">
+        <Card>
           <CardContent className="p-4">
-            <div className="flex items-start gap-4 mb-4">
-              <div className={`w-1 h-full rounded-full ${subject.color} absolute left-0 top-0 bottom-0`} />
-              <div className="flex-1 pl-2">
-                <div className="flex items-start justify-between mb-2">
-                  <div>
-                    <h3 className="font-bold text-lg">{subject.name}</h3>
-                    <p className="text-sm text-muted-foreground flex items-center gap-1">
-                      <Users className="w-3 h-3" />
-                      {subject.professor}
-                    </p>
-                  </div>
-                  <Badge variant="secondary" className="text-lg font-bold">
-                    {subject.grade}
-                  </Badge>
-                </div>
+            <form onSubmit={handlePesquisar} className="space-y-3">
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
 
-                <div className="space-y-3">
-                  <div>
-                    <div className="flex justify-between text-sm mb-1">
-                      <span className="text-muted-foreground">Progresso da disciplina</span>
-                      <span className="font-semibold">{subject.progress}%</span>
-                    </div>
-                    <Progress value={subject.progress} className="h-2" />
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-3 text-sm">
-                    <div className="bg-muted/50 rounded-lg p-2">
-                      <p className="text-muted-foreground text-xs">Horário</p>
-                      <p className="font-medium">{subject.schedule}</p>
-                    </div>
-                    <div className="bg-muted/50 rounded-lg p-2">
-                      <p className="text-muted-foreground text-xs">Presença</p>
-                      <p className="font-medium">{subject.attendance}</p>
-                    </div>
-                  </div>
-
-                  <div className="flex items-center justify-between pt-2 border-t border-border">
-                    <p className="text-sm text-muted-foreground flex items-center gap-1">
-                      <Clock className="w-3 h-3" />
-                      Próxima aula: {subject.nextClass}
-                    </p>
-                    <ChevronRight className="w-5 h-5 text-muted-foreground" />
-                  </div>
-                </div>
+                <Input
+                  placeholder="Pesquisar por nome ou professor..."
+                  value={termoBusca}
+                  onChange={(e) => setTermoBusca(e.target.value)}
+                  className="pl-9"
+                />
               </div>
-            </div>
+
+              <div className="flex gap-2">
+                <Button
+                  type="submit"
+                  className="flex-1"
+                  disabled={isLoading}
+                >
+                  Pesquisar
+                </Button>
+
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={handleLimparBusca}
+                  disabled={isLoading}
+                >
+                  Limpar
+                </Button>
+              </div>
+            </form>
           </CardContent>
         </Card>
-      ))
-    )}
-      
-  </div>
-      {/* Floating Action Button */}
+
+        {isLoading ? (
+          <Card>
+            <CardContent className="p-6 text-center">
+              <p className="text-sm text-muted-foreground">
+                Carregando disciplinas...
+              </p>
+            </CardContent>
+          </Card>
+        ) : disciplinas.length === 0 ? (
+          <Card>
+            <CardContent className="p-6 text-center space-y-4">
+              <div>
+                <h3 className="font-semibold text-lg">
+                  Nenhuma disciplina encontrada
+                </h3>
+
+                <p className="text-sm text-muted-foreground mt-1">
+                  As disciplinas serão exibidas aqui após o cadastro.
+                </p>
+              </div>
+
+              <Button onClick={() => navigate("/subjects/new")}>
+                <Plus className="w-4 h-4 mr-2" />
+                Cadastrar disciplina
+              </Button>
+            </CardContent>
+          </Card>
+        ) : (
+          disciplinas.map((disciplina) => (
+            <Card
+              key={disciplina.idDisciplina}
+              className="hover:shadow-lg transition-all"
+            >
+              <CardContent className="p-4">
+                <div className="flex items-start gap-4 mb-4">
+                  <div className="flex-1">
+                    <div className="flex items-start justify-between mb-2">
+                      <div>
+                        <h3 className="font-bold text-lg">
+                          {disciplina.nome}
+                        </h3>
+
+                        <p className="text-sm text-muted-foreground flex items-center gap-1">
+                          <Users className="w-3 h-3" />
+                          {disciplina.professor || "Professor não informado"}
+                        </p>
+                      </div>
+
+                      <Badge variant="secondary" className="text-lg font-bold">
+                        {disciplina.mediaAprovacao}
+                      </Badge>
+                    </div>
+
+                    <div className="space-y-3">
+                      <div className="grid grid-cols-2 gap-3 text-sm">
+                        <div className="bg-muted/50 rounded-lg p-2">
+                          <p className="text-muted-foreground text-xs">
+                            Período
+                          </p>
+                          <p className="font-medium">
+                            {disciplina.idPeriodo}
+                          </p>
+                        </div>
+
+                        <div className="bg-muted/50 rounded-lg p-2">
+                          <p className="text-muted-foreground text-xs">
+                            Limite de faltas
+                          </p>
+                          <p className="font-medium">
+                            {disciplina.limiteFaltas}
+                          </p>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center justify-between pt-2 border-t border-border">
+                        <p className="text-sm text-muted-foreground flex items-center gap-1">
+                          <Clock className="w-3 h-3" />
+                          ID da disciplina: {disciplina.idDisciplina}
+                        </p>
+
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={() => navigate(`/subjects/edit/${disciplina.idDisciplina}`)}
+                        >
+                          <Pencil className="w-4 h-4 mr-2" />
+                          Editar
+                        </Button>
+                        
+                        <Button
+                          type="button"
+                          variant="destructive"
+                          size="sm"
+                          onClick={() =>
+                            handleExcluir(disciplina.idDisciplina)
+                          }
+                        >
+                          <Trash2 className="w-4 h-4 mr-2" />
+                          Excluir
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          ))
+        )}
+      </div>
+
       <Button
-        onClick={() => navigate("/subjects/new")}
+        onClick={() => navigate("/subject/new")}
         className="fixed bottom-20 right-4 h-14 w-14 rounded-full shadow-lg"
         size="icon"
       >
