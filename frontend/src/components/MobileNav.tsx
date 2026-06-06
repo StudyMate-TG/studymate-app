@@ -9,7 +9,7 @@ const MobileNav = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
 
   const navItems = [
-    { path: "/", icon: Home, label: "Início" },
+    { path: "/home", icon: Home, label: "Início" },
     { path: "/subjects", icon: BookOpen, label: "Disciplinas" },
     { path: "/calendar", icon: Calendar, label: "Calendário" },
     { path: "/achievements", icon: Trophy, label: "Conquistas" },

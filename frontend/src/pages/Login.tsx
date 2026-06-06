@@ -42,7 +42,7 @@ const Login = () => {
 
       localStorage.setItem("studymate_current_user", JSON.stringify(usuario));
 
-      navigate("/");
+      navigate("/home");
     } catch (error) {
       alert(error instanceof Error ? error.message : "Erro ao fazer login.");
     } finally {
@@ -69,7 +69,7 @@ const Login = () => {
 
       localStorage.setItem("studymate_current_user", JSON.stringify(usuario));
 
-      navigate("/");
+      navigate("/home");
     } catch (error) {
       alert(error instanceof Error ? error.message : "Erro ao cadastrar usuário.");
     } finally {

@@ -22,6 +22,7 @@ import NewSubject from "./pages/NewSubject";
 import NewTask from "./pages/NewTask";
 import EditProfile from "./pages/EditProfile";
 import NewAttendance from "./pages/NewAttendance";
+import EditSubject from "./pages/EditSubject"
 
 const queryClient = new QueryClient();
 
@@ -30,17 +31,19 @@ const AppContent = () => {
 
   const routesWithoutNav = ["/login", "/desktop"];
 
-  const shouldShowMobileNav = !routesWithoutNav.includes(location.pathname);
+  const shouldShowMobileNav = !["/", "/desktop"].includes(location.pathname);
 
   return (
-    <div className="min-h-screen bg-muted/30 flex items-center justify-center p-2 md:p-4">
-      <div className="w-full max-w-[430px] h-[calc(100vh-16px)] md:h-[calc(100vh-32px)] max-h-[932px] bg-background shadow-2xl md:rounded-3xl overflow-hidden relative">
-        <Routes>
+    <div className="min-h-screen bg-muted flex items-center justify-center">
+      <div className="w-full max-w-md h-[932px] bg-background shadow-2xl md:rounded-3xl overflow-hidden relative">
+        <main className="h-full overflow-y-auto overflow-x-hidden pb-20">
+          <Routes>
           <Route path="/desktop" element={<Index />} />
-          <Route path="/login" element={<Login />} />
-          <Route path="/" element={<Home />} />
+          <Route path="/home" element={<Home />} />
+          <Route path="/" element={<Login />} />
           <Route path="/subjects" element={<Subjects />} />
           <Route path="/subjects/new" element={<NewSubject />} />
+          <Route path="/subjects/edit/:id" element={<EditSubject />} />
           <Route path="/calendar" element={<CalendarPage />} />
           <Route path="/tasks/new" element={<NewTask />} />
           <Route path="/attendance/new" element={<NewAttendance />} />
@@ -49,10 +52,11 @@ const AppContent = () => {
           <Route path="/profile/edit" element={<EditProfile />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
+      </main>
 
-        {shouldShowMobileNav && <MobileNav />}
-      </div>
+    {shouldShowMobileNav && <MobileNav />}
     </div>
+  </div>
   );
 };
 
