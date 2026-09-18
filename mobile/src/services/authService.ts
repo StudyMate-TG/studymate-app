@@ -1,5 +1,7 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
+
 import { API_BASE_URL } from "./apiConfig";
+
 import type { UsuarioResponse } from "../types";
 
 const CURRENT_USER_KEY = "studymate_current_user";
@@ -15,14 +17,28 @@ type LoginUsuarioPayload = {
   senha: string;
 };
 
-const handleResponse = async (response: Response) => {
-  const data = await response.json();
+const handleResponse = async <T>(response: Response): Promise<T> => {
+  const text = await response.text();
 
-  if (!response.ok) {
-    throw new Error(data.mensagem || "Erro ao processar a requisição.");
+  let data: any = {};
+
+  try {
+    data = text ? JSON.parse(text) : {};
+  } catch {
+    data = {};
   }
 
-  return data;
+  if (!response.ok) {
+    throw new Error(
+      data.mensagem ||
+        data.message ||
+        data.error ||
+        text ||
+        "Erro ao processar a requisição."
+    );
+  }
+
+  return data as T;
 };
 
 export const cadastrarUsuario = async (
@@ -33,10 +49,14 @@ export const cadastrarUsuario = async (
     headers: {
       "Content-Type": "application/json",
     },
-    body: JSON.stringify(payload),
+    body: JSON.stringify({
+      nome: payload.nome.trim(),
+      email: payload.email.trim().toLowerCase(),
+      senha: payload.senha,
+    }),
   });
 
-  return handleResponse(response);
+  return handleResponse<UsuarioResponse>(response);
 };
 
 export const loginUsuario = async (
@@ -47,19 +67,34 @@ export const loginUsuario = async (
     headers: {
       "Content-Type": "application/json",
     },
-    body: JSON.stringify(payload),
+    body: JSON.stringify({
+      email: payload.email.trim().toLowerCase(),
+      senha: payload.senha,
+    }),
   });
 
-  return handleResponse(response);
+  return handleResponse<UsuarioResponse>(response);
 };
 
-export const salvarUsuarioSessao = async (usuario: UsuarioResponse): Promise<void> => {
+export const salvarUsuarioSessao = async (
+  usuario: UsuarioResponse
+): Promise<void> => {
   await AsyncStorage.setItem(CURRENT_USER_KEY, JSON.stringify(usuario));
 };
 
 export const obterUsuarioSessao = async (): Promise<UsuarioResponse | null> => {
   const dados = await AsyncStorage.getItem(CURRENT_USER_KEY);
-  return dados ? JSON.parse(dados) : null;
+
+  if (!dados) {
+    return null;
+  }
+
+  try {
+    return JSON.parse(dados) as UsuarioResponse;
+  } catch {
+    await AsyncStorage.removeItem(CURRENT_USER_KEY);
+    return null;
+  }
 };
 
 export const encerrarSessao = async (): Promise<void> => {

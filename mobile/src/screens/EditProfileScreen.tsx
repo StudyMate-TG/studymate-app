@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from "react";
+
 import {
   View,
   Text,
@@ -8,10 +9,17 @@ import {
   Platform,
   KeyboardAvoidingView,
 } from "react-native";
+
 import { useNavigation } from "@react-navigation/native";
-import { NativeStackNavigationProp } from "@react-navigation/native-stack";
+import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
+
 import { RootStackParamList } from "../types";
-import { obterUsuarioSessao, salvarUsuarioSessao } from "../services/authService";
+
+import {
+  obterUsuarioSessao,
+  salvarUsuarioSessao,
+} from "../services/authService";
+
 import { MobileHeader } from "../components/MobileHeader";
 import { Card } from "../components/Card";
 import { Input } from "../components/Input";
@@ -19,6 +27,8 @@ import { Button } from "../components/Button";
 
 export const EditProfileScreen: React.FC = () => {
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
+
+  const [isLoading, setIsLoading] = useState(false);
 
   const [form, setForm] = useState({
     nome: "",
@@ -30,7 +40,7 @@ export const EditProfileScreen: React.FC = () => {
   });
 
   const showAlert = (title: string, message: string) => {
-    if (Platform.OS === "web") {
+    if (Platform.OS === "web" && typeof window !== "undefined") {
       window.alert(`${title}: ${message}`);
     } else {
       Alert.alert(title, message);
@@ -38,20 +48,26 @@ export const EditProfileScreen: React.FC = () => {
   };
 
   useEffect(() => {
-    const carregar = async () => {
-      const u = await obterUsuarioSessao();
-      if (u) {
-        setForm({
-          nome: u.nome || "",
-          email: u.email || "",
-          curso: u.curso || "",
-          semestre: u.semestre || "",
-          matricula: u.matricula || "",
-          instituicao: u.instituicao || "",
-        });
+    const carregarUsuario = async () => {
+      const usuario = await obterUsuarioSessao();
+
+      if (!usuario) {
+        showAlert("Atenção", "Nenhum usuário logado foi encontrado.");
+        navigation.goBack();
+        return;
       }
+
+      setForm({
+        nome: usuario.nome || "",
+        email: usuario.email || "",
+        curso: usuario.curso || "",
+        semestre: usuario.semestre || "",
+        matricula: usuario.matricula || "",
+        instituicao: usuario.instituicao || "",
+      });
     };
-    carregar();
+
+    carregarUsuario();
   }, []);
 
   const handleSubmit = async () => {
@@ -60,22 +76,38 @@ export const EditProfileScreen: React.FC = () => {
       return;
     }
 
-    const usuarioAtual = await obterUsuarioSessao();
-    if (usuarioAtual) {
+    setIsLoading(true);
+
+    try {
+      const usuarioAtual = await obterUsuarioSessao();
+
+      if (!usuarioAtual) {
+        showAlert("Erro", "Não foi possível encontrar o usuário logado.");
+        return;
+      }
+
       const atualizado = {
         ...usuarioAtual,
         nome: form.nome.trim(),
-        email: form.email.trim(),
+        email: form.email.trim().toLowerCase(),
         curso: form.curso.trim() || null,
         semestre: form.semestre.trim() || null,
         matricula: form.matricula.trim() || null,
         instituicao: form.instituicao.trim() || null,
       };
-      await salvarUsuarioSessao(atualizado);
-    }
 
-    showAlert("Sucesso", "Perfil atualizado com sucesso!");
-    navigation.goBack();
+      await salvarUsuarioSessao(atualizado);
+
+      showAlert("Sucesso", "Perfil atualizado com sucesso!");
+      navigation.goBack();
+    } catch (error) {
+      showAlert(
+        "Erro",
+        error instanceof Error ? error.message : "Erro ao atualizar perfil."
+      );
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -89,22 +121,24 @@ export const EditProfileScreen: React.FC = () => {
         onBack={() => navigation.goBack()}
       />
 
-      <ScrollView contentContainerStyle={styles.scrollContent}>
-        {/* Avatar Section */}
+      <ScrollView
+        contentContainerStyle={styles.scrollContent}
+        keyboardShouldPersistTaps="handled"
+      >
         <Card style={styles.avatarCard}>
           <View style={styles.avatarCircle}>
             <Text style={styles.avatarEmoji}>👨‍🎓</Text>
           </View>
+
           <Button
             title="Alterar Foto"
             variant="outline"
             size="sm"
             onPress={() => showAlert("Info", "Funcionalidade disponível em breve.")}
-            style={styles.changePhotoBtn}
+            style={styles.changePhotoButton}
           />
         </Card>
 
-        {/* Informações Pessoais */}
         <Card style={styles.formCard}>
           <Text style={styles.sectionHeader}>Informações Pessoais</Text>
 
@@ -124,7 +158,7 @@ export const EditProfileScreen: React.FC = () => {
             onChangeText={(text) => setForm({ ...form, email: text })}
           />
 
-          <Text style={[styles.sectionHeader, { marginTop: 16 }]}>
+          <Text style={[styles.sectionHeader, styles.academicHeader]}>
             Informações Acadêmicas
           </Text>
 
@@ -161,11 +195,14 @@ export const EditProfileScreen: React.FC = () => {
               title="Cancelar"
               variant="outline"
               onPress={() => navigation.goBack()}
+              disabled={isLoading}
               style={styles.cancelButton}
             />
+
             <Button
               title="Salvar Alterações"
               onPress={handleSubmit}
+              loading={isLoading}
               style={styles.saveButton}
             />
           </View>
@@ -180,17 +217,20 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: "#F8FAFC",
   },
+
   scrollContent: {
     padding: 16,
     maxWidth: 600,
     width: "100%",
     alignSelf: "center",
   },
+
   avatarCard: {
     alignItems: "center",
     padding: 20,
     marginBottom: 16,
   },
+
   avatarCircle: {
     width: 80,
     height: 80,
@@ -200,29 +240,40 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     marginBottom: 12,
   },
+
   avatarEmoji: {
     fontSize: 40,
   },
-  changePhotoBtn: {
+
+  changePhotoButton: {
     paddingHorizontal: 16,
   },
+
   formCard: {
     padding: 20,
   },
+
   sectionHeader: {
     fontSize: 16,
     fontWeight: "700",
     color: "#0F172A",
     marginBottom: 12,
   },
+
+  academicHeader: {
+    marginTop: 16,
+  },
+
   actionButtons: {
     flexDirection: "row",
     gap: 10,
     marginTop: 12,
   },
+
   cancelButton: {
     flex: 1,
   },
+
   saveButton: {
     flex: 1,
   },

@@ -1,23 +1,43 @@
 import { API_BASE_URL } from "./apiConfig";
+
 import type { DisciplinaRequest, DisciplinaResponse } from "../types";
 
-const handleResponse = async (response: Response) => {
-  const data = await response.json();
+type MensagemResponse = {
+  mensagem: string;
+};
 
-  if (!response.ok) {
-    throw new Error(data.mensagem || "Erro ao processar a requisição.");
+const handleResponse = async <T>(response: Response): Promise<T> => {
+  const text = await response.text();
+
+  let data: any = {};
+
+  try {
+    data = text ? JSON.parse(text) : {};
+  } catch {
+    data = {};
   }
 
-  return data;
+  if (!response.ok) {
+    throw new Error(
+      data.mensagem ||
+        data.message ||
+        data.error ||
+        text ||
+        "Erro ao processar a requisição."
+    );
+  }
+
+  return data as T;
 };
 
 export const listarDisciplinas = async (
   termo?: string
 ): Promise<DisciplinaResponse[]> => {
   const params = new URLSearchParams();
+  const termoTratado = termo?.trim();
 
-  if (termo && termo.trim() !== "") {
-    params.append("termo", termo);
+  if (termoTratado) {
+    params.append("termo", termoTratado);
   }
 
   const url = params.toString()
@@ -26,7 +46,7 @@ export const listarDisciplinas = async (
 
   const response = await fetch(url);
 
-  return handleResponse(response);
+  return handleResponse<DisciplinaResponse[]>(response);
 };
 
 export const cadastrarDisciplina = async (
@@ -37,18 +57,16 @@ export const cadastrarDisciplina = async (
     headers: {
       "Content-Type": "application/json",
     },
-    body: JSON.stringify(payload),
+    body: JSON.stringify({
+      idPeriodo: payload.idPeriodo,
+      nome: payload.nome.trim(),
+      professor: payload.professor.trim(),
+      mediaAprovacao: payload.mediaAprovacao,
+      limiteFaltas: payload.limiteFaltas,
+    }),
   });
 
-  return handleResponse(response);
-};
-
-export const excluirDisciplina = async (idDisciplina: number): Promise<void> => {
-  const response = await fetch(`${API_BASE_URL}/disciplinas/${idDisciplina}`, {
-    method: "DELETE",
-  });
-
-  return handleResponse(response);
+  return handleResponse<DisciplinaResponse>(response);
 };
 
 export const buscarDisciplinaPorId = async (
@@ -56,7 +74,7 @@ export const buscarDisciplinaPorId = async (
 ): Promise<DisciplinaResponse> => {
   const response = await fetch(`${API_BASE_URL}/disciplinas/${idDisciplina}`);
 
-  return handleResponse(response);
+  return handleResponse<DisciplinaResponse>(response);
 };
 
 export const atualizarDisciplina = async (
@@ -68,8 +86,24 @@ export const atualizarDisciplina = async (
     headers: {
       "Content-Type": "application/json",
     },
-    body: JSON.stringify(payload),
+    body: JSON.stringify({
+      idPeriodo: payload.idPeriodo,
+      nome: payload.nome.trim(),
+      professor: payload.professor.trim(),
+      mediaAprovacao: payload.mediaAprovacao,
+      limiteFaltas: payload.limiteFaltas,
+    }),
   });
 
-  return handleResponse(response);
+  return handleResponse<DisciplinaResponse>(response);
+};
+
+export const excluirDisciplina = async (
+  idDisciplina: number
+): Promise<MensagemResponse> => {
+  const response = await fetch(`${API_BASE_URL}/disciplinas/${idDisciplina}`, {
+    method: "DELETE",
+  });
+
+  return handleResponse<MensagemResponse>(response);
 };

@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+
 import {
   View,
   Text,
@@ -10,18 +11,16 @@ import {
   KeyboardAvoidingView,
   Platform,
 } from "react-native";
-import { NativeStackNavigationProp } from "@react-navigation/native-stack";
-import { RootStackParamList } from "../types";
+
+import type { RootStackScreenProps } from "../types";
+
 import { cadastrarUsuario, loginUsuario, salvarUsuarioSessao } from "../services/authService";
+
 import { Input } from "../components/Input";
 import { Button } from "../components/Button";
 import { Card } from "../components/Card";
 
-type LoginScreenNavigationProp = NativeStackNavigationProp<RootStackParamList, "Login">;
-
-interface Props {
-  navigation: LoginScreenNavigationProp;
-}
+type Props = RootStackScreenProps<"Login">;
 
 export const LoginScreen: React.FC<Props> = ({ navigation }) => {
   const [activeTab, setActiveTab] = useState<"login" | "signup">("login");
@@ -40,7 +39,7 @@ export const LoginScreen: React.FC<Props> = ({ navigation }) => {
   });
 
   const showAlert = (title: string, message: string) => {
-    if (Platform.OS === "web") {
+    if (Platform.OS === "web" && typeof window !== "undefined") {
       window.alert(`${title}: ${message}`);
     } else {
       Alert.alert(title, message);
@@ -56,7 +55,7 @@ export const LoginScreen: React.FC<Props> = ({ navigation }) => {
     setIsLoading(true);
     try {
       const usuario = await loginUsuario({
-        email: loginData.email.trim(),
+        email: loginData.email.trim().toLowerCase(),
         senha: loginData.senha,
       });
 
@@ -70,7 +69,7 @@ export const LoginScreen: React.FC<Props> = ({ navigation }) => {
   };
 
   const handleSignup = async () => {
-    if (!signupData.nome.trim() || !signupData.email.trim() || !signupData.senha.trim()) {
+    if (!signupData.nome.trim() || !signupData.email.trim() || !signupData.senha.trim() || !signupData.confirmarSenha.trim()) {
       showAlert("Atenção", "Preencha todos os campos obrigatórios.");
       return;
     }
@@ -84,7 +83,7 @@ export const LoginScreen: React.FC<Props> = ({ navigation }) => {
     try {
       const usuario = await cadastrarUsuario({
         nome: signupData.nome.trim(),
-        email: signupData.email.trim(),
+        email: signupData.email.trim().toLowerCase(),
         senha: signupData.senha,
       });
 
@@ -118,6 +117,7 @@ export const LoginScreen: React.FC<Props> = ({ navigation }) => {
 
         <View style={styles.tabContainer}>
           <Pressable
+            disabled={isLoading}
             onPress={() => setActiveTab("login")}
             style={[styles.tabButton, activeTab === "login" && styles.tabButtonActive]}
           >
@@ -126,6 +126,7 @@ export const LoginScreen: React.FC<Props> = ({ navigation }) => {
             </Text>
           </Pressable>
           <Pressable
+            disabled={isLoading}
             onPress={() => setActiveTab("signup")}
             style={[styles.tabButton, activeTab === "signup" && styles.tabButtonActive]}
           >

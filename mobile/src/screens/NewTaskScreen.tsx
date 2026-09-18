@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+
 import {
   View,
   Text,
@@ -9,33 +10,90 @@ import {
   Platform,
   KeyboardAvoidingView,
 } from "react-native";
+
 import { useNavigation } from "@react-navigation/native";
-import { NativeStackNavigationProp } from "@react-navigation/native-stack";
+import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
+
 import { RootStackParamList } from "../types";
+
 import { MobileHeader } from "../components/MobileHeader";
 import { Card } from "../components/Card";
 import { Input } from "../components/Input";
 import { Button } from "../components/Button";
+
 import { CheckCircle2 } from "lucide-react-native";
+
+type Priority = "low" | "medium" | "high";
+
+const priorityLabels: Record<Priority, string> = {
+  low: "Baixa",
+  medium: "Média",
+  high: "Alta",
+};
+
+const priorityColors: Record<Priority, string> = {
+  low: "#22C55E",
+  medium: "#EAB308",
+  high: "#EF4444",
+};
 
 export const NewTaskScreen: React.FC = () => {
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
+
   const [showSuccess, setShowSuccess] = useState(false);
 
   const [form, setForm] = useState({
     title: "",
     subject: "",
     dueDate: "",
-    priority: "medium" as "low" | "medium" | "high",
+    priority: "medium" as Priority,
     description: "",
   });
 
   const showAlert = (title: string, message: string) => {
-    if (Platform.OS === "web") {
+    if (Platform.OS === "web" && typeof window !== "undefined") {
       window.alert(`${title}: ${message}`);
     } else {
       Alert.alert(title, message);
     }
+  };
+
+  const isValidDateTime = (value: string) => {
+    const regex = /^(\d{2})\/(\d{2})\/(\d{4})(?:\s+(\d{2}):(\d{2}))?$/;
+    const match = value.match(regex);
+
+    if (!match) {
+      return false;
+    }
+
+    const day = Number(match[1]);
+    const month = Number(match[2]);
+    const year = Number(match[3]);
+    const hour = match[4] ? Number(match[4]) : 0;
+    const minute = match[5] ? Number(match[5]) : 0;
+
+    if (
+      day < 1 ||
+      month < 1 ||
+      month > 12 ||
+      year < 1900 ||
+      hour < 0 ||
+      hour > 23 ||
+      minute < 0 ||
+      minute > 59
+    ) {
+      return false;
+    }
+
+    const date = new Date(year, month - 1, day, hour, minute);
+
+    return (
+      date.getFullYear() === year &&
+      date.getMonth() === month - 1 &&
+      date.getDate() === day &&
+      date.getHours() === hour &&
+      date.getMinutes() === minute
+    );
   };
 
   const handleSubmit = () => {
@@ -43,6 +101,15 @@ export const NewTaskScreen: React.FC = () => {
       showAlert("Atenção", "Informe o título da tarefa.");
       return;
     }
+
+    if (form.dueDate.trim() && !isValidDateTime(form.dueDate.trim())) {
+      showAlert(
+        "Atenção",
+        "Informe a data no formato DD/MM/AAAA ou DD/MM/AAAA HH:mm."
+      );
+      return;
+    }
+
     setShowSuccess(true);
   };
 
@@ -54,18 +121,22 @@ export const NewTaskScreen: React.FC = () => {
           showBack
           onBack={() => navigation.goBack()}
         />
+
         <View style={styles.successContainer}>
           <View style={styles.iconCircle}>
             <CheckCircle2 size={64} color="#16A34A" />
           </View>
+
           <Text style={styles.successTitle}>
-            Cadastro realizado com sucesso!
+            Tarefa registrada com sucesso!
           </Text>
+
           <Text style={styles.successSubtitle}>
             A tarefa foi registrada no protótipo acadêmico.
           </Text>
+
           <Button
-            title="Voltar ao Calendário"
+            title="Voltar"
             onPress={() => navigation.goBack()}
             style={styles.backButton}
           />
@@ -85,7 +156,10 @@ export const NewTaskScreen: React.FC = () => {
         onBack={() => navigation.goBack()}
       />
 
-      <ScrollView contentContainerStyle={styles.scrollContent}>
+      <ScrollView
+        contentContainerStyle={styles.scrollContent}
+        keyboardShouldPersistTaps="handled"
+      >
         <Card style={styles.formCard}>
           <Input
             label="Título da Tarefa"
@@ -95,42 +169,51 @@ export const NewTaskScreen: React.FC = () => {
           />
 
           <Input
+            label="Disciplina"
+            placeholder="Ex: Banco de Dados"
+            value={form.subject}
+            onChangeText={(text) => setForm({ ...form, subject: text })}
+          />
+
+          <Input
             label="Data e Hora de Entrega"
             placeholder="Ex: 25/11/2026 23:59"
             value={form.dueDate}
             onChangeText={(text) => setForm({ ...form, dueDate: text })}
           />
 
-          {/* Seleção de Prioridade */}
           <Text style={styles.sectionLabel}>Prioridade</Text>
+
           <View style={styles.priorityRow}>
-            {(["low", "medium", "high"] as const).map((p) => {
-              const labels = { low: "Baixa", medium: "Média", high: "Alta" };
-              const colors = {
-                low: "#22C55E",
-                medium: "#EAB308",
-                high: "#EF4444",
-              };
-              const isSelected = form.priority === p;
+            {(["low", "medium", "high"] as const).map((priority) => {
+              const isSelected = form.priority === priority;
+
               return (
                 <Pressable
-                  key={p}
-                  onPress={() => setForm({ ...form, priority: p })}
+                  key={priority}
+                  onPress={() => setForm({ ...form, priority })}
                   style={[
                     styles.priorityButton,
-                    isSelected && { borderColor: colors[p], backgroundColor: "#F8FAFC" },
+                    isSelected && {
+                      borderColor: priorityColors[priority],
+                      backgroundColor: "#F8FAFC",
+                    },
                   ]}
                 >
                   <View
-                    style={[styles.priorityDot, { backgroundColor: colors[p] }]}
+                    style={[
+                      styles.priorityDot,
+                      { backgroundColor: priorityColors[priority] },
+                    ]}
                   />
+
                   <Text
                     style={[
                       styles.priorityText,
-                      isSelected && { fontWeight: "700", color: "#0F172A" },
+                      isSelected && styles.priorityTextSelected,
                     ]}
                   >
-                    {labels[p]}
+                    {priorityLabels[priority]}
                   </Text>
                 </Pressable>
               );
@@ -154,6 +237,7 @@ export const NewTaskScreen: React.FC = () => {
               onPress={() => navigation.goBack()}
               style={styles.cancelButton}
             />
+
             <Button
               title="Cadastrar"
               onPress={handleSubmit}
@@ -171,26 +255,31 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: "#F8FAFC",
   },
+
   scrollContent: {
     padding: 16,
     maxWidth: 600,
     width: "100%",
     alignSelf: "center",
   },
+
   formCard: {
     padding: 20,
   },
+
   sectionLabel: {
     fontSize: 14,
     fontWeight: "500",
     color: "#334155",
     marginBottom: 8,
   },
+
   priorityRow: {
     flexDirection: "row",
     gap: 8,
     marginBottom: 16,
   },
+
   priorityButton: {
     flex: 1,
     flexDirection: "row",
@@ -202,37 +291,50 @@ const styles = StyleSheet.create({
     borderColor: "#E2E8F0",
     backgroundColor: "#FFFFFF",
   },
+
   priorityDot: {
     width: 8,
     height: 8,
     borderRadius: 4,
     marginRight: 6,
   },
+
   priorityText: {
     fontSize: 13,
     color: "#64748B",
   },
+
+  priorityTextSelected: {
+    fontWeight: "700",
+    color: "#0F172A",
+  },
+
   textArea: {
     minHeight: 90,
     textAlignVertical: "top",
   },
+
   actionButtons: {
     flexDirection: "row",
     gap: 10,
     marginTop: 12,
   },
+
   cancelButton: {
     flex: 1,
   },
+
   submitButton: {
     flex: 1,
   },
+
   successContainer: {
     flex: 1,
     alignItems: "center",
     justifyContent: "center",
     padding: 24,
   },
+
   iconCircle: {
     width: 96,
     height: 96,
@@ -242,12 +344,14 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     marginBottom: 20,
   },
+
   successTitle: {
     fontSize: 20,
     fontWeight: "700",
     color: "#0F172A",
     textAlign: "center",
   },
+
   successSubtitle: {
     fontSize: 14,
     color: "#64748B",
@@ -255,6 +359,7 @@ const styles = StyleSheet.create({
     marginTop: 6,
     marginBottom: 24,
   },
+
   backButton: {
     width: "100%",
     maxWidth: 240,

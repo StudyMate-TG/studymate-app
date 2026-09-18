@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from "react";
+
 import {
   View,
   Text,
@@ -9,17 +10,22 @@ import {
   Platform,
   ActivityIndicator,
 } from "react-native";
+
 import { useNavigation, useIsFocused } from "@react-navigation/native";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
+
 import { RootStackParamList, DisciplinaResponse } from "../types";
+
 import {
   listarDisciplinas,
   excluirDisciplina,
 } from "../services/disciplinaService";
+
 import { MobileHeader } from "../components/MobileHeader";
 import { Card } from "../components/Card";
 import { Input } from "../components/Input";
 import { Button } from "../components/Button";
+
 import { Search, Users, Clock, Plus, Trash2, Pencil } from "lucide-react-native";
 
 export const SubjectsScreen: React.FC = () => {
@@ -31,7 +37,7 @@ export const SubjectsScreen: React.FC = () => {
   const [isLoading, setIsLoading] = useState(false);
 
   const showAlert = (title: string, message: string) => {
-    if (Platform.OS === "web") {
+    if (Platform.OS === "web" && typeof window !== "undefined") {
       window.alert(`${title}: ${message}`);
     } else {
       Alert.alert(title, message);
@@ -40,6 +46,7 @@ export const SubjectsScreen: React.FC = () => {
 
   const carregarDisciplinas = async (termo?: string) => {
     setIsLoading(true);
+
     try {
       const dados = await listarDisciplinas(termo);
       setDisciplinas(dados);
@@ -53,28 +60,44 @@ export const SubjectsScreen: React.FC = () => {
     }
   };
 
-  const handleExcluir = async (idDisciplina: number) => {
-    const confirmar = () => {
-      excluirDisciplina(idDisciplina)
-        .then(() => carregarDisciplinas(termoBusca))
-        .catch((error) =>
-          showAlert(
-            "Erro",
-            error instanceof Error ? error.message : "Erro ao excluir disciplina."
-          )
-        );
-    };
+  const excluirDisciplinaSelecionada = async (idDisciplina: number) => {
+    setIsLoading(true);
 
-    if (Platform.OS === "web") {
-      if (window.confirm("Deseja realmente excluir esta disciplina?")) {
-        confirmar();
-      }
-    } else {
-      Alert.alert("Confirmação", "Deseja realmente excluir esta disciplina?", [
-        { text: "Cancelar", style: "cancel" },
-        { text: "Excluir", style: "destructive", onPress: confirmar },
-      ]);
+    try {
+      await excluirDisciplina(idDisciplina);
+      await carregarDisciplinas(termoBusca);
+    } catch (error) {
+      showAlert(
+        "Erro",
+        error instanceof Error ? error.message : "Erro ao excluir disciplina."
+      );
+    } finally {
+      setIsLoading(false);
     }
+  };
+
+  const handleExcluir = (idDisciplina: number) => {
+    if (Platform.OS === "web" && typeof window !== "undefined") {
+      const confirmou = window.confirm("Deseja realmente excluir esta disciplina?");
+
+      if (confirmou) {
+        excluirDisciplinaSelecionada(idDisciplina);
+      }
+
+      return;
+    }
+
+    Alert.alert("Confirmação", "Deseja realmente excluir esta disciplina?", [
+      {
+        text: "Cancelar",
+        style: "cancel",
+      },
+      {
+        text: "Excluir",
+        style: "destructive",
+        onPress: () => excluirDisciplinaSelecionada(idDisciplina),
+      },
+    ]);
   };
 
   useEffect(() => {
@@ -88,6 +111,7 @@ export const SubjectsScreen: React.FC = () => {
       <View style={styles.cardHeader}>
         <View style={styles.cardHeaderInfo}>
           <Text style={styles.subjectTitle}>{item.nome}</Text>
+
           <View style={styles.professorRow}>
             <Users size={14} color="#64748B" />
             <Text style={styles.professorText}>
@@ -95,6 +119,7 @@ export const SubjectsScreen: React.FC = () => {
             </Text>
           </View>
         </View>
+
         <View style={styles.gradeBadge}>
           <Text style={styles.gradeText}>{item.mediaAprovacao}</Text>
         </View>
@@ -105,6 +130,7 @@ export const SubjectsScreen: React.FC = () => {
           <Text style={styles.detailLabel}>Período</Text>
           <Text style={styles.detailValue}>{item.idPeriodo}</Text>
         </View>
+
         <View style={styles.detailBox}>
           <Text style={styles.detailLabel}>Limite de faltas</Text>
           <Text style={styles.detailValue}>{item.limiteFaltas}</Text>
@@ -130,6 +156,7 @@ export const SubjectsScreen: React.FC = () => {
             }
             style={styles.actionButton}
           />
+
           <Button
             title="Excluir"
             variant="destructive"
@@ -148,7 +175,6 @@ export const SubjectsScreen: React.FC = () => {
       <MobileHeader title="Disciplinas" />
 
       <View style={styles.content}>
-        {/* Barra de Pesquisa */}
         <Card style={styles.searchCard}>
           <Input
             placeholder="Pesquisar por nome ou professor..."
@@ -157,12 +183,14 @@ export const SubjectsScreen: React.FC = () => {
             leftIcon={<Search size={18} color="#94A3B8" />}
             containerStyle={styles.searchInputContainer}
           />
+
           <View style={styles.searchButtonsRow}>
             <Button
               title="Pesquisar"
               onPress={() => carregarDisciplinas(termoBusca)}
               style={styles.searchButton}
             />
+
             <Button
               title="Limpar"
               variant="outline"
@@ -188,12 +216,12 @@ export const SubjectsScreen: React.FC = () => {
             contentContainerStyle={styles.listContent}
             ListEmptyComponent={
               <Card style={styles.emptyCard}>
-                <Text style={styles.emptyTitle}>
-                  Nenhuma disciplina encontrada
-                </Text>
+                <Text style={styles.emptyTitle}>Nenhuma disciplina encontrada</Text>
+
                 <Text style={styles.emptySubtitle}>
                   Cadastre suas matérias para organizar seus estudos e faltas.
                 </Text>
+
                 <Button
                   title="Cadastrar disciplina"
                   icon={<Plus size={16} color="#FFFFFF" />}
@@ -206,7 +234,6 @@ export const SubjectsScreen: React.FC = () => {
         )}
       </View>
 
-      {/* FAB Cadastrar */}
       <Pressable
         onPress={() => navigation.navigate("NewSubject")}
         style={styles.fab}
@@ -222,6 +249,7 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: "#F8FAFC",
   },
+
   content: {
     flex: 1,
     padding: 16,
@@ -229,63 +257,78 @@ const styles = StyleSheet.create({
     width: "100%",
     alignSelf: "center",
   },
+
   searchCard: {
     marginBottom: 16,
     padding: 14,
   },
+
   searchInputContainer: {
     marginBottom: 10,
   },
+
   searchButtonsRow: {
     flexDirection: "row",
     gap: 8,
   },
+
   searchButton: {
     flex: 1,
   },
+
   clearButton: {
     flex: 1,
   },
+
   loadingContainer: {
     padding: 32,
     alignItems: "center",
   },
+
   loadingText: {
     marginTop: 8,
     color: "#64748B",
     fontSize: 14,
   },
+
   listContent: {
     paddingBottom: 80,
   },
+
   subjectCard: {
     marginBottom: 12,
   },
+
   cardHeader: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "flex-start",
     marginBottom: 12,
   },
+
   cardHeaderInfo: {
     flex: 1,
     marginRight: 8,
   },
+
   subjectTitle: {
     fontSize: 17,
     fontWeight: "700",
     color: "#0F172A",
     marginBottom: 4,
   },
+
   professorRow: {
     flexDirection: "row",
     alignItems: "center",
   },
+
   professorText: {
     fontSize: 13,
     color: "#64748B",
     marginLeft: 6,
   },
+
   gradeBadge: {
     backgroundColor: "#EFF6FF",
     borderWidth: 1,
@@ -294,32 +337,38 @@ const styles = StyleSheet.create({
     paddingVertical: 4,
     borderRadius: 8,
   },
+
   gradeText: {
     fontSize: 15,
     fontWeight: "700",
     color: "#2563EB",
   },
+
   detailsGrid: {
     flexDirection: "row",
     gap: 8,
     marginBottom: 12,
   },
+
   detailBox: {
     flex: 1,
     backgroundColor: "#F1F5F9",
     padding: 8,
     borderRadius: 8,
   },
+
   detailLabel: {
     fontSize: 11,
     color: "#64748B",
   },
+
   detailValue: {
     fontSize: 14,
     fontWeight: "600",
     color: "#0F172A",
     marginTop: 2,
   },
+
   cardFooter: {
     flexDirection: "row",
     justifyContent: "space-between",
@@ -328,33 +377,40 @@ const styles = StyleSheet.create({
     borderTopColor: "#F1F5F9",
     paddingTop: 10,
   },
+
   idRow: {
     flexDirection: "row",
     alignItems: "center",
   },
+
   idText: {
     fontSize: 12,
     color: "#94A3B8",
     marginLeft: 4,
   },
+
   actionsRow: {
     flexDirection: "row",
     gap: 8,
   },
+
   actionButton: {
     paddingVertical: 6,
     paddingHorizontal: 10,
   },
+
   emptyCard: {
     padding: 24,
     alignItems: "center",
     marginTop: 20,
   },
+
   emptyTitle: {
     fontSize: 16,
     fontWeight: "700",
     color: "#0F172A",
   },
+
   emptySubtitle: {
     fontSize: 13,
     color: "#64748B",
@@ -362,9 +418,11 @@ const styles = StyleSheet.create({
     marginTop: 4,
     marginBottom: 16,
   },
+
   emptyButton: {
     marginTop: 4,
   },
+
   fab: {
     position: "absolute",
     bottom: 24,

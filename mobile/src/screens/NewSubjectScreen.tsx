@@ -1,24 +1,29 @@
 import React, { useState } from "react";
+
 import {
-  View,
   ScrollView,
   StyleSheet,
   Alert,
   Platform,
   KeyboardAvoidingView,
 } from "react-native";
+
 import { useNavigation } from "@react-navigation/native";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
+
 import { RootStackParamList } from "../types";
 import { cadastrarDisciplina } from "../services/disciplinaService";
+
 import { MobileHeader } from "../components/MobileHeader";
 import { Card } from "../components/Card";
 import { Input } from "../components/Input";
 import { Button } from "../components/Button";
+
 import { Save } from "lucide-react-native";
 
 export const NewSubjectScreen: React.FC = () => {
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
+
   const [isLoading, setIsLoading] = useState(false);
 
   const [form, setForm] = useState({
@@ -30,7 +35,7 @@ export const NewSubjectScreen: React.FC = () => {
   });
 
   const showAlert = (title: string, message: string) => {
-    if (Platform.OS === "web") {
+    if (Platform.OS === "web" && typeof window !== "undefined") {
       window.alert(`${title}: ${message}`);
     } else {
       Alert.alert(title, message);
@@ -43,14 +48,38 @@ export const NewSubjectScreen: React.FC = () => {
       return;
     }
 
+    const idPeriodo = Number(form.idPeriodo);
+    const mediaAprovacao = Number(form.mediaAprovacao.replace(",", "."));
+    const limiteFaltas = Number(form.limiteFaltas);
+
+    if (Number.isNaN(idPeriodo) || idPeriodo <= 0) {
+      showAlert("Atenção", "O período deve ser um número válido.");
+      return;
+    }
+
+    if (
+      Number.isNaN(mediaAprovacao) ||
+      mediaAprovacao < 0 ||
+      mediaAprovacao > 10
+    ) {
+      showAlert("Atenção", "A média de aprovação deve estar entre 0 e 10.");
+      return;
+    }
+
+    if (Number.isNaN(limiteFaltas) || limiteFaltas < 0) {
+      showAlert("Atenção", "O limite de faltas deve ser um número válido.");
+      return;
+    }
+
     setIsLoading(true);
+
     try {
       await cadastrarDisciplina({
-        idPeriodo: Number(form.idPeriodo) || 1,
+        idPeriodo,
         nome: form.nome.trim(),
         professor: form.professor.trim(),
-        mediaAprovacao: Number(form.mediaAprovacao) || 6,
-        limiteFaltas: Number(form.limiteFaltas) || 20,
+        mediaAprovacao,
+        limiteFaltas,
       });
 
       showAlert("Sucesso", "Disciplina cadastrada com sucesso!");
@@ -134,15 +163,18 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: "#F8FAFC",
   },
+
   scrollContent: {
     padding: 16,
     maxWidth: 600,
     width: "100%",
     alignSelf: "center",
   },
+
   formCard: {
     padding: 20,
   },
+
   submitButton: {
     marginTop: 8,
   },

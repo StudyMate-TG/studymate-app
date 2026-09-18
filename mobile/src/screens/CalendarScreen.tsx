@@ -1,4 +1,5 @@
 import React, { useMemo, useState } from "react";
+
 import {
   View,
   Text,
@@ -6,9 +7,15 @@ import {
   ScrollView,
   Pressable,
 } from "react-native";
+
 import { MobileHeader } from "../components/MobileHeader";
 import { Card } from "../components/Card";
-import { ChevronLeft, ChevronRight, Calendar as CalendarIcon } from "lucide-react-native";
+
+import {
+  ChevronLeft,
+  ChevronRight,
+  Calendar as CalendarIcon,
+} from "lucide-react-native";
 
 export const CalendarScreen: React.FC = () => {
   const [selectedDate, setSelectedDate] = useState(new Date());
@@ -17,6 +24,14 @@ export const CalendarScreen: React.FC = () => {
     return selectedDate.toLocaleDateString("pt-BR", {
       month: "long",
       year: "numeric",
+    });
+  }, [selectedDate]);
+
+  const selectedDateLabel = useMemo(() => {
+    return selectedDate.toLocaleDateString("pt-BR", {
+      weekday: "long",
+      day: "2-digit",
+      month: "long",
     });
   }, [selectedDate]);
 
@@ -31,64 +46,73 @@ export const CalendarScreen: React.FC = () => {
       const date = new Date(startOfWeek);
       date.setDate(startOfWeek.getDate() + index);
 
+      const isSelected =
+        date.getFullYear() === selectedDate.getFullYear() &&
+        date.getMonth() === selectedDate.getMonth() &&
+        date.getDate() === selectedDate.getDate();
+
       return {
         fullDate: date,
+        key: `${date.getFullYear()}-${date.getMonth()}-${date.getDate()}`,
         dayNumber: date.getDate().toString().padStart(2, "0"),
         dayName: date
           .toLocaleDateString("pt-BR", { weekday: "short" })
           .replace(".", "")
           .toUpperCase(),
-        isSelected: date.toDateString() === selectedDate.toDateString(),
+        isSelected,
       };
     });
   }, [selectedDate]);
 
   const goToPreviousMonth = () => {
-    setSelectedDate((curr) => {
-      const d = new Date(curr);
-      d.setMonth(curr.getMonth() - 1);
-      return d;
+    setSelectedDate((currentDate) => {
+      const date = new Date(currentDate);
+      date.setMonth(currentDate.getMonth() - 1);
+      return date;
     });
   };
 
   const goToNextMonth = () => {
-    setSelectedDate((curr) => {
-      const d = new Date(curr);
-      d.setMonth(curr.getMonth() + 1);
-      return d;
+    setSelectedDate((currentDate) => {
+      const date = new Date(currentDate);
+      date.setMonth(currentDate.getMonth() + 1);
+      return date;
     });
   };
 
   return (
     <View style={styles.container}>
-      <MobileHeader title="Calendário" />
+      <MobileHeader title="Agenda" />
 
-      <ScrollView contentContainerStyle={styles.scrollContent}>
-        {/* Navegação de Mês */}
+      <ScrollView
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+      >
         <Card style={styles.monthCard}>
           <View style={styles.monthRow}>
             <Pressable onPress={goToPreviousMonth} style={styles.monthArrow}>
               <ChevronLeft size={22} color="#0F172A" />
             </Pressable>
+
             <View style={styles.monthCenter}>
               <Text style={styles.monthTitle}>{monthLabel}</Text>
-              <Text style={styles.monthSubtitle}>Eventos acadêmicos</Text>
+              <Text style={styles.monthSubtitle}>Agenda acadêmica</Text>
             </View>
+
             <Pressable onPress={goToNextMonth} style={styles.monthArrow}>
               <ChevronRight size={22} color="#0F172A" />
             </Pressable>
           </View>
         </Card>
 
-        {/* Faixa Semanal */}
         <ScrollView
           horizontal
           showsHorizontalScrollIndicator={false}
           contentContainerStyle={styles.weekContainer}
         >
-          {weekDays.map((day, index) => (
+          {weekDays.map((day) => (
             <Pressable
-              key={index}
+              key={day.key}
               onPress={() => setSelectedDate(day.fullDate)}
               style={[
                 styles.dayButton,
@@ -103,6 +127,7 @@ export const CalendarScreen: React.FC = () => {
               >
                 {day.dayName}
               </Text>
+
               <Text
                 style={[
                   styles.dayNumber,
@@ -115,21 +140,26 @@ export const CalendarScreen: React.FC = () => {
           ))}
         </ScrollView>
 
-        {/* Resumo do Calendário */}
         <Card style={styles.summaryCard}>
           <View style={styles.summaryHeader}>
             <CalendarIcon size={20} color="#2563EB" />
-            <Text style={styles.summaryTitle}>Resumo do calendário</Text>
+            <Text style={styles.summaryTitle}>Resumo da agenda</Text>
           </View>
+
+          <Text style={styles.summaryDate}>{selectedDateLabel}</Text>
+
           <Text style={styles.summaryText}>
             Os eventos acadêmicos serão exibidos após a integração com o backend.
           </Text>
         </Card>
 
-        {/* Lista de Eventos */}
         <Card style={styles.eventsCard}>
+          <Text style={styles.eventsEmptyTitle}>
+            Nenhum evento cadastrado
+          </Text>
+
           <Text style={styles.eventsEmptyText}>
-            Nenhum evento cadastrado para esta data.
+            Tarefas, avaliações, horários de aula e prazos serão listados aqui.
           </Text>
         </Card>
       </ScrollView>
@@ -142,6 +172,7 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: "#F8FAFC",
   },
+
   scrollContent: {
     padding: 16,
     paddingBottom: 90,
@@ -149,38 +180,46 @@ const styles = StyleSheet.create({
     width: "100%",
     alignSelf: "center",
   },
+
   monthCard: {
     marginBottom: 16,
     padding: 12,
   },
+
   monthRow: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
   },
+
   monthArrow: {
     padding: 8,
     borderRadius: 8,
   },
+
   monthCenter: {
     alignItems: "center",
   },
+
   monthTitle: {
     fontSize: 17,
     fontWeight: "700",
     color: "#0F172A",
     textTransform: "capitalize",
   },
+
   monthSubtitle: {
     fontSize: 12,
     color: "#64748B",
     marginTop: 2,
   },
+
   weekContainer: {
     flexDirection: "row",
     gap: 8,
     paddingBottom: 16,
   },
+
   dayButton: {
     alignItems: "center",
     justifyContent: "center",
@@ -191,54 +230,82 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: "#E2E8F0",
   },
+
   dayButtonSelected: {
     backgroundColor: "#2563EB",
     borderColor: "#2563EB",
   },
+
   dayName: {
     fontSize: 11,
     fontWeight: "600",
     color: "#64748B",
   },
+
   dayNameSelected: {
     color: "#FFFFFF",
     opacity: 0.9,
   },
+
   dayNumber: {
     fontSize: 18,
     fontWeight: "700",
     color: "#0F172A",
     marginTop: 2,
   },
+
   dayNumberSelected: {
     color: "#FFFFFF",
   },
+
   summaryCard: {
     backgroundColor: "#EFF6FF",
     borderColor: "#BFDBFE",
     marginBottom: 16,
   },
+
   summaryHeader: {
     flexDirection: "row",
     alignItems: "center",
     gap: 8,
     marginBottom: 6,
   },
+
   summaryTitle: {
     fontSize: 15,
     fontWeight: "700",
     color: "#1E3A8A",
   },
+
+  summaryDate: {
+    fontSize: 13,
+    fontWeight: "600",
+    color: "#1D4ED8",
+    textTransform: "capitalize",
+    marginBottom: 4,
+  },
+
   summaryText: {
     fontSize: 13,
     color: "#3B82F6",
   },
+
   eventsCard: {
     padding: 24,
     alignItems: "center",
   },
+
+  eventsEmptyTitle: {
+    fontSize: 15,
+    fontWeight: "700",
+    color: "#0F172A",
+    marginBottom: 4,
+    textAlign: "center",
+  },
+
   eventsEmptyText: {
-    fontSize: 14,
+    fontSize: 13,
     color: "#64748B",
+    textAlign: "center",
   },
 });

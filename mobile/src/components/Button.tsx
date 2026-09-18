@@ -1,12 +1,16 @@
 import React from "react";
+
 import {
   Pressable,
   Text,
   StyleSheet,
   ActivityIndicator,
-  ViewStyle,
+} from "react-native";
+
+import type {
   StyleProp,
   TextStyle,
+  ViewStyle,
 } from "react-native";
 
 interface ButtonProps {
@@ -32,6 +36,8 @@ export const Button: React.FC<ButtonProps> = ({
   style,
   textStyle,
 }) => {
+  const isDisabled = disabled || loading;
+
   const getContainerStyle = () => {
     switch (variant) {
       case "secondary":
@@ -73,32 +79,45 @@ export const Button: React.FC<ButtonProps> = ({
     }
   };
 
+  const getLoadingColor = () => {
+    if (variant === "primary" || variant === "destructive") {
+      return "#FFFFFF";
+    }
+
+    return "#2563EB";
+  };
+
   return (
     <Pressable
       onPress={onPress}
-      disabled={disabled || loading}
+      disabled={isDisabled}
+      accessibilityRole="button"
+      accessibilityState={{
+        disabled: isDisabled,
+        busy: loading,
+      }}
       style={({ pressed }) => [
         styles.baseContainer,
         getContainerStyle(),
         getSizeStyle(),
-        (disabled || loading) && styles.disabledContainer,
-        pressed && styles.pressed,
+        isDisabled && styles.disabledContainer,
+        pressed && !isDisabled && styles.pressed,
         style,
       ]}
     >
       {loading ? (
-        <ActivityIndicator
-          size="small"
-          color={variant === "outline" || variant === "ghost" ? "#2563EB" : "#FFFFFF"}
-        />
+        <ActivityIndicator size="small" color={getLoadingColor()} />
       ) : (
         <>
           {icon}
+
           <Text
             style={[
               styles.baseText,
               getTextStyle(),
-              icon ? { marginLeft: 8 } : null,
+              size === "sm" && styles.smText,
+              size === "lg" && styles.lgText,
+              icon ? styles.textWithIcon : null,
               textStyle,
             ]}
           >
@@ -117,64 +136,88 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     borderRadius: 12,
   },
+
   baseText: {
+    fontSize: 15,
     fontWeight: "600",
     textAlign: "center",
   },
+
+  textWithIcon: {
+    marginLeft: 8,
+  },
+
   defaultContainer: {
     paddingVertical: 12,
     paddingHorizontal: 16,
   },
+
   smContainer: {
     paddingVertical: 8,
     paddingHorizontal: 12,
     borderRadius: 8,
   },
+
   lgContainer: {
     paddingVertical: 16,
     paddingHorizontal: 24,
     borderRadius: 14,
   },
+
+  smText: {
+    fontSize: 13,
+  },
+
+  lgText: {
+    fontSize: 16,
+  },
+
   primaryContainer: {
     backgroundColor: "#2563EB",
   },
+
   primaryText: {
     color: "#FFFFFF",
-    fontSize: 15,
   },
+
   secondaryContainer: {
     backgroundColor: "#F1F5F9",
   },
+
   secondaryText: {
     color: "#0F172A",
-    fontSize: 15,
   },
+
   outlineContainer: {
     backgroundColor: "transparent",
     borderWidth: 1,
     borderColor: "#CBD5E1",
   },
+
   outlineText: {
     color: "#334155",
-    fontSize: 15,
   },
+
   destructiveContainer: {
     backgroundColor: "#EF4444",
   },
+
   destructiveText: {
     color: "#FFFFFF",
-    fontSize: 15,
   },
+
   ghostContainer: {
     backgroundColor: "transparent",
   },
+
   ghostText: {
     color: "#334155",
-    fontSize: 14,
   },
+
   disabledContainer: {
     opacity: 0.5,
   },
+
   pressed: {
     opacity: 0.8,
   },

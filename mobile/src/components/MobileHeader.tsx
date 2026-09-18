@@ -1,5 +1,12 @@
 import React from "react";
-import { View, Text, StyleSheet, Pressable } from "react-native";
+
+import {
+  View,
+  Text,
+  StyleSheet,
+  Pressable,
+} from "react-native";
+
 import { ArrowLeft } from "lucide-react-native";
 
 interface MobileHeaderProps {
@@ -15,12 +22,24 @@ export const MobileHeader: React.FC<MobileHeaderProps> = ({
 }) => {
   return (
     <View style={styles.header}>
-      {showBack && (
-        <Pressable onPress={onBack} style={styles.backButton}>
+      {showBack ? (
+        <Pressable
+          onPress={onBack}
+          disabled={!onBack}
+          accessibilityRole="button"
+          accessibilityLabel="Voltar"
+          style={({ pressed }) => [
+            styles.backButton,
+            pressed && styles.backButtonPressed,
+          ]}
+        >
           <ArrowLeft size={22} color="#1E293B" />
         </Pressable>
-      )}
-      <Text style={styles.title}>{title}</Text>
+      ) : null}
+
+      <Text style={styles.title} numberOfLines={1}>
+        {title}
+      </Text>
     </View>
   );
 };
@@ -34,15 +53,21 @@ const styles = StyleSheet.create({
     backgroundColor: "#FFFFFF",
     borderBottomWidth: 1,
     borderBottomColor: "#E2E8F0",
-    paddingHorizontal: 16,
+    paddingHorizontal: 56,
     position: "relative",
   },
+
   backButton: {
     position: "absolute",
     left: 16,
     padding: 6,
     borderRadius: 8,
   },
+
+  backButtonPressed: {
+    opacity: 0.7,
+  },
+
   title: {
     fontSize: 18,
     fontWeight: "700",
