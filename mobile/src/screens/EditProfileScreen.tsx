@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from "react";
+import { atualizarUsuario } from "../services/usuarioService";
 
 import {
   View,
@@ -26,7 +27,8 @@ import { Input } from "../components/Input";
 import { Button } from "../components/Button";
 
 export const EditProfileScreen: React.FC = () => {
-  const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
+  const navigation =
+    useNavigation<NativeStackNavigationProp<RootStackParamList>>();
 
   const [isLoading, setIsLoading] = useState(false);
 
@@ -34,7 +36,6 @@ export const EditProfileScreen: React.FC = () => {
     nome: "",
     email: "",
     curso: "",
-    semestre: "",
     matricula: "",
     instituicao: "",
   });
@@ -61,18 +62,22 @@ export const EditProfileScreen: React.FC = () => {
         nome: usuario.nome || "",
         email: usuario.email || "",
         curso: usuario.curso || "",
-        semestre: usuario.semestre || "",
         matricula: usuario.matricula || "",
         instituicao: usuario.instituicao || "",
       });
     };
 
     carregarUsuario();
-  }, []);
+  }, [navigation]);
 
   const handleSubmit = async () => {
     if (!form.nome.trim() || !form.email.trim()) {
       showAlert("Atenção", "Nome e e-mail são obrigatórios.");
+      return;
+    }
+
+    if (!form.email.includes("@")) {
+      showAlert("Atenção", "Informe um e-mail válido.");
       return;
     }
 
@@ -86,15 +91,13 @@ export const EditProfileScreen: React.FC = () => {
         return;
       }
 
-      const atualizado = {
-        ...usuarioAtual,
+      const atualizado = await atualizarUsuario(usuarioAtual.idUsuario, {
         nome: form.nome.trim(),
         email: form.email.trim().toLowerCase(),
         curso: form.curso.trim() || null,
-        semestre: form.semestre.trim() || null,
         matricula: form.matricula.trim() || null,
         instituicao: form.instituicao.trim() || null,
-      };
+      });
 
       await salvarUsuarioSessao(atualizado);
 
@@ -134,7 +137,9 @@ export const EditProfileScreen: React.FC = () => {
             title="Alterar Foto"
             variant="outline"
             size="sm"
-            onPress={() => showAlert("Info", "Funcionalidade disponível em breve.")}
+            onPress={() =>
+              showAlert("Info", "Funcionalidade disponível em breve.")
+            }
             style={styles.changePhotoButton}
           />
         </Card>
@@ -170,13 +175,6 @@ export const EditProfileScreen: React.FC = () => {
           />
 
           <Input
-            label="Semestre"
-            placeholder="Ex: 5º Semestre"
-            value={form.semestre}
-            onChangeText={(text) => setForm({ ...form, semestre: text })}
-          />
-
-          <Input
             label="Matrícula"
             placeholder="Digite seu RA ou matrícula"
             value={form.matricula}
@@ -203,6 +201,7 @@ export const EditProfileScreen: React.FC = () => {
               title="Salvar Alterações"
               onPress={handleSubmit}
               loading={isLoading}
+              disabled={isLoading}
               style={styles.saveButton}
             />
           </View>

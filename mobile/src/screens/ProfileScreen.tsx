@@ -35,7 +35,9 @@ import {
 } from "lucide-react-native";
 
 export const ProfileScreen: React.FC = () => {
-  const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
+  const navigation =
+    useNavigation<NativeStackNavigationProp<RootStackParamList>>();
+
   const isFocused = useIsFocused();
 
   const [usuario, setUsuario] = useState<UsuarioResponse | null>(null);
@@ -51,6 +53,7 @@ export const ProfileScreen: React.FC = () => {
   useEffect(() => {
     const carregarUsuario = async () => {
       const usuarioSessao = await obterUsuarioSessao();
+
       setUsuario(usuarioSessao);
     };
 
@@ -62,6 +65,7 @@ export const ProfileScreen: React.FC = () => {
   const handleLogout = () => {
     const logout = async () => {
       await encerrarSessao();
+
       navigation.replace("Login");
     };
 
@@ -120,6 +124,11 @@ export const ProfileScreen: React.FC = () => {
     },
   ];
 
+  const possuiInformacoesAcademicas =
+    Boolean(usuario?.curso) ||
+    Boolean(usuario?.matricula) ||
+    Boolean(usuario?.instituicao);
+
   return (
     <View style={styles.container}>
       <MobileHeader title="Perfil" />
@@ -149,23 +158,19 @@ export const ProfileScreen: React.FC = () => {
         <Card style={styles.infoCard}>
           <Text style={styles.infoTitle}>Informações Acadêmicas</Text>
 
-          {usuario?.curso ? (
+          {possuiInformacoesAcademicas ? (
             <View>
-              <Text style={styles.infoSubtitle}>Curso: {usuario.curso}</Text>
-
-              {usuario.semestre ? (
-                <Text style={styles.infoSubtitle}>
-                  Semestre: {usuario.semestre}
-                </Text>
+              {usuario?.curso ? (
+                <Text style={styles.infoSubtitle}>Curso: {usuario.curso}</Text>
               ) : null}
 
-              {usuario.matricula ? (
+              {usuario?.matricula ? (
                 <Text style={styles.infoSubtitle}>
                   Matrícula: {usuario.matricula}
                 </Text>
               ) : null}
 
-              {usuario.instituicao ? (
+              {usuario?.instituicao ? (
                 <Text style={styles.infoSubtitle}>
                   Instituição: {usuario.instituicao}
                 </Text>
@@ -173,7 +178,8 @@ export const ProfileScreen: React.FC = () => {
             </View>
           ) : (
             <Text style={styles.infoSubtitle}>
-              Curso, matrícula e semestre podem ser preenchidos na edição do perfil.
+              Curso, matrícula e instituição podem ser preenchidos na edição do
+              perfil.
             </Text>
           )}
         </Card>
@@ -182,7 +188,8 @@ export const ProfileScreen: React.FC = () => {
           <Text style={styles.infoTitle}>Resumo acadêmico</Text>
 
           <Text style={styles.infoSubtitle}>
-            Média geral, presença e tarefas concluídas serão exibidas quando houver dados cadastrados.
+            Média geral, presença e tarefas concluídas serão exibidas quando
+            houver dados cadastrados.
           </Text>
         </Card>
 
@@ -198,6 +205,7 @@ export const ProfileScreen: React.FC = () => {
             >
               <View style={styles.menuLeft}>
                 {item.icon}
+
                 <Text style={styles.menuLabel}>{item.label}</Text>
               </View>
 

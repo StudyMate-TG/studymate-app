@@ -29,6 +29,22 @@ public class DaoUsuario {
         return quantidade != null && quantidade > 0;
     }
 
+    public boolean existePorEmailEmOutroUsuario(String email, Integer idUsuario) {
+        Integer quantidade = jdbcTemplate.queryForObject(
+                """
+                SELECT COUNT(*)
+                FROM usuario
+                WHERE LOWER(email) = LOWER(?)
+                  AND id_usuario <> ?
+                """,
+                Integer.class,
+                email,
+                idUsuario
+        );
+
+        return quantidade != null && quantidade > 0;
+    }
+
     public Usuario inserir(Usuario usuario) {
         Integer proximoId = jdbcTemplate.queryForObject(
                 "SELECT NVL(MAX(id_usuario), 0) + 1 FROM usuario",
@@ -121,6 +137,37 @@ public class DaoUsuario {
         );
 
         return usuarios.isEmpty() ? null : usuarios.get(0);
+    }
+
+    public Usuario atualizar(
+            Integer idUsuario,
+            String nome,
+            String email,
+            String curso,
+            String matricula,
+            String instituicao
+    ) {
+        String sqlUpdate = """
+                UPDATE usuario
+                SET nome = ?,
+                    email = ?,
+                    curso = ?,
+                    matricula = ?,
+                    instituicao = ?
+                WHERE id_usuario = ?
+                """;
+
+        jdbcTemplate.update(
+                sqlUpdate,
+                nome,
+                email,
+                curso,
+                matricula,
+                instituicao,
+                idUsuario
+        );
+
+        return consultarPorId(idUsuario);
     }
 
     private void criarProgressoInicial(Integer idUsuario) {
