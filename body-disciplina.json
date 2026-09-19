@@ -1,0 +1,8 @@
+﻿{
+  "idUsuario": 1,
+  "idPeriodo": 1,
+  "nome": "Banco de Dados Teste",
+  "professor": "Prof. Teste",
+  "mediaAprovacao": 6,
+  "limiteFaltas": 20
+}
