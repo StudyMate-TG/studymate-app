@@ -51,9 +51,6 @@ Estudante -- UC14
 Estudante -- UC15
 
 
-' EXTENDS
-' A seta continua apontando para o caso de uso base
-
 UC07A ..> UC07 : <<extend>>
 UC07B ..> UC07 : <<extend>>
 
