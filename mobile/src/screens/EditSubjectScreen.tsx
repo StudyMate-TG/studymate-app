@@ -11,6 +11,7 @@ import {
 } from "react-native";
 
 import { useNavigation, useRoute } from "@react-navigation/native";
+
 import type { RouteProp } from "@react-navigation/native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 
@@ -20,6 +21,8 @@ import {
   buscarDisciplinaPorId,
   atualizarDisciplina,
 } from "../services/disciplinaService";
+
+import { obterUsuarioSessao } from "../services/authService";
 
 import { MobileHeader } from "../components/MobileHeader";
 import { Card } from "../components/Card";
@@ -31,7 +34,9 @@ import { Save } from "lucide-react-native";
 type EditSubjectRouteProp = RouteProp<RootStackParamList, "EditSubject">;
 
 export const EditSubjectScreen: React.FC = () => {
-  const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
+  const navigation =
+    useNavigation<NativeStackNavigationProp<RootStackParamList>>();
+
   const route = useRoute<EditSubjectRouteProp>();
 
   const { idDisciplina } = route.params;
@@ -40,7 +45,6 @@ export const EditSubjectScreen: React.FC = () => {
   const [isFetching, setIsFetching] = useState(true);
 
   const [form, setForm] = useState({
-    idPeriodo: "1",
     nome: "",
     professor: "",
     mediaAprovacao: "6",
@@ -55,15 +59,26 @@ export const EditSubjectScreen: React.FC = () => {
     }
   };
 
+  const obterIdUsuarioLogado = async (): Promise<number> => {
+    const usuario = await obterUsuarioSessao();
+
+    if (!usuario?.idUsuario) {
+      throw new Error("Usuário não encontrado. Faça login novamente.");
+    }
+
+    return usuario.idUsuario;
+  };
+
   useEffect(() => {
     const carregarDisciplina = async () => {
       setIsFetching(true);
 
       try {
-        const dados = await buscarDisciplinaPorId(idDisciplina);
+        const idUsuario = await obterIdUsuarioLogado();
+
+        const dados = await buscarDisciplinaPorId(idDisciplina, idUsuario);
 
         setForm({
-          idPeriodo: dados.idPeriodo.toString(),
           nome: dados.nome,
           professor: dados.professor || "",
           mediaAprovacao: dados.mediaAprovacao.toString(),
@@ -82,7 +97,7 @@ export const EditSubjectScreen: React.FC = () => {
     };
 
     carregarDisciplina();
-  }, [idDisciplina]);
+  }, [idDisciplina, navigation]);
 
   const handleSubmit = async () => {
     if (!form.nome.trim()) {
@@ -90,14 +105,13 @@ export const EditSubjectScreen: React.FC = () => {
       return;
     }
 
-    const idPeriodo = Number(form.idPeriodo);
-    const mediaAprovacao = Number(form.mediaAprovacao.replace(",", "."));
-    const limiteFaltas = Number(form.limiteFaltas);
-
-    if (Number.isNaN(idPeriodo) || idPeriodo <= 0) {
-      showAlert("Atenção", "O período deve ser um número válido.");
+    if (!form.professor.trim()) {
+      showAlert("Atenção", "O professor da disciplina é obrigatório.");
       return;
     }
+
+    const mediaAprovacao = Number(form.mediaAprovacao.replace(",", "."));
+    const limiteFaltas = Number(form.limiteFaltas);
 
     if (
       Number.isNaN(mediaAprovacao) ||
@@ -116,8 +130,10 @@ export const EditSubjectScreen: React.FC = () => {
     setIsLoading(true);
 
     try {
-      await atualizarDisciplina(idDisciplina, {
-        idPeriodo,
+      const idUsuario = await obterIdUsuarioLogado();
+
+      await atualizarDisciplina(idDisciplina, idUsuario, {
+        idUsuario,
         nome: form.nome.trim(),
         professor: form.professor.trim(),
         mediaAprovacao,
@@ -169,14 +185,6 @@ export const EditSubjectScreen: React.FC = () => {
       >
         <Card style={styles.formCard}>
           <Input
-            label="ID do período"
-            placeholder="Ex: 1"
-            keyboardType="numeric"
-            value={form.idPeriodo}
-            onChangeText={(text) => setForm({ ...form, idPeriodo: text })}
-          />
-
-          <Input
             label="Nome da disciplina"
             placeholder="Ex: Banco de Dados"
             value={form.nome}
@@ -195,7 +203,9 @@ export const EditSubjectScreen: React.FC = () => {
             placeholder="Ex: 6.0"
             keyboardType="decimal-pad"
             value={form.mediaAprovacao}
-            onChangeText={(text) => setForm({ ...form, mediaAprovacao: text })}
+            onChangeText={(text) =>
+              setForm({ ...form, mediaAprovacao: text })
+            }
           />
 
           <Input
@@ -211,6 +221,7 @@ export const EditSubjectScreen: React.FC = () => {
             icon={<Save size={18} color="#FFFFFF" />}
             onPress={handleSubmit}
             loading={isLoading}
+            disabled={isLoading}
             style={styles.submitButton}
           />
         </Card>

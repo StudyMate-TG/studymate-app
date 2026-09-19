@@ -1,21 +1,21 @@
 package br.com.studymate.dto;
 
 public class DisciplinaRequest {
-    private Integer idPeriodo;
+    private Integer idUsuario;
     private String nome;
     private String professor;
     private Double mediaAprovacao;
     private Integer limiteFaltas;
-
+    
     public DisciplinaRequest() {
     }
 
-    public Integer getIdPeriodo() {
-        return idPeriodo;
+    public Integer getIdUsuario() {
+        return idUsuario;
     }
 
-    public void setIdPeriodo(Integer idPeriodo) {
-        this.idPeriodo = idPeriodo;
+    public void setIdUsuario(Integer idUsuario) {
+        this.idUsuario = idUsuario;
     }
 
     public String getNome() {
@@ -25,7 +25,7 @@ public class DisciplinaRequest {
     public void setNome(String nome) {
         this.nome = nome;
     }
-    
+
     public String getProfessor() {
         return professor;
     }

@@ -9,10 +9,12 @@ import {
 } from "react-native";
 
 import { useNavigation } from "@react-navigation/native";
-import { NativeStackNavigationProp } from "@react-navigation/native-stack";
+import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 
 import { RootStackParamList } from "../types";
+
 import { cadastrarDisciplina } from "../services/disciplinaService";
+import { obterUsuarioSessao } from "../services/authService";
 
 import { MobileHeader } from "../components/MobileHeader";
 import { Card } from "../components/Card";
@@ -22,12 +24,12 @@ import { Button } from "../components/Button";
 import { Save } from "lucide-react-native";
 
 export const NewSubjectScreen: React.FC = () => {
-  const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
+  const navigation =
+    useNavigation<NativeStackNavigationProp<RootStackParamList>>();
 
   const [isLoading, setIsLoading] = useState(false);
 
   const [form, setForm] = useState({
-    idPeriodo: "1",
     nome: "",
     professor: "",
     mediaAprovacao: "6",
@@ -48,14 +50,13 @@ export const NewSubjectScreen: React.FC = () => {
       return;
     }
 
-    const idPeriodo = Number(form.idPeriodo);
-    const mediaAprovacao = Number(form.mediaAprovacao.replace(",", "."));
-    const limiteFaltas = Number(form.limiteFaltas);
-
-    if (Number.isNaN(idPeriodo) || idPeriodo <= 0) {
-      showAlert("Atenção", "O período deve ser um número válido.");
+    if (!form.professor.trim()) {
+      showAlert("Atenção", "O professor da disciplina é obrigatório.");
       return;
     }
+
+    const mediaAprovacao = Number(form.mediaAprovacao.replace(",", "."));
+    const limiteFaltas = Number(form.limiteFaltas);
 
     if (
       Number.isNaN(mediaAprovacao) ||
@@ -74,8 +75,15 @@ export const NewSubjectScreen: React.FC = () => {
     setIsLoading(true);
 
     try {
+      const usuario = await obterUsuarioSessao();
+
+      if (!usuario?.idUsuario) {
+        showAlert("Erro", "Usuário não encontrado. Faça login novamente.");
+        return;
+      }
+
       await cadastrarDisciplina({
-        idPeriodo,
+        idUsuario: usuario.idUsuario,
         nome: form.nome.trim(),
         professor: form.professor.trim(),
         mediaAprovacao,
@@ -105,16 +113,11 @@ export const NewSubjectScreen: React.FC = () => {
         onBack={() => navigation.goBack()}
       />
 
-      <ScrollView contentContainerStyle={styles.scrollContent}>
+      <ScrollView
+        contentContainerStyle={styles.scrollContent}
+        keyboardShouldPersistTaps="handled"
+      >
         <Card style={styles.formCard}>
-          <Input
-            label="ID do período"
-            placeholder="Ex: 1"
-            keyboardType="numeric"
-            value={form.idPeriodo}
-            onChangeText={(text) => setForm({ ...form, idPeriodo: text })}
-          />
-
           <Input
             label="Nome da disciplina"
             placeholder="Ex: Banco de Dados"
@@ -134,7 +137,9 @@ export const NewSubjectScreen: React.FC = () => {
             placeholder="Ex: 6.0"
             keyboardType="decimal-pad"
             value={form.mediaAprovacao}
-            onChangeText={(text) => setForm({ ...form, mediaAprovacao: text })}
+            onChangeText={(text) =>
+              setForm({ ...form, mediaAprovacao: text })
+            }
           />
 
           <Input
@@ -150,6 +155,7 @@ export const NewSubjectScreen: React.FC = () => {
             icon={<Save size={18} color="#FFFFFF" />}
             onPress={handleSubmit}
             loading={isLoading}
+            disabled={isLoading}
             style={styles.submitButton}
           />
         </Card>

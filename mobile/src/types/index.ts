@@ -6,7 +6,7 @@ export type UsuarioResponse = {
   nome: string;
   email: string;
   curso: string | null;
-  semestre: string | null;
+  semestre?: string | null;
   matricula: string | null;
   instituicao: string | null;
 };
@@ -15,13 +15,13 @@ export type DisciplinaResponse = {
   idDisciplina: number;
   idPeriodo: number;
   nome: string;
-  professor: string | null;
+  professor: string;
   mediaAprovacao: number;
   limiteFaltas: number;
 };
 
 export type DisciplinaRequest = {
-  idPeriodo: number;
+  idUsuario: number;
   nome: string;
   professor: string;
   mediaAprovacao: number;

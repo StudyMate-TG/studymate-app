@@ -31,20 +31,22 @@ const handleResponse = async <T>(response: Response): Promise<T> => {
 };
 
 export const listarDisciplinas = async (
+  idUsuario: number,
   termo?: string
 ): Promise<DisciplinaResponse[]> => {
   const params = new URLSearchParams();
+
+  params.append("idUsuario", String(idUsuario));
+
   const termoTratado = termo?.trim();
 
   if (termoTratado) {
     params.append("termo", termoTratado);
   }
 
-  const url = params.toString()
-    ? `${API_BASE_URL}/disciplinas?${params.toString()}`
-    : `${API_BASE_URL}/disciplinas`;
-
-  const response = await fetch(url);
+  const response = await fetch(
+    `${API_BASE_URL}/disciplinas?${params.toString()}`
+  );
 
   return handleResponse<DisciplinaResponse[]>(response);
 };
@@ -58,7 +60,7 @@ export const cadastrarDisciplina = async (
       "Content-Type": "application/json",
     },
     body: JSON.stringify({
-      idPeriodo: payload.idPeriodo,
+      idUsuario: payload.idUsuario,
       nome: payload.nome.trim(),
       professor: payload.professor.trim(),
       mediaAprovacao: payload.mediaAprovacao,
@@ -70,40 +72,51 @@ export const cadastrarDisciplina = async (
 };
 
 export const buscarDisciplinaPorId = async (
-  idDisciplina: number
+  idDisciplina: number,
+  idUsuario: number
 ): Promise<DisciplinaResponse> => {
-  const response = await fetch(`${API_BASE_URL}/disciplinas/${idDisciplina}`);
+  const response = await fetch(
+    `${API_BASE_URL}/disciplinas/${idDisciplina}?idUsuario=${idUsuario}`
+  );
 
   return handleResponse<DisciplinaResponse>(response);
 };
 
 export const atualizarDisciplina = async (
   idDisciplina: number,
+  idUsuario: number,
   payload: DisciplinaRequest
 ): Promise<DisciplinaResponse> => {
-  const response = await fetch(`${API_BASE_URL}/disciplinas/${idDisciplina}`, {
-    method: "PUT",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      idPeriodo: payload.idPeriodo,
-      nome: payload.nome.trim(),
-      professor: payload.professor.trim(),
-      mediaAprovacao: payload.mediaAprovacao,
-      limiteFaltas: payload.limiteFaltas,
-    }),
-  });
+  const response = await fetch(
+    `${API_BASE_URL}/disciplinas/${idDisciplina}?idUsuario=${idUsuario}`,
+    {
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        idUsuario: payload.idUsuario,
+        nome: payload.nome.trim(),
+        professor: payload.professor.trim(),
+        mediaAprovacao: payload.mediaAprovacao,
+        limiteFaltas: payload.limiteFaltas,
+      }),
+    }
+  );
 
   return handleResponse<DisciplinaResponse>(response);
 };
 
 export const excluirDisciplina = async (
-  idDisciplina: number
+  idDisciplina: number,
+  idUsuario: number
 ): Promise<MensagemResponse> => {
-  const response = await fetch(`${API_BASE_URL}/disciplinas/${idDisciplina}`, {
-    method: "DELETE",
-  });
+  const response = await fetch(
+    `${API_BASE_URL}/disciplinas/${idDisciplina}?idUsuario=${idUsuario}`,
+    {
+      method: "DELETE",
+    }
+  );
 
   return handleResponse<MensagemResponse>(response);
 };

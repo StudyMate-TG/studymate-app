@@ -1,6 +1,7 @@
 package br.com.studymate.dao;
 
 import br.com.studymate.model.Usuario;
+
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Repository;
 
@@ -10,69 +11,85 @@ import java.sql.Timestamp;
 import java.util.List;
 
 @Repository
-public class DaoUsuario{
+public class DaoUsuario {
+
     private final JdbcTemplate jdbcTemplate;
 
-    public DaoUsuario(JdbcTemplate jdbcTemplate){
+    public DaoUsuario(JdbcTemplate jdbcTemplate) {
         this.jdbcTemplate = jdbcTemplate;
     }
 
-    public boolean existePorEmail(String email){
+    public boolean existePorEmail(String email) {
         Integer quantidade = jdbcTemplate.queryForObject(
-            "SELECT COUNT(*) FROM usuario WHERE LOWER(email) = LOWER(?)", Integer.class, email
+                "SELECT COUNT(*) FROM usuario WHERE LOWER(email) = LOWER(?)",
+                Integer.class,
+                email
         );
 
         return quantidade != null && quantidade > 0;
     }
 
-    public Usuario inserir(Usuario usuario){
+    public Usuario inserir(Usuario usuario) {
         Integer proximoId = jdbcTemplate.queryForObject(
-            "SELECT NVL(MAX(id_usuario), 0) + 1 FROM usuario", Integer.class
+                "SELECT NVL(MAX(id_usuario), 0) + 1 FROM usuario",
+                Integer.class
         );
 
+        String sqlInsert = """
+                INSERT INTO usuario (
+                    id_usuario,
+                    nome,
+                    email,
+                    senha_hash,
+                    data_criacao,
+                    curso,
+                    matricula,
+                    instituicao
+                ) VALUES (
+                    ?,
+                    ?,
+                    ?,
+                    ?,
+                    SYSDATE,
+                    ?,
+                    ?,
+                    ?
+                )
+                """;
+
         jdbcTemplate.update(
-            """
-            INSERT INTO usuario (
-                id_usuario,
-                nome,
-                email,
-                senha,
-                data_criacao,
-                curso,
-                semestre,
-                matricula,
-                instituicao)
-                VALUES (?, ?, ?, ?, SYSDATE, ?, ?, ?, ?)
-                """,
+                sqlInsert,
                 proximoId,
                 usuario.getNome(),
                 usuario.getEmail(),
                 usuario.getSenha(),
                 usuario.getCurso(),
-                usuario.getSemestre(),
                 usuario.getMatricula(),
                 usuario.getInstituicao()
         );
 
+        criarProgressoInicial(proximoId);
+
         return consultarPorId(proximoId);
     }
 
-    public Usuario consultarPorId(Integer idUsuario){
-        List<Usuario> usuarios = jdbcTemplate.query(
-            """
-            SELECT
-                id_usuario,
-                nome,
-                email,
-                senha,
-                data_criacao,
-                curso,
-                semestre,
-                matricula,
-                instituicao
+    public Usuario consultarPorId(Integer idUsuario) {
+        String sql = """
+                SELECT
+                    id_usuario,
+                    nome,
+                    email,
+                    senha_hash,
+                    data_criacao,
+                    curso,
+                    matricula,
+                    instituicao
                 FROM usuario
                 WHERE id_usuario = ?
-                """,
+                """;
+
+        List<Usuario> usuarios = jdbcTemplate.query(
+                sql,
                 (rs, rowNum) -> mapearUsuario(rs),
                 idUsuario
         );
@@ -80,43 +97,70 @@ public class DaoUsuario{
         return usuarios.isEmpty() ? null : usuarios.get(0);
     }
 
-    public Usuario consultaPorEmailESenha(String email, String senha){
+    public Usuario consultaPorEmailESenha(String email, String senha) {
+        String sql = """
+                SELECT
+                    id_usuario,
+                    nome,
+                    email,
+                    senha_hash,
+                    data_criacao,
+                    curso,
+                    matricula,
+                    instituicao
+                FROM usuario
+                WHERE LOWER(email) = LOWER(?)
+                  AND senha_hash = ?
+                """;
+
         List<Usuario> usuarios = jdbcTemplate.query(
-            """
-            SELECT 
-            id_usuario,
-            nome,
-            email,
-            senha,
-            data_criacao,
-            curso,
-            semestre,
-            matricula,
-            instituicao
-            FROM usuario
-            WHERE LOWER(email) = LOWER(?)
-            AND senha = ?
-            """,
-            (rs, rowNum) -> mapearUsuario(rs),
-            email,
-            senha
+                sql,
+                (rs, rowNum) -> mapearUsuario(rs),
+                email,
+                senha
         );
 
         return usuarios.isEmpty() ? null : usuarios.get(0);
     }
 
-    private Usuario mapearUsuario(ResultSet rs) throws SQLException{
-        Usuario usuario = new Usuario(rs.getString("nome"), rs.getString("email"), rs.getString("senha"));
+    private void criarProgressoInicial(Integer idUsuario) {
+        String sql = """
+                INSERT INTO progresso_estudante (
+                    id_usuario,
+                    xp_total,
+                    nivel,
+                    sequencia_atual,
+                    maior_sequencia,
+                    data_ultimo_dia_sequencia
+                ) VALUES (
+                    ?,
+                    0,
+                    1,
+                    0,
+                    0,
+                    NULL
+                )
+                """;
+
+        jdbcTemplate.update(sql, idUsuario);
+    }
+
+    private Usuario mapearUsuario(ResultSet rs) throws SQLException {
+        Usuario usuario = new Usuario(
+                rs.getString("nome"),
+                rs.getString("email"),
+                rs.getString("senha_hash")
+        );
+
         usuario.setIdUsuario(rs.getInt("id_usuario"));
 
         Timestamp dataCriacao = rs.getTimestamp("data_criacao");
 
-        if (dataCriacao != null){
+        if (dataCriacao != null) {
             usuario.setDataCriacao(dataCriacao.toLocalDateTime());
         }
 
         usuario.setCurso(rs.getString("curso"));
-        usuario.setSemestre(rs.getString("semestre"));
         usuario.setMatricula(rs.getString("matricula"));
         usuario.setInstituicao(rs.getString("instituicao"));
 

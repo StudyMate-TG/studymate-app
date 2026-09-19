@@ -12,7 +12,7 @@ import {
 } from "react-native";
 
 import { useNavigation, useIsFocused } from "@react-navigation/native";
-import { NativeStackNavigationProp } from "@react-navigation/native-stack";
+import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 
 import { RootStackParamList, DisciplinaResponse } from "../types";
 
@@ -21,15 +21,26 @@ import {
   excluirDisciplina,
 } from "../services/disciplinaService";
 
+import { obterUsuarioSessao } from "../services/authService";
+
 import { MobileHeader } from "../components/MobileHeader";
 import { Card } from "../components/Card";
 import { Input } from "../components/Input";
 import { Button } from "../components/Button";
 
-import { Search, Users, Clock, Plus, Trash2, Pencil } from "lucide-react-native";
+import {
+  Search,
+  Users,
+  Clock,
+  Plus,
+  Trash2,
+  Pencil,
+} from "lucide-react-native";
 
 export const SubjectsScreen: React.FC = () => {
-  const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
+  const navigation =
+    useNavigation<NativeStackNavigationProp<RootStackParamList>>();
+
   const isFocused = useIsFocused();
 
   const [disciplinas, setDisciplinas] = useState<DisciplinaResponse[]>([]);
@@ -44,11 +55,23 @@ export const SubjectsScreen: React.FC = () => {
     }
   };
 
+  const obterIdUsuarioLogado = async (): Promise<number> => {
+    const usuario = await obterUsuarioSessao();
+
+    if (!usuario?.idUsuario) {
+      throw new Error("Usuário não encontrado. Faça login novamente.");
+    }
+
+    return usuario.idUsuario;
+  };
+
   const carregarDisciplinas = async (termo?: string) => {
     setIsLoading(true);
 
     try {
-      const dados = await listarDisciplinas(termo);
+      const idUsuario = await obterIdUsuarioLogado();
+      const dados = await listarDisciplinas(idUsuario, termo);
+
       setDisciplinas(dados);
     } catch (error) {
       showAlert(
@@ -64,7 +87,9 @@ export const SubjectsScreen: React.FC = () => {
     setIsLoading(true);
 
     try {
-      await excluirDisciplina(idDisciplina);
+      const idUsuario = await obterIdUsuarioLogado();
+
+      await excluirDisciplina(idDisciplina, idUsuario);
       await carregarDisciplinas(termoBusca);
     } catch (error) {
       showAlert(
@@ -78,7 +103,9 @@ export const SubjectsScreen: React.FC = () => {
 
   const handleExcluir = (idDisciplina: number) => {
     if (Platform.OS === "web" && typeof window !== "undefined") {
-      const confirmou = window.confirm("Deseja realmente excluir esta disciplina?");
+      const confirmou = window.confirm(
+        "Deseja realmente excluir esta disciplina?"
+      );
 
       if (confirmou) {
         excluirDisciplinaSelecionada(idDisciplina);
@@ -114,6 +141,7 @@ export const SubjectsScreen: React.FC = () => {
 
           <View style={styles.professorRow}>
             <Users size={14} color="#64748B" />
+
             <Text style={styles.professorText}>
               {item.professor || "Professor não informado"}
             </Text>
@@ -216,7 +244,9 @@ export const SubjectsScreen: React.FC = () => {
             contentContainerStyle={styles.listContent}
             ListEmptyComponent={
               <Card style={styles.emptyCard}>
-                <Text style={styles.emptyTitle}>Nenhuma disciplina encontrada</Text>
+                <Text style={styles.emptyTitle}>
+                  Nenhuma disciplina encontrada
+                </Text>
 
                 <Text style={styles.emptySubtitle}>
                   Cadastre suas matérias para organizar seus estudos e faltas.
@@ -434,7 +464,10 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     shadowColor: "#000",
-    shadowOffset: { width: 0, height: 4 },
+    shadowOffset: {
+      width: 0,
+      height: 4,
+    },
     shadowOpacity: 0.2,
     shadowRadius: 6,
     elevation: 5,

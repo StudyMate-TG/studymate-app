@@ -4,27 +4,33 @@ import br.com.studymate.dao.DaoDisciplina;
 import br.com.studymate.dto.DisciplinaRequest;
 import br.com.studymate.dto.DisciplinaResponse;
 import br.com.studymate.model.Disciplina;
+
 import org.springframework.stereotype.Service;
 
 import java.util.List;
 
 @Service
 public class DisciplinaService {
+
     private final DaoDisciplina daoDisciplina;
 
     public DisciplinaService(DaoDisciplina daoDisciplina) {
         this.daoDisciplina = daoDisciplina;
     }
 
-    public List<DisciplinaResponse> listar(String termo) {
-        return daoDisciplina.listar(termo)
+    public List<DisciplinaResponse> listar(Integer idUsuario, String termo) {
+        validarIdUsuario(idUsuario);
+
+        return daoDisciplina.listarPorUsuario(idUsuario, termo)
                 .stream()
                 .map(DisciplinaResponse::new)
                 .toList();
     }
 
-    public DisciplinaResponse consultarPorId(Integer idDisciplina) {
-        Disciplina disciplina = daoDisciplina.consultarPorId(idDisciplina);
+    public DisciplinaResponse consultarPorId(Integer idDisciplina, Integer idUsuario) {
+        validarIdUsuario(idUsuario);
+
+        Disciplina disciplina = daoDisciplina.consultarPorIdEUsuario(idDisciplina, idUsuario);
 
         if (disciplina == null) {
             throw new IllegalArgumentException("Disciplina não encontrada.");
@@ -34,12 +40,15 @@ public class DisciplinaService {
     }
 
     public DisciplinaResponse cadastrar(DisciplinaRequest request) {
-        validarDisciplina(request);
+        validarIdUsuario(request.getIdUsuario());
+        validarDadosDisciplina(request);
+
+        Integer idPeriodo = daoDisciplina.obterOuCriarPeriodoPadrao(request.getIdUsuario());
 
         Disciplina disciplina = new Disciplina(
-        request.getIdPeriodo(),
-        request.getNome(),
-        request.getProfessor()
+                idPeriodo,
+                request.getNome().trim(),
+                request.getProfessor().trim()
         );
 
         disciplina.setMediaAprovacao(request.getMediaAprovacao());
@@ -50,50 +59,71 @@ public class DisciplinaService {
         return new DisciplinaResponse(disciplinaCadastrada);
     }
 
-    public DisciplinaResponse alterar(Integer idDisciplina, DisciplinaRequest request) {
-        validarDisciplina(request);
+    public DisciplinaResponse alterar(
+            Integer idDisciplina,
+            Integer idUsuario,
+            DisciplinaRequest request
+    ) {
+        validarIdUsuario(idUsuario);
+        validarDadosDisciplina(request);
 
-        Disciplina disciplinaExistente = daoDisciplina.consultarPorId(idDisciplina);
+        Disciplina disciplinaExistente = daoDisciplina.consultarPorIdEUsuario(idDisciplina, idUsuario);
 
         if (disciplinaExistente == null) {
             throw new IllegalArgumentException("Disciplina não encontrada.");
         }
 
         Disciplina disciplina = new Disciplina(
-            request.getIdPeriodo(),
-            request.getNome(),
-            request.getProfessor()
+                disciplinaExistente.getIdPeriodo(),
+                request.getNome().trim(),
+                request.getProfessor().trim()
         );
 
         disciplina.setMediaAprovacao(request.getMediaAprovacao());
         disciplina.setLimiteFaltas(request.getLimiteFaltas());
 
-        Disciplina disciplinaAlterada = daoDisciplina.alterar(idDisciplina, disciplina);
+        Disciplina disciplinaAlterada = daoDisciplina.alterar(
+                idDisciplina,
+                idUsuario,
+                disciplina
+        );
 
         return new DisciplinaResponse(disciplinaAlterada);
     }
 
-    public void excluir(Integer idDisciplina) {
-        Disciplina disciplinaExistente = daoDisciplina.consultarPorId(idDisciplina);
+    public void excluir(Integer idDisciplina, Integer idUsuario) {
+        validarIdUsuario(idUsuario);
+
+        Disciplina disciplinaExistente = daoDisciplina.consultarPorIdEUsuario(idDisciplina, idUsuario);
 
         if (disciplinaExistente == null) {
             throw new IllegalArgumentException("Disciplina não encontrada.");
         }
 
-        boolean excluiu = daoDisciplina.excluir(idDisciplina);
+        boolean excluiu = daoDisciplina.excluir(idDisciplina, idUsuario);
 
         if (!excluiu) {
             throw new IllegalArgumentException("Não foi possível excluir a disciplina.");
         }
     }
 
-    private void validarDisciplina(DisciplinaRequest request) {
-        if (request.getIdPeriodo() == null) {
-            throw new IllegalArgumentException("O período letivo é obrigatório.");
+    private void validarIdUsuario(Integer idUsuario) {
+        if (idUsuario == null) {
+            throw new IllegalArgumentException("O usuário é obrigatório.");
         }
 
+        if (idUsuario <= 0) {
+            throw new IllegalArgumentException("O usuário informado é inválido.");
+        }
+    }
+
+    private void validarDadosDisciplina(DisciplinaRequest request) {
         if (request.getNome() == null || request.getNome().isBlank()) {
             throw new IllegalArgumentException("O nome da disciplina é obrigatório.");
+        }
+
+        if (request.getProfessor() == null || request.getProfessor().isBlank()) {
+            throw new IllegalArgumentException("O professor da disciplina é obrigatório.");
         }
 
         if (request.getMediaAprovacao() == null) {
