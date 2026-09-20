@@ -30,7 +30,10 @@ public class DisciplinaService {
     public DisciplinaResponse consultarPorId(Integer idDisciplina, Integer idUsuario) {
         validarIdUsuario(idUsuario);
 
-        Disciplina disciplina = daoDisciplina.consultarPorIdEUsuario(idDisciplina, idUsuario);
+        Disciplina disciplina = daoDisciplina.consultarPorIdEUsuario(
+                idDisciplina,
+                idUsuario
+        );
 
         if (disciplina == null) {
             throw new IllegalArgumentException("Disciplina não encontrada.");
@@ -43,7 +46,7 @@ public class DisciplinaService {
         validarIdUsuario(request.getIdUsuario());
         validarDadosDisciplina(request);
 
-        Integer idPeriodo = daoDisciplina.obterOuCriarPeriodoPadrao(request.getIdUsuario());
+        Integer idPeriodo = obterPeriodoParaCadastro(request);
 
         Disciplina disciplina = new Disciplina(
                 idPeriodo,
@@ -67,7 +70,10 @@ public class DisciplinaService {
         validarIdUsuario(idUsuario);
         validarDadosDisciplina(request);
 
-        Disciplina disciplinaExistente = daoDisciplina.consultarPorIdEUsuario(idDisciplina, idUsuario);
+        Disciplina disciplinaExistente = daoDisciplina.consultarPorIdEUsuario(
+                idDisciplina,
+                idUsuario
+        );
 
         if (disciplinaExistente == null) {
             throw new IllegalArgumentException("Disciplina não encontrada.");
@@ -94,7 +100,10 @@ public class DisciplinaService {
     public void excluir(Integer idDisciplina, Integer idUsuario) {
         validarIdUsuario(idUsuario);
 
-        Disciplina disciplinaExistente = daoDisciplina.consultarPorIdEUsuario(idDisciplina, idUsuario);
+        Disciplina disciplinaExistente = daoDisciplina.consultarPorIdEUsuario(
+                idDisciplina,
+                idUsuario
+        );
 
         if (disciplinaExistente == null) {
             throw new IllegalArgumentException("Disciplina não encontrada.");
@@ -105,6 +114,25 @@ public class DisciplinaService {
         if (!excluiu) {
             throw new IllegalArgumentException("Não foi possível excluir a disciplina.");
         }
+    }
+
+    private Integer obterPeriodoParaCadastro(DisciplinaRequest request) {
+        if (request.getIdPeriodo() == null) {
+            return daoDisciplina.obterOuCriarPeriodoPadrao(request.getIdUsuario());
+        }
+
+        boolean periodoPertenceAoUsuario = daoDisciplina.periodoPertenceAoUsuario(
+                request.getIdPeriodo(),
+                request.getIdUsuario()
+        );
+
+        if (!periodoPertenceAoUsuario) {
+            throw new IllegalArgumentException(
+                    "O período letivo informado não pertence ao usuário."
+            );
+        }
+
+        return request.getIdPeriodo();
     }
 
     private void validarIdUsuario(Integer idUsuario) {

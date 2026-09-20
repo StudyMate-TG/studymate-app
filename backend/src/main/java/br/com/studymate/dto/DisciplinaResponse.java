@@ -5,6 +5,7 @@ import br.com.studymate.model.Disciplina;
 public class DisciplinaResponse {
     private Integer idDisciplina;
     private Integer idPeriodo;
+    private String nomePeriodo;
     private String nome;
     private String professor;
     private Double mediaAprovacao;
@@ -13,6 +14,7 @@ public class DisciplinaResponse {
     public DisciplinaResponse(Disciplina disciplina) {
         this.idDisciplina = disciplina.getIdDisciplina();
         this.idPeriodo = disciplina.getIdPeriodo();
+        this.nomePeriodo = disciplina.getNomePeriodo();
         this.nome = disciplina.getNome();
         this.professor = disciplina.getProfessor();
         this.mediaAprovacao = disciplina.getMediaAprovacao();
@@ -27,6 +29,10 @@ public class DisciplinaResponse {
         return idPeriodo;
     }
 
+    public String getNomePeriodo() {
+        return nomePeriodo;
+    }
+    
     public String getNome() {
         return nome;
     }

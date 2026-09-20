@@ -14,6 +14,7 @@ export type UsuarioResponse = {
 export type DisciplinaResponse = {
   idDisciplina: number;
   idPeriodo: number;
+  nomePeriodo: string;
   nome: string;
   professor: string;
   mediaAprovacao: number;
@@ -22,10 +23,30 @@ export type DisciplinaResponse = {
 
 export type DisciplinaRequest = {
   idUsuario: number;
+  idPeriodo?:number;
   nome: string;
   professor: string;
   mediaAprovacao: number;
   limiteFaltas: number;
+};
+
+export type PeriodoLetivoStatus = "ATIVO" | "INATIVO" | "CONCLUIDO";
+
+export type PeriodoLetivoResponse = {
+  idPeriodo: number;
+  idUsuario: number;
+  nome: string;
+  dataInicio: string;
+  dataFim: string;
+  status: PeriodoLetivoStatus;
+};
+
+export type PeriodoLetivoRequest = {
+  idUsuario: number;
+  nome: string;
+  dataInicio: string;
+  dataFim: string;
+  status: PeriodoLetivoStatus;
 };
 
 export type RootStackParamList = {
@@ -36,6 +57,8 @@ export type RootStackParamList = {
   NewTask: undefined;
   NewAttendance: undefined;
   EditProfile: undefined;
+  Periods: undefined;
+  NewPeriod: undefined;
 };
 
 export type MainTabParamList = {

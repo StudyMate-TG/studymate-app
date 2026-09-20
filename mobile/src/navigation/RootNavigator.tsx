@@ -1,4 +1,6 @@
 import React, { useEffect, useState } from "react";
+import { PeriodsScreen } from "../screens/PeriodsScreen";
+import { NewPeriodScreen } from "../screens/NewPeriodScreen";
 
 import {
   View,
@@ -158,6 +160,8 @@ export const RootNavigator: React.FC = () => {
       <Stack.Screen name="NewAttendance" component={NewAttendanceScreen} />
 
       <Stack.Screen name="EditProfile" component={EditProfileScreen} />
+      <Stack.Screen name="Periods" component={PeriodsScreen} />
+      <Stack.Screen name="NewPeriod" component={NewPeriodScreen} />
     </Stack.Navigator>
   );
 };

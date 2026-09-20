@@ -54,18 +54,25 @@ export const listarDisciplinas = async (
 export const cadastrarDisciplina = async (
   payload: DisciplinaRequest
 ): Promise<DisciplinaResponse> => {
+  console.log("Payload recebido no service:", payload);
+
+  const body = {
+    idUsuario: payload.idUsuario,
+    idPeriodo: payload.idPeriodo,
+    nome: payload.nome.trim(),
+    professor: payload.professor.trim(),
+    mediaAprovacao: payload.mediaAprovacao,
+    limiteFaltas: payload.limiteFaltas,
+  };
+
+  console.log("Body enviado para API:", body);
+
   const response = await fetch(`${API_BASE_URL}/disciplinas`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
     },
-    body: JSON.stringify({
-      idUsuario: payload.idUsuario,
-      nome: payload.nome.trim(),
-      professor: payload.professor.trim(),
-      mediaAprovacao: payload.mediaAprovacao,
-      limiteFaltas: payload.limiteFaltas,
-    }),
+    body: JSON.stringify(body),
   });
 
   return handleResponse<DisciplinaResponse>(response);
@@ -96,6 +103,7 @@ export const atualizarDisciplina = async (
       },
       body: JSON.stringify({
         idUsuario: payload.idUsuario,
+        idPeriodo: payload.idPeriodo,
         nome: payload.nome.trim(),
         professor: payload.professor.trim(),
         mediaAprovacao: payload.mediaAprovacao,

@@ -11,6 +11,7 @@ import {
 } from "react-native";
 
 import { useNavigation, useIsFocused } from "@react-navigation/native";
+
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 
 import { RootStackParamList, UsuarioResponse } from "../types";
@@ -21,7 +22,9 @@ import {
 } from "../services/authService";
 
 import { MobileHeader } from "../components/MobileHeader";
+
 import { Card } from "../components/Card";
+
 import { Button } from "../components/Button";
 
 import {
@@ -32,6 +35,7 @@ import {
   ChevronRight,
   Settings,
   HelpCircle,
+  CalendarDays,
 } from "lucide-react-native";
 
 export const ProfileScreen: React.FC = () => {
@@ -101,6 +105,11 @@ export const ProfileScreen: React.FC = () => {
       icon: <User size={20} color="#64748B" />,
       label: "Editar Perfil",
       onPress: () => navigation.navigate("EditProfile"),
+    },
+    {
+      icon: <CalendarDays size={20} color="#64748B" />,
+      label: "Períodos Letivos",
+      onPress: () => navigation.navigate("Periods"),
     },
     {
       icon: <Bell size={20} color="#64748B" />,
@@ -205,7 +214,6 @@ export const ProfileScreen: React.FC = () => {
             >
               <View style={styles.menuLeft}>
                 {item.icon}
-
                 <Text style={styles.menuLabel}>{item.label}</Text>
               </View>
 

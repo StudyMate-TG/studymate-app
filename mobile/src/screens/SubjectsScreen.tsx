@@ -155,8 +155,10 @@ export const SubjectsScreen: React.FC = () => {
 
       <View style={styles.detailsGrid}>
         <View style={styles.detailBox}>
-          <Text style={styles.detailLabel}>Período</Text>
-          <Text style={styles.detailValue}>{item.idPeriodo}</Text>
+        <Text style={styles.detailLabel}>Período</Text>
+        <Text style={styles.detailValue}>
+          {item.nomePeriodo || `Período ${item.idPeriodo}`}
+        </Text>
         </View>
 
         <View style={styles.detailBox}>
