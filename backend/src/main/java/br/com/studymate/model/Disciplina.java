@@ -7,6 +7,7 @@ public class Disciplina {
     private String professor;
     private Double mediaAprovacao;
     private Integer limiteFaltas;
+    private String nomePeriodo;
 
     public Disciplina (){
     }
@@ -51,5 +52,13 @@ public class Disciplina {
 
     public Integer getLimiteFaltas (){
         return limiteFaltas;
+    }
+
+    public String getNomePeriodo() {
+        return nomePeriodo;
+    }
+
+    public void setNomePeriodo(String nomePeriodo) {
+        this.nomePeriodo = nomePeriodo;
     }
 }

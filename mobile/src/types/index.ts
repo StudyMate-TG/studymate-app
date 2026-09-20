@@ -14,6 +14,7 @@ export type UsuarioResponse = {
 export type DisciplinaResponse = {
   idDisciplina: number;
   idPeriodo: number;
+  nomePeriodo: string;
   nome: string;
   professor: string;
   mediaAprovacao: number;

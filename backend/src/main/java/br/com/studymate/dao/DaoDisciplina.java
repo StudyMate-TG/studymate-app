@@ -23,6 +23,7 @@ public class DaoDisciplina {
             String sql = """
                     SELECT d.id_disciplina,
                            d.id_periodo,
+                           p.nome AS nome_periodo,
                            d.nome,
                            d.professor,
                            d.media_aprovacao,
@@ -44,6 +45,7 @@ public class DaoDisciplina {
         String sql = """
                 SELECT d.id_disciplina,
                        d.id_periodo,
+                       p.nome AS nome_periodo,
                        d.nome,
                        d.professor,
                        d.media_aprovacao,
@@ -74,6 +76,7 @@ public class DaoDisciplina {
         String sql = """
                 SELECT d.id_disciplina,
                        d.id_periodo,
+                       p.nome AS nome_periodo,
                        d.nome,
                        d.professor,
                        d.media_aprovacao,
@@ -97,6 +100,24 @@ public class DaoDisciplina {
         }
 
         return disciplinas.get(0);
+    }
+
+    public boolean periodoPertenceAoUsuario(Integer idPeriodo, Integer idUsuario) {
+        String sql = """
+                SELECT COUNT(*)
+                FROM periodo_letivo
+                WHERE id_periodo = ?
+                  AND id_usuario = ?
+                """;
+
+        Integer total = jdbcTemplate.queryForObject(
+                sql,
+                Integer.class,
+                idPeriodo,
+                idUsuario
+        );
+
+        return total != null && total > 0;
     }
 
     public Integer obterOuCriarPeriodoPadrao(Integer idUsuario) {
@@ -244,14 +265,17 @@ public class DaoDisciplina {
 
     private Disciplina consultarPorId(Integer idDisciplina) {
         String sql = """
-                SELECT id_disciplina,
-                       id_periodo,
-                       nome,
-                       professor,
-                       media_aprovacao,
-                       limite_faltas
-                FROM disciplina
-                WHERE id_disciplina = ?
+                SELECT d.id_disciplina,
+                       d.id_periodo,
+                       p.nome AS nome_periodo,
+                       d.nome,
+                       d.professor,
+                       d.media_aprovacao,
+                       d.limite_faltas
+                FROM disciplina d
+                JOIN periodo_letivo p
+                    ON p.id_periodo = d.id_periodo
+                WHERE d.id_disciplina = ?
                 """;
 
         List<Disciplina> disciplinas = jdbcTemplate.query(
@@ -293,6 +317,7 @@ public class DaoDisciplina {
         );
 
         disciplina.setIdDisciplina(rs.getInt("id_disciplina"));
+        disciplina.setNomePeriodo(rs.getString("nome_periodo"));
         disciplina.setMediaAprovacao(rs.getDouble("media_aprovacao"));
         disciplina.setLimiteFaltas(rs.getInt("limite_faltas"));
 
