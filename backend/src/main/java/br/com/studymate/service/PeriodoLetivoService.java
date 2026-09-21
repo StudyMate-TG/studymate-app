@@ -1,178 +1,148 @@
 package br.com.studymate.service;
 
-import br.com.studymate.dao.DaoPeriodoLetivo;
 import br.com.studymate.dto.PeriodoLetivoRequest;
 import br.com.studymate.dto.PeriodoLetivoResponse;
 import br.com.studymate.model.PeriodoLetivo;
-
+import br.com.studymate.repository.DisciplinaRepository;
+import br.com.studymate.repository.PeriodoLetivoRepository;
+import br.com.studymate.repository.UsuarioRepository;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDate;
 import java.util.List;
+import java.util.Locale;
 
 @Service
+@Transactional(readOnly = true)
 public class PeriodoLetivoService {
+    private final PeriodoLetivoRepository periodoRepository;
+    private final UsuarioRepository usuarioRepository;
+    private final DisciplinaRepository disciplinaRepository;
 
-    private final DaoPeriodoLetivo daoPeriodoLetivo;
-
-    public PeriodoLetivoService(DaoPeriodoLetivo daoPeriodoLetivo) {
-        this.daoPeriodoLetivo = daoPeriodoLetivo;
+    public PeriodoLetivoService(PeriodoLetivoRepository periodoRepository,
+                               UsuarioRepository usuarioRepository,
+                               DisciplinaRepository disciplinaRepository) {
+        this.periodoRepository = periodoRepository;
+        this.usuarioRepository = usuarioRepository;
+        this.disciplinaRepository = disciplinaRepository;
     }
 
     public List<PeriodoLetivoResponse> listar(Integer idUsuario) {
         validarIdUsuario(idUsuario);
         validarUsuarioExiste(idUsuario);
-
-        return daoPeriodoLetivo.listarPorUsuario(idUsuario)
-                .stream()
-                .map(PeriodoLetivoResponse::new)
-                .toList();
+        return periodoRepository.findByIdUsuarioOrderByDataInicioDescIdPeriodoDesc(idUsuario)
+                .stream().map(PeriodoLetivoResponse::new).toList();
     }
 
     public PeriodoLetivoResponse consultarPorId(Integer idPeriodo, Integer idUsuario) {
-        validarIdPeriodo(idPeriodo);
-        validarIdUsuario(idUsuario);
-
-        PeriodoLetivo periodoLetivo = daoPeriodoLetivo.consultarPorIdEUsuario(
-                idPeriodo,
-                idUsuario
-        );
-
-        if (periodoLetivo == null) {
-            throw new IllegalArgumentException("Período letivo não encontrado.");
-        }
-
-        return new PeriodoLetivoResponse(periodoLetivo);
+        return new PeriodoLetivoResponse(buscarDoUsuario(idPeriodo, idUsuario));
     }
 
     public PeriodoLetivoResponse consultarAtivo(Integer idUsuario) {
         validarIdUsuario(idUsuario);
         validarUsuarioExiste(idUsuario);
-
-        PeriodoLetivo periodoLetivo = daoPeriodoLetivo.consultarAtivoPorUsuario(idUsuario);
-
-        if (periodoLetivo == null) {
-            throw new IllegalArgumentException("Nenhum período letivo ativo encontrado.");
-        }
-
-        return new PeriodoLetivoResponse(periodoLetivo);
+        return periodoRepository.findFirstByIdUsuarioAndStatusOrderByIdPeriodoDesc(idUsuario, "ATIVO")
+                .map(PeriodoLetivoResponse::new)
+                .orElseThrow(() -> new IllegalArgumentException("Nenhum período letivo ativo encontrado."));
     }
 
+    @Transactional
     public PeriodoLetivoResponse cadastrar(PeriodoLetivoRequest request) {
         validarRequest(request);
-        validarUsuarioExiste(request.getIdUsuario());
-
+        bloquearUsuario(request.getIdUsuario());
         String status = normalizarStatus(request.getStatus());
-
         if ("ATIVO".equals(status)) {
-            daoPeriodoLetivo.inativarTodosPeriodosDoUsuario(request.getIdUsuario());
+            inativarOutros(request.getIdUsuario(), null);
         }
-
-        PeriodoLetivo periodoLetivo = new PeriodoLetivo(
-                request.getIdUsuario(),
-                request.getNome().trim(),
-                request.getDataInicio(),
-                request.getDataFim(),
-                status
-        );
-
-        PeriodoLetivo periodoCadastrado = daoPeriodoLetivo.inserir(periodoLetivo);
-
-        return new PeriodoLetivoResponse(periodoCadastrado);
+        PeriodoLetivo periodo = new PeriodoLetivo(request.getIdUsuario(), request.getNome().trim(),
+                request.getDataInicio(), request.getDataFim(), status);
+        return new PeriodoLetivoResponse(periodoRepository.saveAndFlush(periodo));
     }
 
-    public PeriodoLetivoResponse alterar(
-            Integer idPeriodo,
-            Integer idUsuario,
-            PeriodoLetivoRequest request
-    ) {
+    @Transactional
+    public PeriodoLetivoResponse alterar(Integer idPeriodo, Integer idUsuario, PeriodoLetivoRequest request) {
         validarIdPeriodo(idPeriodo);
         validarIdUsuario(idUsuario);
         validarRequest(request);
-
         if (!idUsuario.equals(request.getIdUsuario())) {
             throw new IllegalArgumentException("Usuário da URL e do corpo da requisição são diferentes.");
         }
-
-        PeriodoLetivo periodoExistente = daoPeriodoLetivo.consultarPorIdEUsuario(
-                idPeriodo,
-                idUsuario
-        );
-
-        if (periodoExistente == null) {
-            throw new IllegalArgumentException("Período letivo não encontrado.");
-        }
-
+        bloquearUsuario(idUsuario);
+        PeriodoLetivo periodo = buscarDoUsuario(idPeriodo, idUsuario);
         String status = normalizarStatus(request.getStatus());
-
         if ("ATIVO".equals(status)) {
-            daoPeriodoLetivo.inativarOutrosPeriodos(idUsuario, idPeriodo);
+            inativarOutros(idUsuario, idPeriodo);
         }
-
-        PeriodoLetivo periodoLetivo = new PeriodoLetivo(
-                idUsuario,
-                request.getNome().trim(),
-                request.getDataInicio(),
-                request.getDataFim(),
-                status
-        );
-
-        PeriodoLetivo periodoAlterado = daoPeriodoLetivo.alterar(idPeriodo, periodoLetivo);
-
-        return new PeriodoLetivoResponse(periodoAlterado);
+        periodo.setNome(request.getNome().trim());
+        periodo.setDataInicio(request.getDataInicio());
+        periodo.setDataFim(request.getDataFim());
+        periodo.setStatus(status);
+        return new PeriodoLetivoResponse(periodoRepository.saveAndFlush(periodo));
     }
 
+    @Transactional
     public PeriodoLetivoResponse ativar(Integer idPeriodo, Integer idUsuario) {
         validarIdPeriodo(idPeriodo);
-        validarIdUsuario(idUsuario);
-
-        PeriodoLetivo periodoExistente = daoPeriodoLetivo.consultarPorIdEUsuario(
-                idPeriodo,
-                idUsuario
-        );
-
-        if (periodoExistente == null) {
-            throw new IllegalArgumentException("Período letivo não encontrado.");
-        }
-
-        PeriodoLetivo periodoAtivado = daoPeriodoLetivo.ativar(idPeriodo, idUsuario);
-
-        return new PeriodoLetivoResponse(periodoAtivado);
+        bloquearUsuario(idUsuario);
+        PeriodoLetivo periodo = buscarDoUsuario(idPeriodo, idUsuario);
+        inativarOutros(idUsuario, idPeriodo);
+        periodo.setStatus("ATIVO");
+        return new PeriodoLetivoResponse(periodoRepository.saveAndFlush(periodo));
     }
 
+    @Transactional
     public void excluir(Integer idPeriodo, Integer idUsuario) {
         validarIdPeriodo(idPeriodo);
-        validarIdUsuario(idUsuario);
-
-        PeriodoLetivo periodoExistente = daoPeriodoLetivo.consultarPorIdEUsuario(
-                idPeriodo,
-                idUsuario
-        );
-
-        if (periodoExistente == null) {
-            throw new IllegalArgumentException("Período letivo não encontrado.");
+        bloquearUsuario(idUsuario);
+        PeriodoLetivo periodo = buscarDoUsuario(idPeriodo, idUsuario);
+        if (disciplinaRepository.existsByIdPeriodo(idPeriodo)) {
+            throw new IllegalArgumentException("Não é possível excluir um período que possui disciplinas cadastradas.");
         }
-
-        Integer totalDisciplinas = daoPeriodoLetivo.contarDisciplinasDoPeriodo(idPeriodo);
-
-        if (totalDisciplinas != null && totalDisciplinas > 0) {
-            throw new IllegalArgumentException(
-                    "Não é possível excluir um período que possui disciplinas cadastradas."
-            );
-        }
-
-        boolean excluiu = daoPeriodoLetivo.excluir(idPeriodo, idUsuario);
-
-        if (!excluiu) {
-            throw new IllegalArgumentException("Não foi possível excluir o período letivo.");
-        }
+        periodoRepository.delete(periodo);
+        periodoRepository.flush();
     }
 
+    // O lock do usuario serializa alteracoes dos periodos e disciplinas desse usuario.
+    @Transactional
+    public PeriodoLetivo obterOuCriarPeriodoPadrao(Integer idUsuario) {
+        bloquearUsuario(idUsuario);
+        return periodoRepository.findFirstByIdUsuarioAndStatusOrderByIdPeriodoDesc(idUsuario, "ATIVO")
+                .orElseGet(() -> {
+                    LocalDate hoje = LocalDate.now();
+                    return periodoRepository.saveAndFlush(new PeriodoLetivo(
+                            idUsuario, "Período atual", hoje, hoje.plusMonths(6), "ATIVO"));
+                });
+    }
+
+    private PeriodoLetivo buscarDoUsuario(Integer idPeriodo, Integer idUsuario) {
+        validarIdPeriodo(idPeriodo);
+        validarIdUsuario(idUsuario);
+        return periodoRepository.findByIdPeriodoAndIdUsuario(idPeriodo, idUsuario)
+                .orElseThrow(() -> new IllegalArgumentException("Período letivo não encontrado."));
+    }
+
+    private void bloquearUsuario(Integer idUsuario) {
+        validarIdUsuario(idUsuario);
+        usuarioRepository.buscarParaAtualizacao(idUsuario)
+                .orElseThrow(() -> new IllegalArgumentException("Usuário não encontrado."));
+    }
+
+    private void inativarOutros(Integer idUsuario, Integer idIgnorado) {
+        periodoRepository.findByIdUsuarioAndStatus(idUsuario, "ATIVO").stream()
+                .filter(p -> !p.getIdPeriodo().equals(idIgnorado))
+                .forEach(p -> p.setStatus("INATIVO"));
+        periodoRepository.flush();
+    }
     private void validarRequest(PeriodoLetivoRequest request) {
+        if (request == null) { throw new IllegalArgumentException("Informe os dados do período."); }
         validarIdUsuario(request.getIdUsuario());
 
         if (request.getNome() == null || request.getNome().isBlank()) {
             throw new IllegalArgumentException("O nome do período letivo é obrigatório.");
         }
+
+        if (request.getNome().trim().length() > 50) { throw new IllegalArgumentException("O nome deve ter até 50 caracteres."); }
 
         if (request.getDataInicio() == null) {
             throw new IllegalArgumentException("A data de início é obrigatória.");
@@ -202,7 +172,7 @@ public class PeriodoLetivoService {
     }
 
     private void validarUsuarioExiste(Integer idUsuario) {
-        if (!daoPeriodoLetivo.usuarioExiste(idUsuario)) {
+        if (!usuarioRepository.existsById(idUsuario)) {
             throw new IllegalArgumentException("Usuário não encontrado.");
         }
     }
@@ -212,7 +182,7 @@ public class PeriodoLetivoService {
             return "ATIVO";
         }
 
-        String statusTratado = status.trim().toUpperCase();
+        String statusTratado = status.trim().toUpperCase(Locale.ROOT);
 
         if (
                 !"ATIVO".equals(statusTratado) &&

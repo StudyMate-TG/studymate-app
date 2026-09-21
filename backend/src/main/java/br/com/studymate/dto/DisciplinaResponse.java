@@ -12,9 +12,13 @@ public class DisciplinaResponse {
     private Integer limiteFaltas;
 
     public DisciplinaResponse(Disciplina disciplina) {
+        this(disciplina, disciplina.getNomePeriodo());
+    }
+
+    public DisciplinaResponse(Disciplina disciplina, String nomePeriodo) {
         this.idDisciplina = disciplina.getIdDisciplina();
         this.idPeriodo = disciplina.getIdPeriodo();
-        this.nomePeriodo = disciplina.getNomePeriodo();
+        this.nomePeriodo = nomePeriodo;
         this.nome = disciplina.getNome();
         this.professor = disciplina.getProfessor();
         this.mediaAprovacao = disciplina.getMediaAprovacao();

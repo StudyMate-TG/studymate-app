@@ -1,7 +1,14 @@
 package br.com.studymate.dto;
 
+import jakarta.validation.constraints.*;
+
 public class LoginRequest{
+    @NotBlank(message = "O e-mail é obrigatório.")
+    @Email(message = "Informe um e-mail válido.")
+    @Size(max = 100)
     private String email;
+    @NotBlank(message = "A senha é obrigatória.")
+    @Size(max = 72)
     private String senha;
 
     public LoginRequest(){
