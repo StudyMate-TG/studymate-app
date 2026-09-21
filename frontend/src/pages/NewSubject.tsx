@@ -15,7 +15,6 @@ const NewSubject = () => {
   const [isLoading, setIsLoading] = useState(false);
 
   const [formularioDisciplina, setFormularioDisciplina] = useState({
-    idPeriodo: 1,
     nome: "",
     professor: "",
     mediaAprovacao: 6,
@@ -34,7 +33,6 @@ const NewSubject = () => {
 
     try {
       await cadastrarDisciplina({
-        idPeriodo: Number(formularioDisciplina.idPeriodo),
         nome: formularioDisciplina.nome,
         professor: formularioDisciplina.professor,
         mediaAprovacao: Number(formularioDisciplina.mediaAprovacao),
@@ -71,21 +69,7 @@ const NewSubject = () => {
         <Card>
           <CardContent className="p-6">
             <form onSubmit={handleSubmit} className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="idPeriodo">ID do período</Label>
-                <Input
-                  id="idPeriodo"
-                  type="number"
-                  value={formularioDisciplina.idPeriodo}
-                  onChange={(e) =>
-                    setFormularioDisciplina({
-                      ...formularioDisciplina,
-                      idPeriodo: Number(e.target.value),
-                    })
-                  }
-                  required
-                />
-              </div>
+              <p className="text-sm text-muted-foreground">A disciplina será vinculada ao seu período ativo. Se necessário, um período será criado automaticamente.</p>
 
               <div className="space-y-2">
                 <Label htmlFor="nome">Nome da disciplina</Label>

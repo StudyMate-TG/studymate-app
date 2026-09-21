@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -23,6 +23,8 @@ import { ptBR } from "date-fns/locale";
 import { cn } from "@/lib/utils";
 import MobileHeader from "@/components/MobileHeader";
 
+import { listarDisciplinas } from "@/services/disciplinaService";
+
 type SubjectOption = {
   id: string;
   name: string;
@@ -38,7 +40,31 @@ const NewAttendance = () => {
   const [successMessage, setSuccessMessage] = useState("");
   const [error, setError] = useState("");
 
-  const subjects: SubjectOption[] = [];
+  const [subjects, setSubjects] = useState<SubjectOption[]>([]);
+  const [loadingSubjects, setLoadingSubjects] = useState(true);
+  const [subjectsError, setSubjectsError] = useState("");
+
+  useEffect(() => {
+    let active = true;
+    listarDisciplinas()
+      .then((disciplinas) => {
+        if (active) {
+          setSubjects(disciplinas.map((disciplina) => ({
+            id: String(disciplina.idDisciplina),
+            name: disciplina.nome,
+          })));
+        }
+      })
+      .catch((error: unknown) => {
+        if (active) {
+          setSubjectsError(error instanceof Error ? error.message : "Não foi possível carregar as disciplinas.");
+        }
+      })
+      .finally(() => {
+        if (active) setLoadingSubjects(false);
+      });
+    return () => { active = false; };
+  }, []);
 
   const handleSubmit = () => {
     setError("");
@@ -110,10 +136,10 @@ const NewAttendance = () => {
           <Select
             value={subject}
             onValueChange={setSubject}
-            disabled={subjects.length === 0}
+            disabled={loadingSubjects || subjects.length === 0}
           >
             <SelectTrigger>
-              <SelectValue placeholder="Selecione a disciplina" />
+              <SelectValue placeholder={loadingSubjects ? "Carregando disciplinas..." : "Selecione a disciplina"} />
             </SelectTrigger>
 
             <SelectContent>
@@ -131,7 +157,8 @@ const NewAttendance = () => {
             </SelectContent>
           </Select>
 
-          {subjects.length === 0 && (
+          {subjectsError && <p role="alert" className="text-sm text-red-500">{subjectsError}</p>}
+          {!loadingSubjects && !subjectsError && subjects.length === 0 && (
             <p className="text-xs text-muted-foreground">
               Cadastre uma disciplina antes de registrar frequência.
             </p>
@@ -236,7 +263,7 @@ const NewAttendance = () => {
           onClick={handleSubmit}
           className="w-full"
           size="lg"
-          disabled={subjects.length === 0}
+          disabled={loadingSubjects || subjects.length === 0}
         >
           Registrar Frequência
         </Button>
