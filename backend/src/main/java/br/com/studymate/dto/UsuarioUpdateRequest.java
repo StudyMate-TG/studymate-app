@@ -1,10 +1,20 @@
 package br.com.studymate.dto;
 
+import jakarta.validation.constraints.*;
+
 public class UsuarioUpdateRequest {
+    @NotBlank(message = "O nome é obrigatório.")
+    @Size(max = 100)
     private String nome;
+    @NotBlank(message = "O e-mail é obrigatório.")
+    @Email(message = "Informe um e-mail válido.")
+    @Size(max = 100)
     private String email;
+    @Size(max = 100)
     private String curso;
+    @Size(max = 50)
     private String matricula;
+    @Size(max = 100)
     private String instituicao;
 
     public UsuarioUpdateRequest() {

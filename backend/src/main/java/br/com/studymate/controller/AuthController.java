@@ -2,17 +2,15 @@ package br.com.studymate.controller;
 
 import br.com.studymate.dto.LoginRequest;
 import br.com.studymate.dto.RegisterRequest;
+import br.com.studymate.dto.UsuarioResponse;
 import br.com.studymate.service.AuthService;
-
+import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-
-import java.util.Map;
 
 @RestController
 @RequestMapping("/api/auth")
 public class AuthController {
-
     private final AuthService authService;
 
     public AuthController(AuthService authService) {
@@ -20,36 +18,12 @@ public class AuthController {
     }
 
     @PostMapping("/register")
-    public ResponseEntity<?> cadastrar(@RequestBody RegisterRequest request) {
-        try {
-            return ResponseEntity.ok(authService.cadastrar(request));
-        } catch (IllegalArgumentException erro) {
-            return ResponseEntity.badRequest().body(
-                    Map.of("mensagem", erro.getMessage())
-            );
-        } catch (Exception erro) {
-            erro.printStackTrace();
-
-            return ResponseEntity.internalServerError().body(
-                    Map.of("mensagem", "Erro interno ao cadastrar usuário: " + erro.getMessage())
-            );
-        }
+    public ResponseEntity<UsuarioResponse> cadastrar(@Valid @RequestBody RegisterRequest request) {
+        return ResponseEntity.ok(authService.cadastrar(request));
     }
 
     @PostMapping("/login")
-    public ResponseEntity<?> login(@RequestBody LoginRequest request) {
-        try {
-            return ResponseEntity.ok(authService.login(request));
-        } catch (IllegalArgumentException erro) {
-            return ResponseEntity.badRequest().body(
-                    Map.of("mensagem", erro.getMessage())
-            );
-        } catch (Exception erro) {
-            erro.printStackTrace();
-
-            return ResponseEntity.internalServerError().body(
-                    Map.of("mensagem", "Erro interno ao realizar login: " + erro.getMessage())
-            );
-        }
+    public ResponseEntity<UsuarioResponse> login(@Valid @RequestBody LoginRequest request) {
+        return ResponseEntity.ok(authService.login(request));
     }
 }

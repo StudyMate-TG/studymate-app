@@ -1,83 +1,97 @@
 package br.com.studymate.service;
 
-import br.com.studymate.dao.DaoUsuario;
+import br.com.studymate.dto.RegisterRequest;
 import br.com.studymate.dto.UsuarioResponse;
 import br.com.studymate.dto.UsuarioUpdateRequest;
+import br.com.studymate.exception.EmailEmUsoException;
+import br.com.studymate.exception.UsuarioNotFoundException;
 import br.com.studymate.model.Usuario;
-
+import br.com.studymate.repository.UsuarioRepository;
+import jakarta.validation.Valid;
+import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Positive;
+import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+import org.springframework.validation.annotation.Validated;
+
+import java.nio.charset.StandardCharsets;
+import java.util.List;
+import java.util.Locale;
 
 @Service
+@Validated
 public class UsuarioService {
+    private final UsuarioRepository usuarioRepository;
+    private final PasswordEncoder passwordEncoder;
+    private final JdbcTemplate jdbcTemplate;
 
-    private final DaoUsuario daoUsuario;
-
-    public UsuarioService(DaoUsuario daoUsuario) {
-        this.daoUsuario = daoUsuario;
+    public UsuarioService(UsuarioRepository usuarioRepository,
+                          PasswordEncoder passwordEncoder, JdbcTemplate jdbcTemplate) {
+        this.usuarioRepository = usuarioRepository;
+        this.passwordEncoder = passwordEncoder;
+        this.jdbcTemplate = jdbcTemplate;
     }
 
-    public UsuarioResponse atualizar(Integer idUsuario, UsuarioUpdateRequest request) {
-        validarIdUsuario(idUsuario);
-        validarRequest(request);
-
-        Usuario usuarioExistente = daoUsuario.consultarPorId(idUsuario);
-
-        if (usuarioExistente == null) {
-            throw new IllegalArgumentException("Usuário não encontrado.");
-        }
-
-        String nome = request.getNome().trim();
-        String email = request.getEmail().trim().toLowerCase();
-
-        if (daoUsuario.existePorEmailEmOutroUsuario(email, idUsuario)) {
-            throw new IllegalArgumentException("Já existe outro usuário cadastrado com este e-mail.");
-        }
-
-        String curso = tratarTextoOpcional(request.getCurso());
-        String matricula = tratarTextoOpcional(request.getMatricula());
-        String instituicao = tratarTextoOpcional(request.getInstituicao());
-
-        Usuario usuarioAtualizado = daoUsuario.atualizar(
-                idUsuario,
-                nome,
-                email,
-                curso,
-                matricula,
-                instituicao
-        );
-
-        return new UsuarioResponse(usuarioAtualizado);
+    @Transactional(readOnly = true)
+    public List<UsuarioResponse> listarUsuarios() {
+        return usuarioRepository.findAll().stream().map(UsuarioResponse::new).toList();
     }
 
-    private void validarIdUsuario(Integer idUsuario) {
-        if (idUsuario == null) {
-            throw new IllegalArgumentException("O usuário é obrigatório.");
-        }
-
-        if (idUsuario <= 0) {
-            throw new IllegalArgumentException("O usuário informado é inválido.");
-        }
+    @Transactional(readOnly = true)
+    public UsuarioResponse listarPorId(@NotNull @Positive Integer id) {
+        return new UsuarioResponse(buscarUsuario(id));
     }
 
-    private void validarRequest(UsuarioUpdateRequest request) {
-        if (request.getNome() == null || request.getNome().isBlank()) {
-            throw new IllegalArgumentException("O nome é obrigatório.");
+    @Transactional
+    public UsuarioResponse criar(@NotNull @Valid RegisterRequest request) {
+        String email = normalizarEmail(request.getEmail());
+        if (usuarioRepository.existsByEmailIgnoreCase(email)) {
+            throw new EmailEmUsoException();
         }
-
-        if (request.getEmail() == null || request.getEmail().isBlank()) {
-            throw new IllegalArgumentException("O e-mail é obrigatório.");
+        if (request.getSenha().getBytes(StandardCharsets.UTF_8).length > 72) {
+            throw new IllegalArgumentException("A senha deve ocupar no máximo 72 bytes em UTF-8.");
         }
-
-        if (!request.getEmail().contains("@")) {
-            throw new IllegalArgumentException("Informe um e-mail válido.");
-        }
+        Usuario usuario = new Usuario(request.getNome().trim(), email,
+                passwordEncoder.encode(request.getSenha()));
+        Usuario salvo = usuarioRepository.saveAndFlush(usuario);
+        // O progresso ainda usa JDBC, participando da mesma transacao JPA.
+        jdbcTemplate.update("""
+                INSERT INTO progresso_estudante
+                    (id_usuario, xp_total, nivel, sequencia_atual, maior_sequencia,
+                     data_ultimo_dia_sequencia)
+                VALUES (?, 0, 1, 0, 0, NULL)
+                """, salvo.getIdUsuario());
+        return new UsuarioResponse(salvo);
     }
 
-    private String tratarTextoOpcional(String valor) {
-        if (valor == null || valor.isBlank()) {
-            return null;
+    @Transactional
+    public UsuarioResponse atualizar(@NotNull @Positive Integer idUsuario,
+                                     @NotNull @Valid UsuarioUpdateRequest request) {
+        Usuario usuario = buscarUsuario(idUsuario);
+        String email = normalizarEmail(request.getEmail());
+        if (usuarioRepository.existsByEmailIgnoreCaseAndIdUsuarioNot(email, idUsuario)) {
+            throw new EmailEmUsoException();
         }
+        usuario.setNome(request.getNome().trim());
+        usuario.setEmail(email);
+        usuario.setCurso(textoOpcional(request.getCurso()));
+        usuario.setMatricula(textoOpcional(request.getMatricula()));
+        usuario.setInstituicao(textoOpcional(request.getInstituicao()));
+        return new UsuarioResponse(usuarioRepository.saveAndFlush(usuario));
+    }
 
-        return valor.trim();
+    private Usuario buscarUsuario(Integer id) {
+        return usuarioRepository.findById(id)
+                .orElseThrow(() -> new UsuarioNotFoundException(id));
+    }
+
+    private String normalizarEmail(String email) {
+        return email.trim().toLowerCase(Locale.ROOT);
+    }
+
+    private String textoOpcional(String texto) {
+        return texto == null || texto.isBlank() ? null : texto.trim();
     }
 }
