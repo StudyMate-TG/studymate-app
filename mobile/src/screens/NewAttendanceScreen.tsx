@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 
 import {
   View,
@@ -9,29 +9,47 @@ import {
   Alert,
   Platform,
   KeyboardAvoidingView,
+  ActivityIndicator,
 } from "react-native";
 
 import { useNavigation } from "@react-navigation/native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 
-import { RootStackParamList } from "../types";
+import type { RootStackParamList, DisciplinaResponse } from "../types";
 
 import { MobileHeader } from "../components/MobileHeader";
 import { Card } from "../components/Card";
 import { Input } from "../components/Input";
 import { Button } from "../components/Button";
 
-import { CheckCircle2, Check, X } from "lucide-react-native";
+import {
+  CheckCircle2,
+  ChevronDown,
+  ChevronUp,
+  BookOpen,
+} from "lucide-react-native";
 
-type AttendanceStatus = "present" | "absent" | "";
+import { obterUsuarioSessao } from "../services/authService";
+import { listarDisciplinas } from "../services/disciplinaService";
 
 export const NewAttendanceScreen: React.FC = () => {
-  const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
+  const navigation =
+    useNavigation<NativeStackNavigationProp<RootStackParamList>>();
 
-  const [attendance, setAttendance] = useState<AttendanceStatus>("");
-  const [dataAula, setDataAula] = useState(
+  const [disciplinas, setDisciplinas] = useState<DisciplinaResponse[]>([]);
+  const [idDisciplina, setIdDisciplina] = useState<number | null>(null);
+
+  const [mostrarDisciplinas, setMostrarDisciplinas] = useState(false);
+
+  const [dataFalta, setDataFalta] = useState(
     new Date().toLocaleDateString("pt-BR")
   );
+
+  const [quantidadeAulas, setQuantidadeAulas] = useState("1");
+
+  const [carregando, setCarregando] = useState(true);
+  const [salvando, setSalvando] = useState(false);
+
   const [showSuccess, setShowSuccess] = useState(false);
 
   const showAlert = (title: string, message: string) => {
@@ -41,6 +59,52 @@ export const NewAttendanceScreen: React.FC = () => {
       Alert.alert(title, message);
     }
   };
+
+  useEffect(() => {
+    let ativo = true;
+
+    const carregarDisciplinas = async () => {
+      try {
+        setCarregando(true);
+
+        const usuario = await obterUsuarioSessao();
+
+        if (!usuario) {
+          showAlert(
+            "Atenção",
+            "Usuário não encontrado. Faça login novamente."
+          );
+
+          return;
+        }
+
+        const dados = await listarDisciplinas(usuario.idUsuario);
+
+        if (ativo) {
+          setDisciplinas(dados);
+        }
+      } catch (erro) {
+        if (ativo) {
+          showAlert(
+            "Erro",
+            erro instanceof Error
+              ? erro.message
+              : "Não foi possível carregar as disciplinas."
+          );
+        }
+      } finally {
+        if (ativo) {
+          setCarregando(false);
+        }
+      }
+    };
+
+    carregarDisciplinas();
+
+    return () => {
+      ativo = false;
+    };
+  }, []);
 
   const isValidBrazilianDate = (dateString: string) => {
     const regex = /^(\d{2})\/(\d{2})\/(\d{4})$/;
@@ -67,30 +131,90 @@ export const NewAttendanceScreen: React.FC = () => {
     );
   };
 
-  const handleSubmit = () => {
-    if (!dataAula.trim()) {
-      showAlert("Atenção", "Informe a data da aula.");
-      return;
-    }
+  const converterDataParaApi = (data: string) => {
+    const [dia, mes, ano] = data.split("/");
 
-    if (!isValidBrazilianDate(dataAula.trim())) {
-      showAlert("Atenção", "Informe a data no formato DD/MM/AAAA.");
-      return;
-    }
-
-    if (!attendance) {
-      showAlert("Atenção", "Selecione Presença ou Falta.");
-      return;
-    }
-
-    setShowSuccess(true);
+    return `${ano}-${mes}-${dia}`;
   };
+
+  const handleSubmit = async () => {
+    if (!idDisciplina) {
+      showAlert("Atenção", "Selecione uma disciplina.");
+      return;
+    }
+
+    if (!dataFalta.trim()) {
+      showAlert("Atenção", "Informe a data da falta.");
+      return;
+    }
+
+    if (!isValidBrazilianDate(dataFalta.trim())) {
+      showAlert(
+        "Atenção",
+        "Informe a data no formato DD/MM/AAAA."
+      );
+
+      return;
+    }
+
+    const quantidade = Number(quantidadeAulas);
+
+    if (
+      Number.isNaN(quantidade) ||
+      !Number.isInteger(quantidade) ||
+      quantidade <= 0
+    ) {
+      showAlert(
+        "Atenção",
+        "Informe uma quantidade válida de aulas perdidas."
+      );
+
+      return;
+    }
+
+    try {
+      setSalvando(true);
+
+      const dataApi = converterDataParaApi(dataFalta.trim());
+
+      console.log("Falta preparada para cadastro:", {
+        idDisciplina,
+        dataFalta: dataApi,
+        quantidadeAulas: quantidade,
+      });
+
+      /*
+       * Assim que faltaService.ts estiver pronto:
+       *
+       * await cadastrarFalta({
+       *   idDisciplina,
+       *   dataFalta: dataApi,
+       *   quantidadeAulas: quantidade,
+       * });
+       */
+
+      setShowSuccess(true);
+    } catch (erro) {
+      showAlert(
+        "Erro",
+        erro instanceof Error
+          ? erro.message
+          : "Não foi possível registrar a falta."
+      );
+    } finally {
+      setSalvando(false);
+    }
+  };
+
+  const disciplinaSelecionada = disciplinas.find(
+    (disciplina) => disciplina.idDisciplina === idDisciplina
+  );
 
   if (showSuccess) {
     return (
       <View style={styles.container}>
         <MobileHeader
-          title="Cadastrar Frequência"
+          title="Registrar Falta"
           showBack
           onBack={() => navigation.goBack()}
         />
@@ -101,13 +225,12 @@ export const NewAttendanceScreen: React.FC = () => {
           </View>
 
           <Text style={styles.successTitle}>
-            Frequência registrada com sucesso!
+            Falta registrada com sucesso!
           </Text>
 
           <Text style={styles.successSubtitle}>
-            {attendance === "present"
-              ? "Presença computada no diário acadêmico."
-              : "Falta computada no diário acadêmico."}
+            A falta foi registrada em{" "}
+            {disciplinaSelecionada?.nome ?? "disciplina selecionada"}.
           </Text>
 
           <Button
@@ -126,7 +249,7 @@ export const NewAttendanceScreen: React.FC = () => {
       style={styles.container}
     >
       <MobileHeader
-        title="Cadastrar Frequência"
+        title="Registrar Falta"
         showBack
         onBack={() => navigation.goBack()}
       />
@@ -136,52 +259,116 @@ export const NewAttendanceScreen: React.FC = () => {
         keyboardShouldPersistTaps="handled"
       >
         <Card style={styles.formCard}>
-          <Input
-            label="Data da Aula"
-            placeholder="DD/MM/AAAA"
-            value={dataAula}
-            onChangeText={setDataAula}
-          />
+          <Text style={styles.sectionLabel}>Disciplina</Text>
 
-          <Text style={styles.sectionLabel}>Registro de Presença</Text>
-
-          <Pressable
-            onPress={() => setAttendance("present")}
-            style={[
-              styles.optionCard,
-              attendance === "present" && styles.optionCardPresent,
-            ]}
-          >
-            <View style={[styles.optionIcon, styles.optionIconPresent]}>
-              <Check size={20} color="#16A34A" />
+          {carregando ? (
+            <View style={styles.loadingContainer}>
+              <ActivityIndicator />
+              <Text style={styles.loadingText}>
+                Carregando disciplinas...
+              </Text>
             </View>
+          ) : disciplinas.length === 0 ? (
+            <Text style={styles.emptyText}>
+              Nenhuma disciplina cadastrada.
+            </Text>
+          ) : (
+            <>
+              <Pressable
+                style={styles.selectButton}
+                onPress={() =>
+                  setMostrarDisciplinas(!mostrarDisciplinas)
+                }
+              >
+                <View style={styles.selectContent}>
+                  <BookOpen size={20} color="#64748B" />
 
-            <View style={styles.optionTextContainer}>
-              <Text style={styles.optionTitle}>Presença</Text>
-              <Text style={styles.optionSubtitle}>Estive presente na aula</Text>
-            </View>
-          </Pressable>
+                  <Text
+                    style={[
+                      styles.selectText,
+                      !disciplinaSelecionada &&
+                        styles.selectPlaceholder,
+                    ]}
+                  >
+                    {disciplinaSelecionada
+                      ? disciplinaSelecionada.nome
+                      : "Selecione uma disciplina"}
+                  </Text>
+                </View>
 
-          <Pressable
-            onPress={() => setAttendance("absent")}
-            style={[
-              styles.optionCard,
-              attendance === "absent" && styles.optionCardAbsent,
-            ]}
-          >
-            <View style={[styles.optionIcon, styles.optionIconAbsent]}>
-              <X size={20} color="#EF4444" />
-            </View>
+                {mostrarDisciplinas ? (
+                  <ChevronUp size={20} color="#64748B" />
+                ) : (
+                  <ChevronDown size={20} color="#64748B" />
+                )}
+              </Pressable>
 
-            <View style={styles.optionTextContainer}>
-              <Text style={styles.optionTitle}>Falta</Text>
-              <Text style={styles.optionSubtitle}>Não compareci à aula</Text>
-            </View>
-          </Pressable>
+              {mostrarDisciplinas && (
+                <View style={styles.optionsContainer}>
+                  {disciplinas.map((disciplina) => (
+                    <Pressable
+                      key={disciplina.idDisciplina}
+                      style={[
+                        styles.disciplinaOption,
+                        idDisciplina ===
+                          disciplina.idDisciplina &&
+                          styles.disciplinaOptionSelected,
+                      ]}
+                      onPress={() => {
+                        setIdDisciplina(
+                          disciplina.idDisciplina
+                        );
+
+                        setMostrarDisciplinas(false);
+                      }}
+                    >
+                      <Text style={styles.disciplinaNome}>
+                        {disciplina.nome}
+                      </Text>
+
+                      {disciplina.professor && (
+                        <Text style={styles.disciplinaProfessor}>
+                          {disciplina.professor}
+                        </Text>
+                      )}
+                    </Pressable>
+                  ))}
+                </View>
+              )}
+            </>
+          )}
+
+          <View style={styles.fieldSpacing}>
+            <Input
+              label="Data da Falta"
+              placeholder="DD/MM/AAAA"
+              value={dataFalta}
+              onChangeText={setDataFalta}
+            />
+          </View>
+
+          <View style={styles.fieldSpacing}>
+            <Input
+              label="Quantidade de aulas perdidas"
+              placeholder="Ex: 2"
+              value={quantidadeAulas}
+              onChangeText={setQuantidadeAulas}
+              keyboardType="numeric"
+            />
+          </View>
+
+          <Text style={styles.helpText}>
+            Informe quantas aulas foram perdidas nessa data.
+          </Text>
 
           <Button
-            title="Registrar Frequência"
+            title={salvando ? "Registrando..." : "Registrar Falta"}
             onPress={handleSubmit}
+            disabled={
+              salvando ||
+              carregando ||
+              disciplinas.length === 0
+            }
             style={styles.submitButton}
           />
         </Card>
@@ -211,65 +398,100 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: "500",
     color: "#334155",
-    marginBottom: 10,
+    marginBottom: 8,
   },
 
-  optionCard: {
+  loadingContainer: {
     flexDirection: "row",
     alignItems: "center",
-    padding: 16,
-    borderRadius: 12,
-    borderWidth: 1.5,
-    borderColor: "#E2E8F0",
-    backgroundColor: "#FFFFFF",
-    marginBottom: 12,
+    gap: 10,
+    paddingVertical: 14,
   },
 
-  optionCardPresent: {
-    borderColor: "#22C55E",
-    backgroundColor: "#F0FDF4",
+  loadingText: {
+    fontSize: 14,
+    color: "#64748B",
   },
 
-  optionCardAbsent: {
-    borderColor: "#EF4444",
-    backgroundColor: "#FEF2F2",
+  emptyText: {
+    fontSize: 14,
+    color: "#64748B",
+    paddingVertical: 12,
   },
 
-  optionIcon: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+  selectButton: {
+    minHeight: 48,
+    borderWidth: 1,
+    borderColor: "#CBD5E1",
+    borderRadius: 10,
+    paddingHorizontal: 14,
+    flexDirection: "row",
     alignItems: "center",
-    justifyContent: "center",
-    marginRight: 14,
+    justifyContent: "space-between",
+    backgroundColor: "#FFFFFF",
   },
 
-  optionIconPresent: {
-    backgroundColor: "#DCFCE7",
-  },
-
-  optionIconAbsent: {
-    backgroundColor: "#FEE2E2",
-  },
-
-  optionTextContainer: {
+  selectContent: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
     flex: 1,
   },
 
-  optionTitle: {
-    fontSize: 16,
-    fontWeight: "700",
+  selectText: {
+    fontSize: 15,
+    color: "#0F172A",
+    flex: 1,
+  },
+
+  selectPlaceholder: {
+    color: "#94A3B8",
+  },
+
+  optionsContainer: {
+    borderWidth: 1,
+    borderColor: "#E2E8F0",
+    borderRadius: 10,
+    marginTop: 6,
+    overflow: "hidden",
+    backgroundColor: "#FFFFFF",
+  },
+
+  disciplinaOption: {
+    paddingVertical: 12,
+    paddingHorizontal: 14,
+    borderBottomWidth: 1,
+    borderBottomColor: "#F1F5F9",
+  },
+
+  disciplinaOptionSelected: {
+    backgroundColor: "#EFF6FF",
+  },
+
+  disciplinaNome: {
+    fontSize: 15,
+    fontWeight: "600",
     color: "#0F172A",
   },
 
-  optionSubtitle: {
+  disciplinaProfessor: {
     fontSize: 13,
     color: "#64748B",
     marginTop: 2,
   },
 
+  fieldSpacing: {
+    marginTop: 18,
+  },
+
+  helpText: {
+    fontSize: 12,
+    color: "#64748B",
+    marginTop: 8,
+  },
+
   submitButton: {
-    marginTop: 12,
+    marginTop: 20,
   },
 
   successContainer: {
