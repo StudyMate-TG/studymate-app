@@ -31,10 +31,13 @@ import {
 
 import { obterUsuarioSessao } from "../services/authService";
 import { listarDisciplinas } from "../services/disciplinaService";
+import { cadastrarFalta } from "../services/faltaService";
 
 export const NewAttendanceScreen: React.FC = () => {
   const navigation =
     useNavigation<NativeStackNavigationProp<RootStackParamList>>();
+
+  const [idUsuario, setIdUsuario] = useState<number | null>(null);
 
   const [disciplinas, setDisciplinas] = useState<DisciplinaResponse[]>([]);
   const [idDisciplina, setIdDisciplina] = useState<number | null>(null);
@@ -78,6 +81,10 @@ export const NewAttendanceScreen: React.FC = () => {
           return;
         }
 
+        if (ativo) {
+          setIdUsuario(usuario.idUsuario);
+        }
+
         const dados = await listarDisciplinas(usuario.idUsuario);
 
         if (ativo) {
@@ -108,6 +115,7 @@ export const NewAttendanceScreen: React.FC = () => {
 
   const isValidBrazilianDate = (dateString: string) => {
     const regex = /^(\d{2})\/(\d{2})\/(\d{4})$/;
+
     const match = dateString.match(regex);
 
     if (!match) {
@@ -118,7 +126,12 @@ export const NewAttendanceScreen: React.FC = () => {
     const month = Number(match[2]);
     const year = Number(match[3]);
 
-    if (month < 1 || month > 12 || day < 1 || year < 1900) {
+    if (
+      month < 1 ||
+      month > 12 ||
+      day < 1 ||
+      year < 1900
+    ) {
       return false;
     }
 
@@ -138,13 +151,30 @@ export const NewAttendanceScreen: React.FC = () => {
   };
 
   const handleSubmit = async () => {
+    if (!idUsuario) {
+      showAlert(
+        "Atenção",
+        "Usuário não encontrado. Faça login novamente."
+      );
+
+      return;
+    }
+
     if (!idDisciplina) {
-      showAlert("Atenção", "Selecione uma disciplina.");
+      showAlert(
+        "Atenção",
+        "Selecione uma disciplina."
+      );
+
       return;
     }
 
     if (!dataFalta.trim()) {
-      showAlert("Atenção", "Informe a data da falta.");
+      showAlert(
+        "Atenção",
+        "Informe a data da falta."
+      );
+
       return;
     }
 
@@ -175,23 +205,15 @@ export const NewAttendanceScreen: React.FC = () => {
     try {
       setSalvando(true);
 
-      const dataApi = converterDataParaApi(dataFalta.trim());
+      const dataApi = converterDataParaApi(
+        dataFalta.trim()
+      );
 
-      console.log("Falta preparada para cadastro:", {
+      await cadastrarFalta(idUsuario, {
         idDisciplina,
         dataFalta: dataApi,
         quantidadeAulas: quantidade,
       });
-
-      /*
-       * Assim que faltaService.ts estiver pronto:
-       *
-       * await cadastrarFalta({
-       *   idDisciplina,
-       *   dataFalta: dataApi,
-       *   quantidadeAulas: quantidade,
-       * });
-       */
 
       setShowSuccess(true);
     } catch (erro) {
@@ -207,7 +229,8 @@ export const NewAttendanceScreen: React.FC = () => {
   };
 
   const disciplinaSelecionada = disciplinas.find(
-    (disciplina) => disciplina.idDisciplina === idDisciplina
+    (disciplina) =>
+      disciplina.idDisciplina === idDisciplina
   );
 
   if (showSuccess) {
@@ -221,7 +244,10 @@ export const NewAttendanceScreen: React.FC = () => {
 
         <View style={styles.successContainer}>
           <View style={styles.iconCircle}>
-            <CheckCircle2 size={64} color="#16A34A" />
+            <CheckCircle2
+              size={64}
+              color="#16A34A"
+            />
           </View>
 
           <Text style={styles.successTitle}>
@@ -230,12 +256,15 @@ export const NewAttendanceScreen: React.FC = () => {
 
           <Text style={styles.successSubtitle}>
             A falta foi registrada em{" "}
-            {disciplinaSelecionada?.nome ?? "disciplina selecionada"}.
+            {disciplinaSelecionada?.nome ??
+              "disciplina selecionada"}.
           </Text>
 
           <Button
             title="Voltar ao Início"
-            onPress={() => navigation.navigate("MainTabs")}
+            onPress={() =>
+              navigation.navigate("MainTabs")
+            }
             style={styles.backButton}
           />
         </View>
@@ -245,7 +274,11 @@ export const NewAttendanceScreen: React.FC = () => {
 
   return (
     <KeyboardAvoidingView
-      behavior={Platform.OS === "ios" ? "padding" : undefined}
+      behavior={
+        Platform.OS === "ios"
+          ? "padding"
+          : undefined
+      }
       style={styles.container}
     >
       <MobileHeader
@@ -255,15 +288,20 @@ export const NewAttendanceScreen: React.FC = () => {
       />
 
       <ScrollView
-        contentContainerStyle={styles.scrollContent}
+        contentContainerStyle={
+          styles.scrollContent
+        }
         keyboardShouldPersistTaps="handled"
       >
         <Card style={styles.formCard}>
-          <Text style={styles.sectionLabel}>Disciplina</Text>
+          <Text style={styles.sectionLabel}>
+            Disciplina
+          </Text>
 
           {carregando ? (
             <View style={styles.loadingContainer}>
               <ActivityIndicator />
+
               <Text style={styles.loadingText}>
                 Carregando disciplinas...
               </Text>
@@ -277,11 +315,16 @@ export const NewAttendanceScreen: React.FC = () => {
               <Pressable
                 style={styles.selectButton}
                 onPress={() =>
-                  setMostrarDisciplinas(!mostrarDisciplinas)
+                  setMostrarDisciplinas(
+                    !mostrarDisciplinas
+                  )
                 }
               >
                 <View style={styles.selectContent}>
-                  <BookOpen size={20} color="#64748B" />
+                  <BookOpen
+                    size={20}
+                    color="#64748B"
+                  />
 
                   <Text
                     style={[
@@ -297,42 +340,68 @@ export const NewAttendanceScreen: React.FC = () => {
                 </View>
 
                 {mostrarDisciplinas ? (
-                  <ChevronUp size={20} color="#64748B" />
+                  <ChevronUp
+                    size={20}
+                    color="#64748B"
+                  />
                 ) : (
-                  <ChevronDown size={20} color="#64748B" />
+                  <ChevronDown
+                    size={20}
+                    color="#64748B"
+                  />
                 )}
               </Pressable>
 
               {mostrarDisciplinas && (
-                <View style={styles.optionsContainer}>
-                  {disciplinas.map((disciplina) => (
-                    <Pressable
-                      key={disciplina.idDisciplina}
-                      style={[
-                        styles.disciplinaOption,
-                        idDisciplina ===
-                          disciplina.idDisciplina &&
-                          styles.disciplinaOptionSelected,
-                      ]}
-                      onPress={() => {
-                        setIdDisciplina(
+                <View
+                  style={
+                    styles.optionsContainer
+                  }
+                >
+                  {disciplinas.map(
+                    (disciplina) => (
+                      <Pressable
+                        key={
                           disciplina.idDisciplina
-                        );
+                        }
+                        style={[
+                          styles.disciplinaOption,
+                          idDisciplina ===
+                            disciplina.idDisciplina &&
+                            styles.disciplinaOptionSelected,
+                        ]}
+                        onPress={() => {
+                          setIdDisciplina(
+                            disciplina.idDisciplina
+                          );
 
-                        setMostrarDisciplinas(false);
-                      }}
-                    >
-                      <Text style={styles.disciplinaNome}>
-                        {disciplina.nome}
-                      </Text>
-
-                      {disciplina.professor && (
-                        <Text style={styles.disciplinaProfessor}>
-                          {disciplina.professor}
+                          setMostrarDisciplinas(
+                            false
+                          );
+                        }}
+                      >
+                        <Text
+                          style={
+                            styles.disciplinaNome
+                          }
+                        >
+                          {disciplina.nome}
                         </Text>
-                      )}
-                    </Pressable>
-                  ))}
+
+                        {disciplina.professor && (
+                          <Text
+                            style={
+                              styles.disciplinaProfessor
+                            }
+                          >
+                            {
+                              disciplina.professor
+                            }
+                          </Text>
+                        )}
+                      </Pressable>
+                    )
+                  )}
                 </View>
               )}
             </>
@@ -352,17 +421,24 @@ export const NewAttendanceScreen: React.FC = () => {
               label="Quantidade de aulas perdidas"
               placeholder="Ex: 2"
               value={quantidadeAulas}
-              onChangeText={setQuantidadeAulas}
+              onChangeText={
+                setQuantidadeAulas
+              }
               keyboardType="numeric"
             />
           </View>
 
           <Text style={styles.helpText}>
-            Informe quantas aulas foram perdidas nessa data.
+            Informe quantas aulas foram perdidas
+            nessa data.
           </Text>
 
           <Button
-            title={salvando ? "Registrando..." : "Registrar Falta"}
+            title={
+              salvando
+                ? "Registrando..."
+                : "Registrar Falta"
+            }
             onPress={handleSubmit}
             disabled={
               salvando ||

@@ -11,10 +11,17 @@ import {
   ActivityIndicator,
 } from "react-native";
 
-import { useNavigation, useIsFocused } from "@react-navigation/native";
+import {
+  useNavigation,
+  useIsFocused,
+} from "@react-navigation/native";
+
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 
-import { RootStackParamList, DisciplinaResponse } from "../types";
+import {
+  RootStackParamList,
+  DisciplinaResponse,
+} from "../types";
 
 import {
   listarDisciplinas,
@@ -22,6 +29,8 @@ import {
 } from "../services/disciplinaService";
 
 import { obterUsuarioSessao } from "../services/authService";
+
+import { buscarTotalFaltas } from "../services/faltaService";
 
 import { MobileHeader } from "../components/MobileHeader";
 import { Card } from "../components/Card";
@@ -39,92 +48,186 @@ import {
 
 export const SubjectsScreen: React.FC = () => {
   const navigation =
-    useNavigation<NativeStackNavigationProp<RootStackParamList>>();
+    useNavigation<
+      NativeStackNavigationProp<RootStackParamList>
+    >();
 
   const isFocused = useIsFocused();
 
-  const [disciplinas, setDisciplinas] = useState<DisciplinaResponse[]>([]);
+  const [disciplinas, setDisciplinas] = useState<
+    DisciplinaResponse[]
+  >([]);
+
+  const [faltasPorDisciplina, setFaltasPorDisciplina] =
+    useState<Record<number, number>>({});
+
   const [termoBusca, setTermoBusca] = useState("");
+
   const [isLoading, setIsLoading] = useState(false);
 
-  const showAlert = (title: string, message: string) => {
-    if (Platform.OS === "web" && typeof window !== "undefined") {
+  const showAlert = (
+    title: string,
+    message: string
+  ) => {
+    if (
+      Platform.OS === "web" &&
+      typeof window !== "undefined"
+    ) {
       window.alert(`${title}: ${message}`);
     } else {
       Alert.alert(title, message);
     }
   };
 
-  const obterIdUsuarioLogado = async (): Promise<number> => {
-    const usuario = await obterUsuarioSessao();
+  const obterIdUsuarioLogado =
+    async (): Promise<number> => {
+      const usuario = await obterUsuarioSessao();
 
-    if (!usuario?.idUsuario) {
-      throw new Error("Usuário não encontrado. Faça login novamente.");
-    }
+      if (!usuario?.idUsuario) {
+        throw new Error(
+          "Usuário não encontrado. Faça login novamente."
+        );
+      }
 
-    return usuario.idUsuario;
-  };
+      return usuario.idUsuario;
+    };
 
-  const carregarDisciplinas = async (termo?: string) => {
+  const carregarDisciplinas = async (
+    termo?: string
+  ) => {
     setIsLoading(true);
 
     try {
-      const idUsuario = await obterIdUsuarioLogado();
-      const dados = await listarDisciplinas(idUsuario, termo);
+      const idUsuario =
+        await obterIdUsuarioLogado();
+
+      const dados = await listarDisciplinas(
+        idUsuario,
+        termo
+      );
 
       setDisciplinas(dados);
+
+      const totais = await Promise.all(
+        dados.map(async (disciplina) => {
+          try {
+            const total =
+              await buscarTotalFaltas(
+                disciplina.idDisciplina,
+                idUsuario
+              );
+
+            return {
+              idDisciplina:
+                disciplina.idDisciplina,
+              total,
+            };
+          } catch (error) {
+            console.error(
+              `Erro ao carregar faltas da disciplina ${disciplina.idDisciplina}:`,
+              error
+            );
+
+            return {
+              idDisciplina:
+                disciplina.idDisciplina,
+              total: 0,
+            };
+          }
+        })
+      );
+
+      const mapaFaltas: Record<
+        number,
+        number
+      > = {};
+
+      totais.forEach((item) => {
+        mapaFaltas[item.idDisciplina] =
+          item.total;
+      });
+
+      setFaltasPorDisciplina(
+        mapaFaltas
+      );
     } catch (error) {
       showAlert(
         "Erro",
-        error instanceof Error ? error.message : "Erro ao carregar disciplinas."
+        error instanceof Error
+          ? error.message
+          : "Erro ao carregar disciplinas."
       );
     } finally {
       setIsLoading(false);
     }
   };
 
-  const excluirDisciplinaSelecionada = async (idDisciplina: number) => {
-    setIsLoading(true);
+  const excluirDisciplinaSelecionada =
+    async (idDisciplina: number) => {
+      setIsLoading(true);
 
-    try {
-      const idUsuario = await obterIdUsuarioLogado();
+      try {
+        const idUsuario =
+          await obterIdUsuarioLogado();
 
-      await excluirDisciplina(idDisciplina, idUsuario);
-      await carregarDisciplinas(termoBusca);
-    } catch (error) {
-      showAlert(
-        "Erro",
-        error instanceof Error ? error.message : "Erro ao excluir disciplina."
-      );
-    } finally {
-      setIsLoading(false);
-    }
-  };
+        await excluirDisciplina(
+          idDisciplina,
+          idUsuario
+        );
 
-  const handleExcluir = (idDisciplina: number) => {
-    if (Platform.OS === "web" && typeof window !== "undefined") {
+        await carregarDisciplinas(
+          termoBusca
+        );
+      } catch (error) {
+        showAlert(
+          "Erro",
+          error instanceof Error
+            ? error.message
+            : "Erro ao excluir disciplina."
+        );
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+  const handleExcluir = (
+    idDisciplina: number
+  ) => {
+    if (
+      Platform.OS === "web" &&
+      typeof window !== "undefined"
+    ) {
       const confirmou = window.confirm(
         "Deseja realmente excluir esta disciplina?"
       );
 
       if (confirmou) {
-        excluirDisciplinaSelecionada(idDisciplina);
+        excluirDisciplinaSelecionada(
+          idDisciplina
+        );
       }
 
       return;
     }
 
-    Alert.alert("Confirmação", "Deseja realmente excluir esta disciplina?", [
-      {
-        text: "Cancelar",
-        style: "cancel",
-      },
-      {
-        text: "Excluir",
-        style: "destructive",
-        onPress: () => excluirDisciplinaSelecionada(idDisciplina),
-      },
-    ]);
+    Alert.alert(
+      "Confirmação",
+      "Deseja realmente excluir esta disciplina?",
+      [
+        {
+          text: "Cancelar",
+          style: "cancel",
+        },
+        {
+          text: "Excluir",
+          style: "destructive",
+          onPress: () =>
+            excluirDisciplinaSelecionada(
+              idDisciplina
+            ),
+        },
+      ]
+    );
   };
 
   useEffect(() => {
@@ -133,72 +236,172 @@ export const SubjectsScreen: React.FC = () => {
     }
   }, [isFocused]);
 
-  const renderDisciplinaItem = ({ item }: { item: DisciplinaResponse }) => (
-    <Card style={styles.subjectCard}>
-      <View style={styles.cardHeader}>
-        <View style={styles.cardHeaderInfo}>
-          <Text style={styles.subjectTitle}>{item.nome}</Text>
+  const renderDisciplinaItem = ({
+    item,
+  }: {
+    item: DisciplinaResponse;
+  }) => {
+    const totalFaltas =
+      faltasPorDisciplina[
+        item.idDisciplina
+      ] ?? 0;
 
-          <View style={styles.professorRow}>
-            <Users size={14} color="#64748B" />
+    const limiteFaltas =
+      item.limiteFaltas ?? 0;
 
-            <Text style={styles.professorText}>
-              {item.professor || "Professor não informado"}
+    const atingiuLimite =
+      limiteFaltas > 0 &&
+      totalFaltas >= limiteFaltas;
+
+    return (
+      <Card style={styles.subjectCard}>
+        <View style={styles.cardHeader}>
+          <View style={styles.cardHeaderInfo}>
+            <Text style={styles.subjectTitle}>
+              {item.nome}
+            </Text>
+
+            <View style={styles.professorRow}>
+              <Users
+                size={14}
+                color="#64748B"
+              />
+
+              <Text
+                style={
+                  styles.professorText
+                }
+              >
+                {item.professor ||
+                  "Professor não informado"}
+              </Text>
+            </View>
+          </View>
+
+          <View style={styles.gradeBadge}>
+            <Text style={styles.gradeText}>
+              {item.mediaAprovacao}
             </Text>
           </View>
         </View>
 
-        <View style={styles.gradeBadge}>
-          <Text style={styles.gradeText}>{item.mediaAprovacao}</Text>
-        </View>
-      </View>
+        <View style={styles.detailsGrid}>
+          <View style={styles.detailBox}>
+            <Text style={styles.detailLabel}>
+              Período letivo
+            </Text>
 
-      <View style={styles.detailsGrid}>
-        <View style={styles.detailBox}>
-        <Text style={styles.detailLabel}>Período</Text>
-        <Text style={styles.detailValue}>
-          {item.nomePeriodo || `Período ${item.idPeriodo}`}
-        </Text>
-        </View>
+            <Text style={styles.detailValue}>
+              {item.nomePeriodo ||
+                `Período ${item.idPeriodo}`}
+            </Text>
+          </View>
 
-        <View style={styles.detailBox}>
-          <Text style={styles.detailLabel}>Limite de faltas</Text>
-          <Text style={styles.detailValue}>{item.limiteFaltas}</Text>
-        </View>
-      </View>
+          <View style={styles.detailBox}>
+            <Text style={styles.detailLabel}>
+              Média de aprovação
+            </Text>
 
-      <View style={styles.cardFooter}>
-        <View style={styles.idRow}>
-          <Clock size={13} color="#94A3B8" />
-          <Text style={styles.idText}>ID: {item.idDisciplina}</Text>
+            <Text style={styles.detailValue}>
+              {item.mediaAprovacao}
+            </Text>
+          </View>
         </View>
 
-        <View style={styles.actionsRow}>
-          <Button
-            title="Editar"
-            variant="outline"
-            size="sm"
-            icon={<Pencil size={14} color="#334155" />}
-            onPress={() =>
-              navigation.navigate("EditSubject", {
-                idDisciplina: item.idDisciplina,
-              })
-            }
-            style={styles.actionButton}
-          />
+        <View style={styles.detailsGrid}>
+          <View style={styles.detailBox}>
+            <Text style={styles.detailLabel}>
+              Faltas registradas
+            </Text>
 
-          <Button
-            title="Excluir"
-            variant="destructive"
-            size="sm"
-            icon={<Trash2 size={14} color="#FFFFFF" />}
-            onPress={() => handleExcluir(item.idDisciplina)}
-            style={styles.actionButton}
-          />
+            <Text
+              style={[
+                styles.detailValue,
+                atingiuLimite &&
+                  styles.dangerText,
+              ]}
+            >
+              {totalFaltas}
+            </Text>
+          </View>
+
+          <View style={styles.detailBox}>
+            <Text style={styles.detailLabel}>
+              Limite de faltas
+            </Text>
+
+            <Text style={styles.detailValue}>
+              {limiteFaltas}
+            </Text>
+          </View>
         </View>
-      </View>
-    </Card>
-  );
+
+        {atingiuLimite && (
+          <View style={styles.warningBox}>
+            <Text style={styles.warningText}>
+              Atenção: o limite de faltas
+              desta disciplina foi atingido.
+            </Text>
+          </View>
+        )}
+
+        <View style={styles.cardFooter}>
+          <View style={styles.idRow}>
+            <Clock
+              size={13}
+              color="#94A3B8"
+            />
+
+            <Text style={styles.idText}>
+              ID: {item.idDisciplina}
+            </Text>
+          </View>
+
+          <View style={styles.actionsRow}>
+            <Button
+              title="Editar"
+              variant="outline"
+              size="sm"
+              icon={
+                <Pencil
+                  size={14}
+                  color="#334155"
+                />
+              }
+              onPress={() =>
+                navigation.navigate(
+                  "EditSubject",
+                  {
+                    idDisciplina:
+                      item.idDisciplina,
+                  }
+                )
+              }
+              style={styles.actionButton}
+            />
+
+            <Button
+              title="Excluir"
+              variant="destructive"
+              size="sm"
+              icon={
+                <Trash2
+                  size={14}
+                  color="#FFFFFF"
+                />
+              }
+              onPress={() =>
+                handleExcluir(
+                  item.idDisciplina
+                )
+              }
+              style={styles.actionButton}
+            />
+          </View>
+        </View>
+      </Card>
+    );
+  };
 
   return (
     <View style={styles.container}>
@@ -210,14 +413,29 @@ export const SubjectsScreen: React.FC = () => {
             placeholder="Pesquisar por nome ou professor..."
             value={termoBusca}
             onChangeText={setTermoBusca}
-            leftIcon={<Search size={18} color="#94A3B8" />}
-            containerStyle={styles.searchInputContainer}
+            leftIcon={
+              <Search
+                size={18}
+                color="#94A3B8"
+              />
+            }
+            containerStyle={
+              styles.searchInputContainer
+            }
           />
 
-          <View style={styles.searchButtonsRow}>
+          <View
+            style={
+              styles.searchButtonsRow
+            }
+          >
             <Button
               title="Pesquisar"
-              onPress={() => carregarDisciplinas(termoBusca)}
+              onPress={() =>
+                carregarDisciplinas(
+                  termoBusca
+                )
+              }
               style={styles.searchButton}
             />
 
@@ -226,6 +444,7 @@ export const SubjectsScreen: React.FC = () => {
               variant="outline"
               onPress={() => {
                 setTermoBusca("");
+
                 carregarDisciplinas("");
               }}
               style={styles.clearButton}
@@ -234,31 +453,73 @@ export const SubjectsScreen: React.FC = () => {
         </Card>
 
         {isLoading ? (
-          <View style={styles.loadingContainer}>
-            <ActivityIndicator size="large" color="#2563EB" />
-            <Text style={styles.loadingText}>Carregando disciplinas...</Text>
+          <View
+            style={
+              styles.loadingContainer
+            }
+          >
+            <ActivityIndicator
+              size="large"
+              color="#2563EB"
+            />
+
+            <Text
+              style={styles.loadingText}
+            >
+              Carregando disciplinas...
+            </Text>
           </View>
         ) : (
           <FlatList
             data={disciplinas}
-            keyExtractor={(item) => item.idDisciplina.toString()}
-            renderItem={renderDisciplinaItem}
-            contentContainerStyle={styles.listContent}
+            keyExtractor={(item) =>
+              item.idDisciplina.toString()
+            }
+            renderItem={
+              renderDisciplinaItem
+            }
+            contentContainerStyle={
+              styles.listContent
+            }
             ListEmptyComponent={
-              <Card style={styles.emptyCard}>
-                <Text style={styles.emptyTitle}>
-                  Nenhuma disciplina encontrada
+              <Card
+                style={styles.emptyCard}
+              >
+                <Text
+                  style={
+                    styles.emptyTitle
+                  }
+                >
+                  Nenhuma disciplina
+                  encontrada
                 </Text>
 
-                <Text style={styles.emptySubtitle}>
-                  Cadastre suas matérias para organizar seus estudos e faltas.
+                <Text
+                  style={
+                    styles.emptySubtitle
+                  }
+                >
+                  Cadastre suas matérias para
+                  organizar seus estudos e
+                  faltas.
                 </Text>
 
                 <Button
                   title="Cadastrar disciplina"
-                  icon={<Plus size={16} color="#FFFFFF" />}
-                  onPress={() => navigation.navigate("NewSubject")}
-                  style={styles.emptyButton}
+                  icon={
+                    <Plus
+                      size={16}
+                      color="#FFFFFF"
+                    />
+                  }
+                  onPress={() =>
+                    navigation.navigate(
+                      "NewSubject"
+                    )
+                  }
+                  style={
+                    styles.emptyButton
+                  }
                 />
               </Card>
             }
@@ -267,10 +528,17 @@ export const SubjectsScreen: React.FC = () => {
       </View>
 
       <Pressable
-        onPress={() => navigation.navigate("NewSubject")}
+        onPress={() =>
+          navigation.navigate(
+            "NewSubject"
+          )
+        }
         style={styles.fab}
       >
-        <Plus size={24} color="#FFFFFF" />
+        <Plus
+          size={24}
+          color="#FFFFFF"
+        />
       </Pressable>
     </View>
   );
@@ -379,7 +647,7 @@ const styles = StyleSheet.create({
   detailsGrid: {
     flexDirection: "row",
     gap: 8,
-    marginBottom: 12,
+    marginBottom: 10,
   },
 
   detailBox: {
@@ -399,6 +667,25 @@ const styles = StyleSheet.create({
     fontWeight: "600",
     color: "#0F172A",
     marginTop: 2,
+  },
+
+  dangerText: {
+    color: "#DC2626",
+  },
+
+  warningBox: {
+    backgroundColor: "#FEF2F2",
+    borderWidth: 1,
+    borderColor: "#FECACA",
+    borderRadius: 8,
+    padding: 10,
+    marginBottom: 12,
+  },
+
+  warningText: {
+    color: "#B91C1C",
+    fontSize: 12,
+    fontWeight: "600",
   },
 
   cardFooter: {
