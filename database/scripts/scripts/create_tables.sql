@@ -157,3 +157,61 @@ CREATE TABLE progresso_estudante (
     CONSTRAINT ck_progresso_seq_atual CHECK (sequencia_atual >= 0),
     CONSTRAINT ck_progresso_maior_seq CHECK (maior_sequencia >= 0)
 );
+
+-- =========================
+-- SEQUENCES
+-- =========================
+
+CREATE SEQUENCE seq_usuario
+    START WITH 1
+    INCREMENT BY 1
+    NOCACHE
+    NOCYCLE;
+
+CREATE SEQUENCE seq_periodo_letivo
+    START WITH 1
+    INCREMENT BY 1
+    NOCACHE
+    NOCYCLE;
+
+CREATE SEQUENCE seq_disciplina
+    START WITH 1
+    INCREMENT BY 1
+    NOCACHE
+    NOCYCLE;
+
+CREATE SEQUENCE seq_horario_aula
+    START WITH 1
+    INCREMENT BY 1
+    NOCACHE
+    NOCYCLE;
+
+CREATE SEQUENCE seq_tarefa
+    START WITH 1
+    INCREMENT BY 1
+    NOCACHE
+    NOCYCLE;
+
+CREATE SEQUENCE seq_avaliacao
+    START WITH 1
+    INCREMENT BY 1
+    NOCACHE
+    NOCYCLE;
+
+CREATE SEQUENCE seq_falta
+    START WITH 1
+    INCREMENT BY 1
+    NOCACHE
+    NOCYCLE;
+
+CREATE SEQUENCE seq_notificacao
+    START WITH 1
+    INCREMENT BY 1
+    NOCACHE
+    NOCYCLE;
+
+CREATE SEQUENCE seq_conquista
+    START WITH 1
+    INCREMENT BY 1
+    NOCACHE
+    NOCYCLE;
