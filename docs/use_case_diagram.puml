@@ -28,6 +28,10 @@ rectangle "Sistema StudyMate" {
     usecase "Consultar conquistas" as UC14
     usecase "Gerenciar perfil" as UC15
 
+    usecase "Consultar dados offine" as UC16
+    usecase "Armazenar alterações realizadas offline" as UC17
+    usecase "Sincronizar dados com o servidor" as UC18
+
 
     ' Força os extends para a direita
     UC07 -[hidden]right-> UC07A
@@ -49,6 +53,9 @@ Estudante -- UC12
 Estudante -- UC13
 Estudante -- UC14
 Estudante -- UC15
+Estudante -- UC16
+Estudante -- UC17
+Estudante -- UC18
 
 
 UC07A ..> UC07 : <<extend>>
