@@ -277,12 +277,6 @@ export const SubjectsScreen: React.FC = () => {
               </Text>
             </View>
           </View>
-
-          <View style={styles.gradeBadge}>
-            <Text style={styles.gradeText}>
-              {item.mediaAprovacao}
-            </Text>
-          </View>
         </View>
 
         <View style={styles.detailsGrid}>
