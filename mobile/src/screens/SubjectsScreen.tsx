@@ -44,6 +44,7 @@ import {
   Plus,
   Trash2,
   Pencil,
+  GraduationCap,
 } from "lucide-react-native";
 
 export const SubjectsScreen: React.FC = () => {
@@ -54,16 +55,19 @@ export const SubjectsScreen: React.FC = () => {
 
   const isFocused = useIsFocused();
 
-  const [disciplinas, setDisciplinas] = useState<
-    DisciplinaResponse[]
-  >([]);
+  const [disciplinas, setDisciplinas] =
+    useState<DisciplinaResponse[]>([]);
 
-  const [faltasPorDisciplina, setFaltasPorDisciplina] =
-    useState<Record<number, number>>({});
+  const [
+    faltasPorDisciplina,
+    setFaltasPorDisciplina,
+  ] = useState<Record<number, number>>({});
 
-  const [termoBusca, setTermoBusca] = useState("");
+  const [termoBusca, setTermoBusca] =
+    useState("");
 
-  const [isLoading, setIsLoading] = useState(false);
+  const [isLoading, setIsLoading] =
+    useState(false);
 
   const showAlert = (
     title: string,
@@ -81,7 +85,8 @@ export const SubjectsScreen: React.FC = () => {
 
   const obterIdUsuarioLogado =
     async (): Promise<number> => {
-      const usuario = await obterUsuarioSessao();
+      const usuario =
+        await obterUsuarioSessao();
 
       if (!usuario?.idUsuario) {
         throw new Error(
@@ -101,41 +106,45 @@ export const SubjectsScreen: React.FC = () => {
       const idUsuario =
         await obterIdUsuarioLogado();
 
-      const dados = await listarDisciplinas(
-        idUsuario,
-        termo
-      );
+      const dados =
+        await listarDisciplinas(
+          idUsuario,
+          termo
+        );
 
       setDisciplinas(dados);
 
-      const totais = await Promise.all(
-        dados.map(async (disciplina) => {
-          try {
-            const total =
-              await buscarTotalFaltas(
-                disciplina.idDisciplina,
-                idUsuario
-              );
+      const totais =
+        await Promise.all(
+          dados.map(
+            async (disciplina) => {
+              try {
+                const total =
+                  await buscarTotalFaltas(
+                    disciplina.idDisciplina,
+                    idUsuario
+                  );
 
-            return {
-              idDisciplina:
-                disciplina.idDisciplina,
-              total,
-            };
-          } catch (error) {
-            console.error(
-              `Erro ao carregar faltas da disciplina ${disciplina.idDisciplina}:`,
-              error
-            );
+                return {
+                  idDisciplina:
+                    disciplina.idDisciplina,
+                  total,
+                };
+              } catch (error) {
+                console.error(
+                  `Erro ao carregar faltas da disciplina ${disciplina.idDisciplina}:`,
+                  error
+                );
 
-            return {
-              idDisciplina:
-                disciplina.idDisciplina,
-              total: 0,
-            };
-          }
-        })
-      );
+                return {
+                  idDisciplina:
+                    disciplina.idDisciplina,
+                  total: 0,
+                };
+              }
+            }
+          )
+        );
 
       const mapaFaltas: Record<
         number,
@@ -143,8 +152,9 @@ export const SubjectsScreen: React.FC = () => {
       > = {};
 
       totais.forEach((item) => {
-        mapaFaltas[item.idDisciplina] =
-          item.total;
+        mapaFaltas[
+          item.idDisciplina
+        ] = item.total;
       });
 
       setFaltasPorDisciplina(
@@ -163,7 +173,9 @@ export const SubjectsScreen: React.FC = () => {
   };
 
   const excluirDisciplinaSelecionada =
-    async (idDisciplina: number) => {
+    async (
+      idDisciplina: number
+    ) => {
       setIsLoading(true);
 
       try {
@@ -197,9 +209,10 @@ export const SubjectsScreen: React.FC = () => {
       Platform.OS === "web" &&
       typeof window !== "undefined"
     ) {
-      const confirmou = window.confirm(
-        "Deseja realmente excluir esta disciplina?"
-      );
+      const confirmou =
+        window.confirm(
+          "Deseja realmente excluir esta disciplina?"
+        );
 
       if (confirmou) {
         excluirDisciplinaSelecionada(
@@ -230,9 +243,25 @@ export const SubjectsScreen: React.FC = () => {
     );
   };
 
+  const abrirAvaliacoes = (
+    disciplina: DisciplinaResponse
+  ) => {
+    navigation.navigate(
+      "Evaluations",
+      {
+        idDisciplina:
+          disciplina.idDisciplina,
+        nomeDisciplina:
+          disciplina.nome,
+      }
+    );
+  };
+
   useEffect(() => {
     if (isFocused) {
-      carregarDisciplinas(termoBusca);
+      carregarDisciplinas(
+        termoBusca
+      );
     }
   }, [isFocused]);
 
@@ -251,17 +280,34 @@ export const SubjectsScreen: React.FC = () => {
 
     const atingiuLimite =
       limiteFaltas > 0 &&
-      totalFaltas >= limiteFaltas;
+      totalFaltas >=
+        limiteFaltas;
 
     return (
-      <Card style={styles.subjectCard}>
-        <View style={styles.cardHeader}>
-          <View style={styles.cardHeaderInfo}>
-            <Text style={styles.subjectTitle}>
+      <Card
+        style={styles.subjectCard}
+      >
+        <View
+          style={styles.cardHeader}
+        >
+          <View
+            style={
+              styles.cardHeaderInfo
+            }
+          >
+            <Text
+              style={
+                styles.subjectTitle
+              }
+            >
               {item.nome}
             </Text>
 
-            <View style={styles.professorRow}>
+            <View
+              style={
+                styles.professorRow
+              }
+            >
               <Users
                 size={14}
                 color="#64748B"
@@ -279,32 +325,72 @@ export const SubjectsScreen: React.FC = () => {
           </View>
         </View>
 
-        <View style={styles.detailsGrid}>
-          <View style={styles.detailBox}>
-            <Text style={styles.detailLabel}>
+        <View
+          style={
+            styles.detailsGrid
+          }
+        >
+          <View
+            style={
+              styles.detailBox
+            }
+          >
+            <Text
+              style={
+                styles.detailLabel
+              }
+            >
               Período letivo
             </Text>
 
-            <Text style={styles.detailValue}>
+            <Text
+              style={
+                styles.detailValue
+              }
+            >
               {item.nomePeriodo ||
                 `Período ${item.idPeriodo}`}
             </Text>
           </View>
 
-          <View style={styles.detailBox}>
-            <Text style={styles.detailLabel}>
+          <View
+            style={
+              styles.detailBox
+            }
+          >
+            <Text
+              style={
+                styles.detailLabel
+              }
+            >
               Média de aprovação
             </Text>
 
-            <Text style={styles.detailValue}>
+            <Text
+              style={
+                styles.detailValue
+              }
+            >
               {item.mediaAprovacao}
             </Text>
           </View>
         </View>
 
-        <View style={styles.detailsGrid}>
-          <View style={styles.detailBox}>
-            <Text style={styles.detailLabel}>
+        <View
+          style={
+            styles.detailsGrid
+          }
+        >
+          <View
+            style={
+              styles.detailBox
+            }
+          >
+            <Text
+              style={
+                styles.detailLabel
+              }
+            >
               Faltas registradas
             </Text>
 
@@ -319,39 +405,93 @@ export const SubjectsScreen: React.FC = () => {
             </Text>
           </View>
 
-          <View style={styles.detailBox}>
-            <Text style={styles.detailLabel}>
+          <View
+            style={
+              styles.detailBox
+            }
+          >
+            <Text
+              style={
+                styles.detailLabel
+              }
+            >
               Limite de faltas
             </Text>
 
-            <Text style={styles.detailValue}>
+            <Text
+              style={
+                styles.detailValue
+              }
+            >
               {limiteFaltas}
             </Text>
           </View>
         </View>
 
         {atingiuLimite && (
-          <View style={styles.warningBox}>
-            <Text style={styles.warningText}>
-              Atenção: o limite de faltas
-              desta disciplina foi atingido.
+          <View
+            style={
+              styles.warningBox
+            }
+          >
+            <Text
+              style={
+                styles.warningText
+              }
+            >
+              Atenção: o limite de
+              faltas desta disciplina
+              foi atingido.
             </Text>
           </View>
         )}
 
-        <View style={styles.cardFooter}>
-          <View style={styles.idRow}>
+        <View
+          style={
+            styles.cardFooter
+          }
+        >
+          <View
+            style={styles.idRow}
+          >
             <Clock
               size={13}
               color="#94A3B8"
             />
 
-            <Text style={styles.idText}>
-              ID: {item.idDisciplina}
+            <Text
+              style={styles.idText}
+            >
+              ID:{" "}
+              {item.idDisciplina}
             </Text>
           </View>
 
-          <View style={styles.actionsRow}>
+          <View
+            style={
+              styles.actionsRow
+            }
+          >
+            <Button
+              title="Avaliações"
+              variant="outline"
+              size="sm"
+              icon={
+                <GraduationCap
+                  size={14}
+                  color="#2563EB"
+                />
+              }
+              onPress={() =>
+                abrirAvaliacoes(
+                  item
+                )
+              }
+              style={
+                styles.actionButton
+              }
+            />
+
             <Button
               title="Editar"
               variant="outline"
@@ -371,7 +511,9 @@ export const SubjectsScreen: React.FC = () => {
                   }
                 )
               }
-              style={styles.actionButton}
+              style={
+                styles.actionButton
+              }
             />
 
             <Button
@@ -389,7 +531,9 @@ export const SubjectsScreen: React.FC = () => {
                   item.idDisciplina
                 )
               }
-              style={styles.actionButton}
+              style={
+                styles.actionButton
+              }
             />
           </View>
         </View>
@@ -398,15 +542,27 @@ export const SubjectsScreen: React.FC = () => {
   };
 
   return (
-    <View style={styles.container}>
-      <MobileHeader title="Disciplinas" />
+    <View
+      style={styles.container}
+    >
+      <MobileHeader
+        title="Disciplinas"
+      />
 
-      <View style={styles.content}>
-        <Card style={styles.searchCard}>
+      <View
+        style={styles.content}
+      >
+        <Card
+          style={
+            styles.searchCard
+          }
+        >
           <Input
             placeholder="Pesquisar por nome ou professor..."
             value={termoBusca}
-            onChangeText={setTermoBusca}
+            onChangeText={
+              setTermoBusca
+            }
             leftIcon={
               <Search
                 size={18}
@@ -430,7 +586,9 @@ export const SubjectsScreen: React.FC = () => {
                   termoBusca
                 )
               }
-              style={styles.searchButton}
+              style={
+                styles.searchButton
+              }
             />
 
             <Button
@@ -439,9 +597,13 @@ export const SubjectsScreen: React.FC = () => {
               onPress={() => {
                 setTermoBusca("");
 
-                carregarDisciplinas("");
+                carregarDisciplinas(
+                  ""
+                );
               }}
-              style={styles.clearButton}
+              style={
+                styles.clearButton
+              }
             />
           </View>
         </Card>
@@ -458,9 +620,12 @@ export const SubjectsScreen: React.FC = () => {
             />
 
             <Text
-              style={styles.loadingText}
+              style={
+                styles.loadingText
+              }
             >
-              Carregando disciplinas...
+              Carregando
+              disciplinas...
             </Text>
           </View>
         ) : (
@@ -477,7 +642,9 @@ export const SubjectsScreen: React.FC = () => {
             }
             ListEmptyComponent={
               <Card
-                style={styles.emptyCard}
+                style={
+                  styles.emptyCard
+                }
               >
                 <Text
                   style={
@@ -493,9 +660,9 @@ export const SubjectsScreen: React.FC = () => {
                     styles.emptySubtitle
                   }
                 >
-                  Cadastre suas matérias para
-                  organizar seus estudos e
-                  faltas.
+                  Cadastre suas matérias
+                  para organizar seus
+                  estudos e faltas.
                 </Text>
 
                 <Button
@@ -538,221 +705,217 @@ export const SubjectsScreen: React.FC = () => {
   );
 };
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: "#F8FAFC",
-  },
-
-  content: {
-    flex: 1,
-    padding: 16,
-    maxWidth: 600,
-    width: "100%",
-    alignSelf: "center",
-  },
-
-  searchCard: {
-    marginBottom: 16,
-    padding: 14,
-  },
-
-  searchInputContainer: {
-    marginBottom: 10,
-  },
-
-  searchButtonsRow: {
-    flexDirection: "row",
-    gap: 8,
-  },
-
-  searchButton: {
-    flex: 1,
-  },
-
-  clearButton: {
-    flex: 1,
-  },
-
-  loadingContainer: {
-    padding: 32,
-    alignItems: "center",
-  },
-
-  loadingText: {
-    marginTop: 8,
-    color: "#64748B",
-    fontSize: 14,
-  },
-
-  listContent: {
-    paddingBottom: 80,
-  },
-
-  subjectCard: {
-    marginBottom: 12,
-  },
-
-  cardHeader: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "flex-start",
-    marginBottom: 12,
-  },
-
-  cardHeaderInfo: {
-    flex: 1,
-    marginRight: 8,
-  },
-
-  subjectTitle: {
-    fontSize: 17,
-    fontWeight: "700",
-    color: "#0F172A",
-    marginBottom: 4,
-  },
-
-  professorRow: {
-    flexDirection: "row",
-    alignItems: "center",
-  },
-
-  professorText: {
-    fontSize: 13,
-    color: "#64748B",
-    marginLeft: 6,
-  },
-
-  gradeBadge: {
-    backgroundColor: "#EFF6FF",
-    borderWidth: 1,
-    borderColor: "#BFDBFE",
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 8,
-  },
-
-  gradeText: {
-    fontSize: 15,
-    fontWeight: "700",
-    color: "#2563EB",
-  },
-
-  detailsGrid: {
-    flexDirection: "row",
-    gap: 8,
-    marginBottom: 10,
-  },
-
-  detailBox: {
-    flex: 1,
-    backgroundColor: "#F1F5F9",
-    padding: 8,
-    borderRadius: 8,
-  },
-
-  detailLabel: {
-    fontSize: 11,
-    color: "#64748B",
-  },
-
-  detailValue: {
-    fontSize: 14,
-    fontWeight: "600",
-    color: "#0F172A",
-    marginTop: 2,
-  },
-
-  dangerText: {
-    color: "#DC2626",
-  },
-
-  warningBox: {
-    backgroundColor: "#FEF2F2",
-    borderWidth: 1,
-    borderColor: "#FECACA",
-    borderRadius: 8,
-    padding: 10,
-    marginBottom: 12,
-  },
-
-  warningText: {
-    color: "#B91C1C",
-    fontSize: 12,
-    fontWeight: "600",
-  },
-
-  cardFooter: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    borderTopWidth: 1,
-    borderTopColor: "#F1F5F9",
-    paddingTop: 10,
-  },
-
-  idRow: {
-    flexDirection: "row",
-    alignItems: "center",
-  },
-
-  idText: {
-    fontSize: 12,
-    color: "#94A3B8",
-    marginLeft: 4,
-  },
-
-  actionsRow: {
-    flexDirection: "row",
-    gap: 8,
-  },
-
-  actionButton: {
-    paddingVertical: 6,
-    paddingHorizontal: 10,
-  },
-
-  emptyCard: {
-    padding: 24,
-    alignItems: "center",
-    marginTop: 20,
-  },
-
-  emptyTitle: {
-    fontSize: 16,
-    fontWeight: "700",
-    color: "#0F172A",
-  },
-
-  emptySubtitle: {
-    fontSize: 13,
-    color: "#64748B",
-    textAlign: "center",
-    marginTop: 4,
-    marginBottom: 16,
-  },
-
-  emptyButton: {
-    marginTop: 4,
-  },
-
-  fab: {
-    position: "absolute",
-    bottom: 24,
-    right: 20,
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    backgroundColor: "#2563EB",
-    alignItems: "center",
-    justifyContent: "center",
-    shadowColor: "#000",
-    shadowOffset: {
-      width: 0,
-      height: 4,
+const styles =
+  StyleSheet.create({
+    container: {
+      flex: 1,
+      backgroundColor:
+        "#F8FAFC",
     },
-    shadowOpacity: 0.2,
-    shadowRadius: 6,
-    elevation: 5,
-  },
-});
+
+    content: {
+      flex: 1,
+      padding: 16,
+      maxWidth: 600,
+      width: "100%",
+      alignSelf: "center",
+    },
+
+    searchCard: {
+      marginBottom: 16,
+      padding: 14,
+    },
+
+    searchInputContainer: {
+      marginBottom: 10,
+    },
+
+    searchButtonsRow: {
+      flexDirection: "row",
+      gap: 8,
+    },
+
+    searchButton: {
+      flex: 1,
+    },
+
+    clearButton: {
+      flex: 1,
+    },
+
+    loadingContainer: {
+      padding: 32,
+      alignItems: "center",
+    },
+
+    loadingText: {
+      marginTop: 8,
+      color: "#64748B",
+      fontSize: 14,
+    },
+
+    listContent: {
+      paddingBottom: 80,
+    },
+
+    subjectCard: {
+      marginBottom: 12,
+    },
+
+    cardHeader: {
+      flexDirection: "row",
+      justifyContent:
+        "space-between",
+      alignItems:
+        "flex-start",
+      marginBottom: 12,
+    },
+
+    cardHeaderInfo: {
+      flex: 1,
+      marginRight: 8,
+    },
+
+    subjectTitle: {
+      fontSize: 17,
+      fontWeight: "700",
+      color: "#0F172A",
+      marginBottom: 4,
+    },
+
+    professorRow: {
+      flexDirection: "row",
+      alignItems: "center",
+    },
+
+    professorText: {
+      fontSize: 13,
+      color: "#64748B",
+      marginLeft: 6,
+    },
+
+    detailsGrid: {
+      flexDirection: "row",
+      gap: 8,
+      marginBottom: 10,
+    },
+
+    detailBox: {
+      flex: 1,
+      backgroundColor:
+        "#F1F5F9",
+      padding: 8,
+      borderRadius: 8,
+    },
+
+    detailLabel: {
+      fontSize: 11,
+      color: "#64748B",
+    },
+
+    detailValue: {
+      fontSize: 14,
+      fontWeight: "600",
+      color: "#0F172A",
+      marginTop: 2,
+    },
+
+    dangerText: {
+      color: "#DC2626",
+    },
+
+    warningBox: {
+      backgroundColor:
+        "#FEF2F2",
+      borderWidth: 1,
+      borderColor: "#FECACA",
+      borderRadius: 8,
+      padding: 10,
+      marginBottom: 12,
+    },
+
+    warningText: {
+      color: "#B91C1C",
+      fontSize: 12,
+      fontWeight: "600",
+    },
+
+    cardFooter: {
+      borderTopWidth: 1,
+      borderTopColor:
+        "#F1F5F9",
+      paddingTop: 10,
+    },
+
+    idRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      marginBottom: 10,
+    },
+
+    idText: {
+      fontSize: 12,
+      color: "#94A3B8",
+      marginLeft: 4,
+    },
+
+    actionsRow: {
+      flexDirection: "row",
+      flexWrap: "wrap",
+      gap: 8,
+      justifyContent:
+        "flex-end",
+    },
+
+    actionButton: {
+      paddingVertical: 6,
+      paddingHorizontal: 10,
+    },
+
+    emptyCard: {
+      padding: 24,
+      alignItems: "center",
+      marginTop: 20,
+    },
+
+    emptyTitle: {
+      fontSize: 16,
+      fontWeight: "700",
+      color: "#0F172A",
+    },
+
+    emptySubtitle: {
+      fontSize: 13,
+      color: "#64748B",
+      textAlign: "center",
+      marginTop: 4,
+      marginBottom: 16,
+    },
+
+    emptyButton: {
+      marginTop: 4,
+    },
+
+    fab: {
+      position: "absolute",
+      bottom: 24,
+      right: 20,
+      width: 56,
+      height: 56,
+      borderRadius: 28,
+      backgroundColor:
+        "#2563EB",
+      alignItems: "center",
+      justifyContent:
+        "center",
+
+      shadowColor: "#000",
+      shadowOffset: {
+        width: 0,
+        height: 4,
+      },
+      shadowOpacity: 0.2,
+      shadowRadius: 6,
+      elevation: 5,
+    },
+  });

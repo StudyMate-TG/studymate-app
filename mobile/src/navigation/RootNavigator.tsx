@@ -1,7 +1,4 @@
 import React, { useEffect, useState } from "react";
-import { PeriodsScreen } from "../screens/PeriodsScreen";
-import { NewPeriodScreen } from "../screens/NewPeriodScreen";
-
 import {
   View,
   ActivityIndicator,
@@ -26,6 +23,11 @@ import { NewAttendanceScreen } from "../screens/NewAttendanceScreen";
 import { AchievementsScreen } from "../screens/AchievementsScreen";
 import { ProfileScreen } from "../screens/ProfileScreen";
 import { EditProfileScreen } from "../screens/EditProfileScreen";
+import { PeriodsScreen } from "../screens/PeriodsScreen";
+import { NewPeriodScreen } from "../screens/NewPeriodScreen";
+
+import { EvaluationsScreen } from "../screens/EvaluationsScreen";
+import { NewEvaluationScreen } from "../screens/NewEvaluationScreen";
 
 import {
   Home,
@@ -158,6 +160,16 @@ export const RootNavigator: React.FC = () => {
 
       <Stack.Screen name="NewTask" component={NewTaskScreen} />
       <Stack.Screen name="NewAttendance" component={NewAttendanceScreen} />
+
+      <Stack.Screen
+        name="Evaluations"
+        component={EvaluationsScreen}
+      />
+
+      <Stack.Screen
+        name="NewEvaluation"
+        component={NewEvaluationScreen}
+      />
 
       <Stack.Screen name="EditProfile" component={EditProfileScreen} />
       <Stack.Screen name="Periods" component={PeriodsScreen} />

@@ -23,14 +23,17 @@ export type DisciplinaResponse = {
 
 export type DisciplinaRequest = {
   idUsuario: number;
-  idPeriodo?:number;
+  idPeriodo?: number;
   nome: string;
   professor: string;
   mediaAprovacao: number;
   limiteFaltas: number;
 };
 
-export type PeriodoLetivoStatus = "ATIVO" | "INATIVO" | "CONCLUIDO";
+export type PeriodoLetivoStatus =
+  | "ATIVO"
+  | "INATIVO"
+  | "CONCLUIDO";
 
 export type PeriodoLetivoResponse = {
   idPeriodo: number;
@@ -52,10 +55,25 @@ export type PeriodoLetivoRequest = {
 export type RootStackParamList = {
   Login: undefined;
   MainTabs: undefined;
+
   NewSubject: undefined;
-  EditSubject: { idDisciplina: number };
+  EditSubject: {
+    idDisciplina: number;
+  };
+
   NewTask: undefined;
   NewAttendance: undefined;
+
+  Evaluations: {
+    idDisciplina: number;
+    nomeDisciplina: string;
+  };
+
+  NewEvaluation: {
+    idDisciplina: number;
+    nomeDisciplina: string;
+  };
+
   EditProfile: undefined;
   Periods: undefined;
   NewPeriod: undefined;
@@ -69,8 +87,10 @@ export type MainTabParamList = {
   ProfileTab: undefined;
 };
 
-export type RootStackScreenProps<T extends keyof RootStackParamList> =
-  NativeStackScreenProps<RootStackParamList, T>;
+export type RootStackScreenProps<
+  T extends keyof RootStackParamList
+> = NativeStackScreenProps<RootStackParamList, T>;
 
-export type MainTabScreenProps<T extends keyof MainTabParamList> =
-  BottomTabScreenProps<MainTabParamList, T>;
+export type MainTabScreenProps<
+  T extends keyof MainTabParamList
+> = BottomTabScreenProps<MainTabParamList, T>;
