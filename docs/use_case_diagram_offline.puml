@@ -1,0 +1,38 @@
+@startuml
+
+left to right direction
+
+skinparam linetype spline
+skinparam nodesep 35
+skinparam ranksep 40
+
+actor Estudante
+
+rectangle "Aplicativo StudyMate" {
+
+    usecase "Consultar dados offline" as UC16
+
+    usecase "Realizar alterações\noffline" as UC17
+    usecase "Registrar operação\npendente" as UC17A
+
+    usecase "Sincronizar dados\ncom o servidor" as UC18
+    usecase "Enviar operações\npendentes" as UC18A
+    usecase "Atualizar dados\nlocais" as UC18B
+
+    usecase "Consultar estado da\nsincronização" as UC19
+    
+    UC17 -[hidden]right-> UC17A
+    UC18 -[hidden]right-> UC18A
+    UC18A -[hidden]down-> UC18B
+
+}
+
+Estudante --> UC16
+Estudante --> UC17
+Estudante --> UC19
+
+UC17 .> UC17A : <<include>>
+UC18 .> UC18A : <<include>>
+UC18 .> UC18B : <<include>>
+
+@enduml
