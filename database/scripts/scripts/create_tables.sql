@@ -7,7 +7,6 @@ CREATE TABLE usuario (
     curso VARCHAR2(100),
     matricula VARCHAR2(50),
     instituicao VARCHAR2(100),
-
     CONSTRAINT pk_usuario PRIMARY KEY (id_usuario),
     CONSTRAINT uk_usuario_email UNIQUE (email)
 );
@@ -19,7 +18,6 @@ CREATE TABLE periodo_letivo (
     data_inicio DATE NOT NULL,
     data_fim DATE NOT NULL,
     status VARCHAR2(20) NOT NULL,
-
     CONSTRAINT pk_periodo_letivo PRIMARY KEY (id_periodo),
     CONSTRAINT fk_periodo_usuario FOREIGN KEY (id_usuario)
         REFERENCES usuario (id_usuario),
@@ -33,7 +31,6 @@ CREATE TABLE disciplina (
     professor VARCHAR2(100) NOT NULL,
     media_aprovacao NUMBER(4,2) NOT NULL,
     limite_faltas NUMBER(38) NOT NULL,
-
     CONSTRAINT pk_disciplina PRIMARY KEY (id_disciplina),
     CONSTRAINT fk_disciplina_periodo FOREIGN KEY (id_periodo)
         REFERENCES periodo_letivo (id_periodo),
@@ -48,7 +45,6 @@ CREATE TABLE horario_aula (
     hora_inicio VARCHAR2(5) NOT NULL,
     hora_fim VARCHAR2(5) NOT NULL,
     local VARCHAR2(100),
-
     CONSTRAINT pk_horario_aula PRIMARY KEY (id_horario),
     CONSTRAINT fk_horario_disciplina FOREIGN KEY (id_disciplina)
         REFERENCES disciplina (id_disciplina)
@@ -66,7 +62,6 @@ CREATE TABLE tarefa (
     status VARCHAR2(20) NOT NULL,
     prioridade VARCHAR2(20) NOT NULL,
     xp_gerado NUMBER(38) NOT NULL,
-
     CONSTRAINT pk_tarefa PRIMARY KEY (id_tarefa),
     CONSTRAINT fk_tarefa_disciplina FOREIGN KEY (id_disciplina)
         REFERENCES disciplina (id_disciplina),
@@ -81,7 +76,6 @@ CREATE TABLE avaliacao (
     nota NUMBER(4,2),
     peso NUMBER(4,2) NOT NULL,
     data_avaliacao DATE NOT NULL,
-
     CONSTRAINT pk_avaliacao PRIMARY KEY (id_avaliacao),
     CONSTRAINT fk_avaliacao_disciplina FOREIGN KEY (id_disciplina)
         REFERENCES disciplina (id_disciplina),
@@ -94,7 +88,6 @@ CREATE TABLE falta (
     id_disciplina NUMBER(38) NOT NULL,
     data_falta DATE NOT NULL,
     quantidade_aulas NUMBER(38) NOT NULL,
-
     CONSTRAINT pk_falta PRIMARY KEY (id_falta),
     CONSTRAINT fk_falta_disciplina FOREIGN KEY (id_disciplina)
         REFERENCES disciplina (id_disciplina),
@@ -110,7 +103,6 @@ CREATE TABLE notificacao (
     tipo VARCHAR2(20) NOT NULL,
     data_envio DATE DEFAULT SYSDATE NOT NULL,
     lida CHAR(1) DEFAULT 'N' NOT NULL,
-
     CONSTRAINT pk_notificacao PRIMARY KEY (id_notificacao),
     CONSTRAINT fk_notificacao_usuario FOREIGN KEY (id_usuario)
         REFERENCES usuario (id_usuario),
@@ -125,7 +117,6 @@ CREATE TABLE conquista (
     descricao VARCHAR2(255) NOT NULL,
     icone VARCHAR2(100) NOT NULL,
     criterio VARCHAR2(50) NOT NULL,
-
     CONSTRAINT pk_conquista PRIMARY KEY (id_conquista)
 );
 
@@ -133,7 +124,6 @@ CREATE TABLE usuario_conquista (
     id_usuario NUMBER(38) NOT NULL,
     id_conquista NUMBER(38) NOT NULL,
     data_conquista DATE DEFAULT SYSDATE NOT NULL,
-
     CONSTRAINT pk_usuario_conquista PRIMARY KEY (id_usuario, id_conquista),
     CONSTRAINT fk_usuario_conquista_usuario FOREIGN KEY (id_usuario)
         REFERENCES usuario (id_usuario),
@@ -148,7 +138,6 @@ CREATE TABLE progresso_estudante (
     sequencia_atual NUMBER(38) NOT NULL,
     maior_sequencia NUMBER(38) NOT NULL,
     data_ultimo_dia_sequencia DATE,
-
     CONSTRAINT pk_progresso_estudante PRIMARY KEY (id_usuario),
     CONSTRAINT fk_progresso_estudante_usuario FOREIGN KEY (id_usuario)
         REFERENCES usuario (id_usuario),
