@@ -2,64 +2,77 @@
 
 left to right direction
 
+skinparam linetype spline
+skinparam nodesep 30
+skinparam ranksep 35
+skinparam packageStyle rectangle
+
 actor Estudante
 
 rectangle "Sistema StudyMate" {
 
-    usecase "Cadastrar usuário" as UC01
-    usecase "Realizar login" as UC02
-    usecase "Visualizar agenda acadêmica" as UC03
-    usecase "Gerenciar período letivo" as UC04
-    usecase "Gerenciar disciplinas" as UC05
-    usecase "Gerenciar horários de aula" as UC06
+    rectangle "Acesso e Perfil" {
+        usecase "Cadastrar usuário" as UC01
+        usecase "Realizar login" as UC02
+        usecase "Gerenciar perfil" as UC15
+    }
 
-    usecase "Gerenciar tarefas" as UC07
-    usecase "Concluir tarefa" as UC07A
-    usecase "Reagendar tarefa" as UC07B
+    rectangle "Organização Acadêmica" {
+        usecase "Visualizar agenda\nacadêmica" as UC03
+        usecase "Gerenciar período\nletivo" as UC04
+        usecase "Gerenciar disciplinas" as UC05
+        usecase "Gerenciar horários\nde aula" as UC06
+        
+        usecase "Gerenciar tarefas" as UC07
+        usecase "Concluir tarefa" as UC07A
+        usecase "Reagendar tarefa" as UC07B
+        
+        usecase "Gerenciar avaliações" as UC08
+        usecase "Calcular média" as UC09
+        usecase "Registrar faltas" as UC10
+        usecase "Controlar faltas" as UC11
+        usecase "Consultar notificações" as UC12
+        usecase "Marcar notificação\ncomo lida" as UC12A
+    }
 
-    usecase "Gerenciar avaliações" as UC08
+    rectangle "Progresso e Gamificação" {
+        usecase "Acompanhar progresso" as UC13
+        usecase "Consultar conquistas" as UC14
+    }
 
-    usecase "Registrar faltas" as UC10
-
-    usecase "Consultar notificações" as UC12
-    usecase "Marcar notificação\ncomo lida" as UC12A
-
-    usecase "Acompanhar progresso" as UC13
-    usecase "Consultar conquistas" as UC14
-    usecase "Gerenciar perfil" as UC15
-
-    usecase "Consultar dados offine" as UC16
-    usecase "Armazenar alterações realizadas offline" as UC17
-    usecase "Sincronizar dados com o servidor" as UC18
-
-
-    ' Força os extends para a direita
+    rectangle "Funcionamento Offline" {
+        usecase "Consultar dados offline" as UC16
+        usecase "Realizar alterações\noffline" as UC17
+        usecase "Sincronizar dados\ncom o servidor" as UC18
+        usecase "Consultar estado da\nsincronização" as UC19
+    }
+    
     UC07 -[hidden]right-> UC07A
     UC07A -[hidden]down-> UC07B
-
     UC12 -[hidden]right-> UC12A
 }
 
-Estudante -- UC01
-Estudante -- UC02
-Estudante -- UC03
-Estudante -- UC04
-Estudante -- UC05
-Estudante -- UC06
-Estudante -- UC07
-Estudante -- UC08
-Estudante -- UC10
-Estudante -- UC12
-Estudante -- UC13
-Estudante -- UC14
-Estudante -- UC15
-Estudante -- UC16
-Estudante -- UC17
-Estudante -- UC18
-
+Estudante --> UC01
+Estudante --> UC02
+Estudante --> UC03
+Estudante --> UC04
+Estudante --> UC05
+Estudante --> UC06
+Estudante --> UC07
+Estudante --> UC08
+Estudante --> UC10
+Estudante --> UC12
+Estudante --> UC13
+Estudante --> UC14
+Estudante --> UC15
+Estudante --> UC16
+Estudante --> UC17
+Estudante --> UC19
 
 UC07A ..> UC07 : <<extend>>
 UC07B ..> UC07 : <<extend>>
+UC08 ..> UC09 : <<include>>
+UC10 ..> UC11 : <<include>>
 
 UC12A ..> UC12 : <<extend>>
 
