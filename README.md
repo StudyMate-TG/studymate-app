@@ -34,7 +34,9 @@ Além disso, o software incorpora um sistema de gamificação, utilizando recomp
 - Permitir acesso por aplicativo mobile (iOS e Android) e versão web. 
 - Integrar com redes sociais e canais digitais para divulgação.
 
-Acesse os [Casos de Uso de Alto Nível](docs/use_case_diagram.svg).
+### Diagrama de Casos de Uso
+- [Casos de Uso de Alto Nível](docs/use_case_diagram.svg).
+- [Detalhamento dos Casos de Uso do Funcionamento Offline](docs/use_case_diagram_offline.svg).
 
 ## **Protótipo Final do Projeto**
 
