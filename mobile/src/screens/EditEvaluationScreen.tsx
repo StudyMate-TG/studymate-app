@@ -1,4 +1,7 @@
-import React, { useState } from "react";
+import React, {
+  useEffect,
+  useState,
+} from "react";
 
 import {
   View,
@@ -20,35 +23,58 @@ import {
   GraduationCap,
 } from "lucide-react-native";
 
-import { RootStackScreenProps } from "../types";
-
-import { obterUsuarioSessao } from "../services/authService";
+import {
+  RootStackScreenProps,
+} from "../types";
 
 import {
-  cadastrarAvaliacao,
+  obterUsuarioSessao,
+} from "../services/authService";
+
+import {
+  buscarAvaliacaoPorId,
+  atualizarAvaliacao,
 } from "../services/avaliacaoService";
 
 type Props =
-  RootStackScreenProps<"NewEvaluation">;
+  RootStackScreenProps<"EditEvaluation">;
 
-export const NewEvaluationScreen: React.FC<Props> = ({
+export const EditEvaluationScreen: React.FC<Props> = ({
   navigation,
   route,
 }) => {
   const {
+    idAvaliacao,
     idDisciplina,
     nomeDisciplina,
   } = route.params;
 
-  const [nome, setNome] = useState("");
-  const [tipo, setTipo] = useState("");
-  const [dataAvaliacao, setDataAvaliacao] =
+  const [nome, setNome] =
     useState("");
-  const [peso, setPeso] = useState("");
-  const [nota, setNota] = useState("");
 
-  const [salvando, setSalvando] =
-    useState(false);
+  const [tipo, setTipo] =
+    useState("");
+
+  const [
+    dataAvaliacao,
+    setDataAvaliacao,
+  ] = useState("");
+
+  const [peso, setPeso] =
+    useState("");
+
+  const [nota, setNota] =
+    useState("");
+
+  const [
+    carregando,
+    setCarregando,
+  ] = useState(true);
+
+  const [
+    salvando,
+    setSalvando,
+  ] = useState(false);
 
   const mostrarAlerta = (
     titulo: string,
@@ -69,9 +95,36 @@ export const NewEvaluationScreen: React.FC<Props> = ({
     }
   };
 
+  const formatarDataParaTela = (
+    data: string
+  ) => {
+    const partes =
+      data.split("-");
+
+    if (
+      partes.length !== 3
+    ) {
+      return data;
+    }
+
+    return `${partes[2]}/${partes[1]}/${partes[0]}`;
+  };
+
+  const converterDataParaApi = (
+    data: string
+  ) => {
+    const [
+      dia,
+      mes,
+      ano,
+    ] = data.split("/");
+
+    return `${ano}-${mes}-${dia}`;
+  };
+
   const validarData = (
     data: string
-  ): boolean => {
+  ) => {
     const regex =
       /^\d{2}\/\d{2}\/\d{4}$/;
 
@@ -79,10 +132,13 @@ export const NewEvaluationScreen: React.FC<Props> = ({
       return false;
     }
 
-    const [dia, mes, ano] =
-      data
-        .split("/")
-        .map(Number);
+    const [
+      dia,
+      mes,
+      ano,
+    ] = data
+      .split("/")
+      .map(Number);
 
     const dataObj =
       new Date(
@@ -102,7 +158,7 @@ export const NewEvaluationScreen: React.FC<Props> = ({
   const possuiNoMaximoDuasCasas =
     (
       valor: string
-    ): boolean => {
+    ) => {
       const normalizado =
         valor.replace(",", ".");
 
@@ -111,21 +167,73 @@ export const NewEvaluationScreen: React.FC<Props> = ({
       );
     };
 
-  const converterDataParaApi = (
-    data: string
-  ) => {
-    const [dia, mes, ano] =
-      data.split("/");
+  useEffect(() => {
+    const carregarAvaliacao =
+      async () => {
+        try {
+          setCarregando(true);
 
-    return `${ano}-${mes}-${dia}`;
-  };
+          const usuario =
+            await obterUsuarioSessao();
+
+          if (
+            !usuario?.idUsuario
+          ) {
+            throw new Error(
+              "Usuário não encontrado. Faça login novamente."
+            );
+          }
+
+          const avaliacao =
+            await buscarAvaliacaoPorId(
+              idAvaliacao,
+              usuario.idUsuario
+            );
+
+          setNome(
+            avaliacao.nome
+          );
+
+          setTipo(
+            avaliacao.tipo
+          );
+
+          setDataAvaliacao(
+            formatarDataParaTela(
+              avaliacao.dataAvaliacao
+            )
+          );
+
+          setPeso(
+            String(
+              avaliacao.peso
+            ).replace(".", ",")
+          );
+
+          setNota(
+            avaliacao.nota !== null
+              ? String(
+                  avaliacao.nota
+                ).replace(".", ",")
+              : ""
+          );
+        } catch (error) {
+          mostrarAlerta(
+            "Erro",
+            error instanceof Error
+              ? error.message
+              : "Erro ao carregar avaliação."
+          );
+        } finally {
+          setCarregando(false);
+        }
+      };
+
+    carregarAvaliacao();
+  }, [idAvaliacao]);
 
   const salvarAvaliacao =
     async () => {
-      if (salvando) {
-        return;
-      }
-
       const nomeLimpo =
         nome.trim();
 
@@ -145,7 +253,7 @@ export const NewEvaluationScreen: React.FC<Props> = ({
       ) {
         mostrarAlerta(
           "Atenção",
-          "O nome da avaliação deve possuir no máximo 100 caracteres."
+          "O nome deve possuir no máximo 100 caracteres."
         );
         return;
       }
@@ -169,16 +277,6 @@ export const NewEvaluationScreen: React.FC<Props> = ({
       }
 
       if (
-        !dataAvaliacao.trim()
-      ) {
-        mostrarAlerta(
-          "Atenção",
-          "Informe a data da avaliação."
-        );
-        return;
-      }
-
-      if (
         !validarData(
           dataAvaliacao
         )
@@ -190,14 +288,6 @@ export const NewEvaluationScreen: React.FC<Props> = ({
         return;
       }
 
-      if (!peso.trim()) {
-        mostrarAlerta(
-          "Atenção",
-          "Informe o peso da avaliação."
-        );
-        return;
-      }
-
       if (
         !possuiNoMaximoDuasCasas(
           peso
@@ -205,7 +295,7 @@ export const NewEvaluationScreen: React.FC<Props> = ({
       ) {
         mostrarAlerta(
           "Atenção",
-          "O peso deve possuir no máximo duas casas decimais."
+          "Informe um peso válido com no máximo duas casas decimais."
         );
         return;
       }
@@ -216,9 +306,6 @@ export const NewEvaluationScreen: React.FC<Props> = ({
         );
 
       if (
-        Number.isNaN(
-          pesoNumero
-        ) ||
         pesoNumero <= 0 ||
         pesoNumero > 99.99
       ) {
@@ -254,9 +341,6 @@ export const NewEvaluationScreen: React.FC<Props> = ({
           );
 
         if (
-          Number.isNaN(
-            notaNumero
-          ) ||
           notaNumero < 0 ||
           notaNumero > 10
         ) {
@@ -282,12 +366,8 @@ export const NewEvaluationScreen: React.FC<Props> = ({
           );
         }
 
-        const dataApi =
-          converterDataParaApi(
-            dataAvaliacao
-          );
-
-        await cadastrarAvaliacao(
+        await atualizarAvaliacao(
+          idAvaliacao,
           usuario.idUsuario,
           {
             idDisciplina,
@@ -296,7 +376,9 @@ export const NewEvaluationScreen: React.FC<Props> = ({
             nota: notaNumero,
             peso: pesoNumero,
             dataAvaliacao:
-              dataApi,
+              converterDataParaApi(
+                dataAvaliacao
+              ),
           }
         );
 
@@ -307,7 +389,7 @@ export const NewEvaluationScreen: React.FC<Props> = ({
             "undefined"
         ) {
           window.alert(
-            "Sucesso: Avaliação cadastrada com sucesso."
+            "Sucesso: Avaliação atualizada com sucesso."
           );
 
           navigation.goBack();
@@ -316,7 +398,7 @@ export const NewEvaluationScreen: React.FC<Props> = ({
 
         Alert.alert(
           "Sucesso",
-          "Avaliação cadastrada com sucesso.",
+          "Avaliação atualizada com sucesso.",
           [
             {
               text: "OK",
@@ -330,12 +412,35 @@ export const NewEvaluationScreen: React.FC<Props> = ({
           "Erro",
           error instanceof Error
             ? error.message
-            : "Erro ao cadastrar avaliação."
+            : "Erro ao atualizar avaliação."
         );
       } finally {
         setSalvando(false);
       }
     };
+
+  if (carregando) {
+    return (
+      <View
+        style={
+          styles.loadingContainer
+        }
+      >
+        <ActivityIndicator
+          size="large"
+          color="#2563EB"
+        />
+
+        <Text
+          style={
+            styles.loadingText
+          }
+        >
+          Carregando avaliação...
+        </Text>
+      </View>
+    );
+  }
 
   return (
     <SafeAreaView
@@ -379,7 +484,7 @@ export const NewEvaluationScreen: React.FC<Props> = ({
                 styles.headerTitle
               }
             >
-              Nova Avaliação
+              Editar Avaliação
             </Text>
 
             <Text
@@ -453,8 +558,6 @@ export const NewEvaluationScreen: React.FC<Props> = ({
 
             <TextInput
               style={styles.input}
-              placeholder="Ex.: Prova 1"
-              placeholderTextColor="#94A3B8"
               value={nome}
               onChangeText={
                 setNome
@@ -477,8 +580,6 @@ export const NewEvaluationScreen: React.FC<Props> = ({
 
             <TextInput
               style={styles.input}
-              placeholder="Ex.: PROVA, TRABALHO, SEMINARIO"
-              placeholderTextColor="#94A3B8"
               value={tipo}
               onChangeText={
                 setTipo
@@ -487,15 +588,6 @@ export const NewEvaluationScreen: React.FC<Props> = ({
               editable={!salvando}
               autoCapitalize="characters"
             />
-
-            <Text
-              style={
-                styles.fieldHelp
-              }
-            >
-              Você pode informar qualquer
-              tipo de avaliação.
-            </Text>
           </View>
 
           <View
@@ -511,8 +603,6 @@ export const NewEvaluationScreen: React.FC<Props> = ({
 
             <TextInput
               style={styles.input}
-              placeholder="DD/MM/AAAA"
-              placeholderTextColor="#94A3B8"
               value={
                 dataAvaliacao
               }
@@ -541,8 +631,6 @@ export const NewEvaluationScreen: React.FC<Props> = ({
 
               <TextInput
                 style={styles.input}
-                placeholder="Ex.: 2"
-                placeholderTextColor="#94A3B8"
                 value={peso}
                 onChangeText={
                   setPeso
@@ -565,8 +653,6 @@ export const NewEvaluationScreen: React.FC<Props> = ({
 
               <TextInput
                 style={styles.input}
-                placeholder="0 a 10"
-                placeholderTextColor="#94A3B8"
                 value={nota}
                 onChangeText={
                   setNota
@@ -582,17 +668,16 @@ export const NewEvaluationScreen: React.FC<Props> = ({
               styles.helperText
             }
           >
-            A nota é opcional. Você
-            pode cadastrar a avaliação
-            agora e informar a nota
-            posteriormente.
+            Deixe a nota vazia caso
+            ainda não tenha recebido
+            o resultado.
           </Text>
 
           <TouchableOpacity
             style={[
               styles.saveButton,
               salvando &&
-                styles.buttonDisabled,
+                styles.disabledButton,
             ]}
             onPress={
               salvarAvaliacao
@@ -626,28 +711,10 @@ export const NewEvaluationScreen: React.FC<Props> = ({
                     styles.saveButtonText
                   }
                 >
-                  Salvar Avaliação
+                  Salvar alterações
                 </Text>
               </>
             )}
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={
-              styles.cancelButton
-            }
-            onPress={() =>
-              navigation.goBack()
-            }
-            disabled={salvando}
-          >
-            <Text
-              style={
-                styles.cancelButtonText
-              }
-            >
-              Cancelar
-            </Text>
           </TouchableOpacity>
         </ScrollView>
       </KeyboardAvoidingView>
@@ -665,6 +732,20 @@ const styles =
 
     keyboardContainer: {
       flex: 1,
+    },
+
+    loadingContainer: {
+      flex: 1,
+      alignItems: "center",
+      justifyContent:
+        "center",
+      backgroundColor:
+        "#F8FAFC",
+    },
+
+    loadingText: {
+      marginTop: 12,
+      color: "#64748B",
     },
 
     header: {
@@ -725,7 +806,8 @@ const styles =
       backgroundColor:
         "#EFF6FF",
       borderWidth: 1,
-      borderColor: "#BFDBFE",
+      borderColor:
+        "#BFDBFE",
     },
 
     subjectIcon: {
@@ -771,7 +853,8 @@ const styles =
       height: 50,
       paddingHorizontal: 14,
       borderWidth: 1,
-      borderColor: "#CBD5E1",
+      borderColor:
+        "#CBD5E1",
       borderRadius: 12,
       backgroundColor:
         "#FFFFFF",
@@ -779,16 +862,9 @@ const styles =
       color: "#0F172A",
     },
 
-    fieldHelp: {
-      marginTop: 6,
-      fontSize: 12,
-      color: "#64748B",
-    },
-
     row: {
       flexDirection: "row",
       gap: 12,
-      marginBottom: 6,
     },
 
     halfField: {
@@ -796,7 +872,7 @@ const styles =
     },
 
     helperText: {
-      marginTop: 4,
+      marginTop: 10,
       marginBottom: 28,
       fontSize: 13,
       lineHeight: 19,
@@ -815,7 +891,7 @@ const styles =
         "#2563EB",
     },
 
-    buttonDisabled: {
+    disabledButton: {
       opacity: 0.65,
     },
 
@@ -823,19 +899,5 @@ const styles =
       fontSize: 16,
       fontWeight: "700",
       color: "#FFFFFF",
-    },
-
-    cancelButton: {
-      height: 50,
-      alignItems: "center",
-      justifyContent:
-        "center",
-      marginTop: 10,
-    },
-
-    cancelButtonText: {
-      fontSize: 15,
-      fontWeight: "600",
-      color: "#64748B",
     },
   });

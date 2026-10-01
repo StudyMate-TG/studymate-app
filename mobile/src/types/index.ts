@@ -54,14 +54,17 @@ export type PeriodoLetivoRequest = {
 
 export type RootStackParamList = {
   Login: undefined;
+
   MainTabs: undefined;
 
   NewSubject: undefined;
+
   EditSubject: {
     idDisciplina: number;
   };
 
   NewTask: undefined;
+
   NewAttendance: undefined;
 
   Evaluations: {
@@ -74,8 +77,16 @@ export type RootStackParamList = {
     nomeDisciplina: string;
   };
 
+  EditEvaluation: {
+    idAvaliacao: number;
+    idDisciplina: number;
+    nomeDisciplina: string;
+  };
+
   EditProfile: undefined;
+
   Periods: undefined;
+
   NewPeriod: undefined;
 };
 
@@ -89,8 +100,14 @@ export type MainTabParamList = {
 
 export type RootStackScreenProps<
   T extends keyof RootStackParamList
-> = NativeStackScreenProps<RootStackParamList, T>;
+> = NativeStackScreenProps<
+  RootStackParamList,
+  T
+>;
 
 export type MainTabScreenProps<
   T extends keyof MainTabParamList
-> = BottomTabScreenProps<MainTabParamList, T>;
+> = BottomTabScreenProps<
+  MainTabParamList,
+  T
+>;

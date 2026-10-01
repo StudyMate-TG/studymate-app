@@ -1,16 +1,27 @@
 import React, { useEffect, useState } from "react";
+
 import {
   View,
   ActivityIndicator,
   StyleSheet,
 } from "react-native";
 
-import { createNativeStackNavigator } from "@react-navigation/native-stack";
-import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
+import {
+  createNativeStackNavigator,
+} from "@react-navigation/native-stack";
 
-import { RootStackParamList, MainTabParamList } from "../types";
+import {
+  createBottomTabNavigator,
+} from "@react-navigation/bottom-tabs";
 
-import { obterUsuarioSessao } from "../services/authService";
+import {
+  RootStackParamList,
+  MainTabParamList,
+} from "../types";
+
+import {
+  obterUsuarioSessao,
+} from "../services/authService";
 
 import { LoginScreen } from "../screens/LoginScreen";
 import { HomeScreen } from "../screens/HomeScreen";
@@ -28,6 +39,7 @@ import { NewPeriodScreen } from "../screens/NewPeriodScreen";
 
 import { EvaluationsScreen } from "../screens/EvaluationsScreen";
 import { NewEvaluationScreen } from "../screens/NewEvaluationScreen";
+import { EditEvaluationScreen } from "../screens/EditEvaluationScreen";
 
 import {
   Home,
@@ -37,16 +49,21 @@ import {
   User,
 } from "lucide-react-native";
 
-const Stack = createNativeStackNavigator<RootStackParamList>();
-const Tab = createBottomTabNavigator<MainTabParamList>();
+const Stack =
+  createNativeStackNavigator<RootStackParamList>();
+
+const Tab =
+  createBottomTabNavigator<MainTabParamList>();
 
 const MainTabNavigator: React.FC = () => {
   return (
     <Tab.Navigator
       screenOptions={{
         headerShown: false,
+
         tabBarActiveTintColor: "#2563EB",
         tabBarInactiveTintColor: "#64748B",
+
         tabBarStyle: {
           height: 60,
           paddingBottom: 8,
@@ -55,6 +72,7 @@ const MainTabNavigator: React.FC = () => {
           borderTopWidth: 1,
           borderTopColor: "#E2E8F0",
         },
+
         tabBarLabelStyle: {
           fontSize: 12,
           fontWeight: "600",
@@ -66,8 +84,15 @@ const MainTabNavigator: React.FC = () => {
         component={HomeScreen}
         options={{
           tabBarLabel: "Início",
-          tabBarIcon: ({ color, size }) => (
-            <Home color={color} size={size} />
+
+          tabBarIcon: ({
+            color,
+            size,
+          }) => (
+            <Home
+              color={color}
+              size={size}
+            />
           ),
         }}
       />
@@ -77,8 +102,15 @@ const MainTabNavigator: React.FC = () => {
         component={SubjectsScreen}
         options={{
           tabBarLabel: "Disciplinas",
-          tabBarIcon: ({ color, size }) => (
-            <BookOpen color={color} size={size} />
+
+          tabBarIcon: ({
+            color,
+            size,
+          }) => (
+            <BookOpen
+              color={color}
+              size={size}
+            />
           ),
         }}
       />
@@ -88,8 +120,15 @@ const MainTabNavigator: React.FC = () => {
         component={CalendarScreen}
         options={{
           tabBarLabel: "Agenda",
-          tabBarIcon: ({ color, size }) => (
-            <CalendarIcon color={color} size={size} />
+
+          tabBarIcon: ({
+            color,
+            size,
+          }) => (
+            <CalendarIcon
+              color={color}
+              size={size}
+            />
           ),
         }}
       />
@@ -99,8 +138,15 @@ const MainTabNavigator: React.FC = () => {
         component={AchievementsScreen}
         options={{
           tabBarLabel: "Conquistas",
-          tabBarIcon: ({ color, size }) => (
-            <Trophy color={color} size={size} />
+
+          tabBarIcon: ({
+            color,
+            size,
+          }) => (
+            <Trophy
+              color={color}
+              size={size}
+            />
           ),
         }}
       />
@@ -110,8 +156,15 @@ const MainTabNavigator: React.FC = () => {
         component={ProfileScreen}
         options={{
           tabBarLabel: "Perfil",
-          tabBarIcon: ({ color, size }) => (
-            <User color={color} size={size} />
+
+          tabBarIcon: ({
+            color,
+            size,
+          }) => (
+            <User
+              color={color}
+              size={size}
+            />
           ),
         }}
       />
@@ -120,46 +173,87 @@ const MainTabNavigator: React.FC = () => {
 };
 
 export const RootNavigator: React.FC = () => {
-  const [initialRouteName, setInitialRouteName] =
-    useState<keyof RootStackParamList | null>(null);
+  const [
+    initialRouteName,
+    setInitialRouteName,
+  ] =
+    useState<
+      keyof RootStackParamList | null
+    >(null);
 
   useEffect(() => {
-    const verificarSessao = async () => {
-      const usuario = await obterUsuarioSessao();
+    const verificarSessao =
+      async () => {
+        const usuario =
+          await obterUsuarioSessao();
 
-      if (usuario) {
-        setInitialRouteName("MainTabs");
-      } else {
-        setInitialRouteName("Login");
-      }
-    };
+        if (usuario) {
+          setInitialRouteName(
+            "MainTabs"
+          );
+        } else {
+          setInitialRouteName(
+            "Login"
+          );
+        }
+      };
 
     verificarSessao();
   }, []);
 
   if (!initialRouteName) {
     return (
-      <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#2563EB" />
+      <View
+        style={
+          styles.loadingContainer
+        }
+      >
+        <ActivityIndicator
+          size="large"
+          color="#2563EB"
+        />
       </View>
     );
   }
 
   return (
     <Stack.Navigator
-      initialRouteName={initialRouteName}
+      initialRouteName={
+        initialRouteName
+      }
       screenOptions={{
         headerShown: false,
       }}
     >
-      <Stack.Screen name="Login" component={LoginScreen} />
-      <Stack.Screen name="MainTabs" component={MainTabNavigator} />
+      <Stack.Screen
+        name="Login"
+        component={LoginScreen}
+      />
 
-      <Stack.Screen name="NewSubject" component={NewSubjectScreen} />
-      <Stack.Screen name="EditSubject" component={EditSubjectScreen} />
+      <Stack.Screen
+        name="MainTabs"
+        component={MainTabNavigator}
+      />
 
-      <Stack.Screen name="NewTask" component={NewTaskScreen} />
-      <Stack.Screen name="NewAttendance" component={NewAttendanceScreen} />
+      <Stack.Screen
+        name="NewSubject"
+        component={NewSubjectScreen}
+      />
+
+      <Stack.Screen
+        name="EditSubject"
+        component={EditSubjectScreen}
+      />
+
+      <Stack.Screen
+        name="NewTask"
+        component={NewTaskScreen}
+      />
+
+      <Stack.Screen
+        name="NewAttendance"
+        component={NewAttendanceScreen}
+      />
 
       <Stack.Screen
         name="Evaluations"
@@ -171,9 +265,25 @@ export const RootNavigator: React.FC = () => {
         component={NewEvaluationScreen}
       />
 
-      <Stack.Screen name="EditProfile" component={EditProfileScreen} />
-      <Stack.Screen name="Periods" component={PeriodsScreen} />
-      <Stack.Screen name="NewPeriod" component={NewPeriodScreen} />
+      <Stack.Screen
+        name="EditEvaluation"
+        component={EditEvaluationScreen}
+      />
+
+      <Stack.Screen
+        name="EditProfile"
+        component={EditProfileScreen}
+      />
+
+      <Stack.Screen
+        name="Periods"
+        component={PeriodsScreen}
+      />
+
+      <Stack.Screen
+        name="NewPeriod"
+        component={NewPeriodScreen}
+      />
     </Stack.Navigator>
   );
 };
