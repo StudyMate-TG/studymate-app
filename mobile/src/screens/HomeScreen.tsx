@@ -26,6 +26,9 @@ import {
 
 import { obterUsuarioSessao } from "../services/authService";
 
+import * as tarefaService from "../services/tarefaService";
+import type { TarefaResponse } from "../services/tarefaService";
+
 import { MobileHeader } from "../components/MobileHeader";
 import { Card } from "../components/Card";
 import { Button } from "../components/Button";
@@ -50,18 +53,42 @@ export const HomeScreen: React.FC = () => {
     null
   );
 
+  const [tarefas, setTarefas] = useState<TarefaResponse[]>([]);
+
   const [isActionModalVisible, setIsActionModalVisible] = useState(false);
 
-  useEffect(() => {
-    const carregarUsuario = async () => {
+useEffect(() => {
+  const carregarDados = async () => {
+    try {
       const usuario = await obterUsuarioSessao();
-      setUsuarioLogado(usuario);
-    };
 
-    if (isFocused) {
-      carregarUsuario();
+      setUsuarioLogado(usuario);
+
+      if (!usuario?.idUsuario) {
+        setTarefas([]);
+        return;
+      }
+
+      console.log("ID do usuário na Home:", usuario.idUsuario);
+
+console.log("Exports do tarefaService:", Object.keys(tarefaService));
+
+const tarefasDoUsuario = await tarefaService.listarTarefas(
+  usuario.idUsuario
+);
+console.log("Tarefas recebidas na Home:", tarefasDoUsuario);
+
+setTarefas(tarefasDoUsuario);
+    } catch (error) {
+      console.error("Erro ao carregar dados da Home:", error);
+      setTarefas([]);
     }
-  }, [isFocused]);
+  };
+
+  if (isFocused) {
+    carregarDados();
+  }
+}, [isFocused]);
 
   const nomeExibicao = useMemo(() => {
     if (!usuarioLogado?.nome) {
@@ -80,6 +107,27 @@ export const HomeScreen: React.FC = () => {
     setIsActionModalVisible(false);
     navigation.navigate("NewAttendance");
   };
+
+  const formatarDataTarefa = (data: string) => {
+  if (!data) {
+    return "-";
+  }
+
+  const [dataParte, horaParte] = data.split("T");
+  const [ano, mes, dia] = dataParte.split("-");
+
+  if (!ano || !mes || !dia) {
+    return data;
+  }
+
+  if (!horaParte) {
+    return `${dia}/${mes}/${ano}`;
+  }
+
+  const hora = horaParte.substring(0, 5);
+
+  return `${dia}/${mes}/${ano} ${hora}`;
+};
 
   return (
     <View style={styles.container}>
@@ -139,11 +187,35 @@ export const HomeScreen: React.FC = () => {
           </Pressable>
         </View>
 
-        <Card style={styles.infoCard}>
-          <Text style={styles.infoCardText}>
-            Nenhuma entrega próxima cadastrada.
+        {tarefas.length === 0 ? (
+  <Card style={styles.infoCard}>
+    <Text style={styles.infoCardText}>
+      Nenhuma entrega próxima cadastrada.
+    </Text>
+  </Card>
+) : (
+  tarefas.map((tarefa) => (
+    <Card key={tarefa.idTarefa} style={styles.taskCard}>
+      <View style={styles.taskHeader}>
+        <View style={styles.taskContent}>
+          <Text style={styles.taskTitle}>
+            {tarefa.titulo}
           </Text>
-        </Card>
+        </View>
+
+        <View style={styles.priorityBadge}>
+          <Text style={styles.priorityText}>
+            {tarefa.prioridade}
+          </Text>
+        </View>
+      </View>
+
+      <Text style={styles.taskDate}>
+        Entrega: {formatarDataTarefa(tarefa.dataEntrega)}
+      </Text>
+    </Card>
+  ))
+)}
       </ScrollView>
 
       <Pressable
@@ -383,4 +455,50 @@ const styles = StyleSheet.create({
   cancelModalButton: {
     marginTop: 2,
   },
+  taskCard: {
+  marginBottom: 12,
+},
+
+taskHeader: {
+  flexDirection: "row",
+  justifyContent: "space-between",
+  alignItems: "flex-start",
+},
+
+taskContent: {
+  flex: 1,
+  marginRight: 12,
+},
+
+taskTitle: {
+  fontSize: 16,
+  fontWeight: "700",
+  color: "#0F172A",
+},
+
+taskSubject: {
+  fontSize: 13,
+  color: "#64748B",
+  marginTop: 4,
+},
+
+taskDate: {
+  fontSize: 13,
+  color: "#475569",
+  marginTop: 12,
+},
+
+priorityBadge: {
+  backgroundColor: "#EFF6FF",
+  paddingHorizontal: 8,
+  paddingVertical: 4,
+  borderRadius: 8,
+},
+
+priorityText: {
+  fontSize: 11,
+  fontWeight: "700",
+  color: "#2563EB",
+},
+
 });
