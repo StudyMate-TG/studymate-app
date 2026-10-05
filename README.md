@@ -45,7 +45,8 @@ Acesse os [Casos de Uso de Alto Nível](docs/use_case_diagram.svg).
 
 - [Backlog e Casos de Uso](docs/backlog.md)
 - [Diagrama de Classes](docs/class_diagram.jpg)
-- [Diagrama Entidade Relacionamento - Modelo Lógico](docs/der_logico.jpg)
+- [Diagrama Entidade Relacionamento - Modelo Lógico Oracle](docs/der_logico.jpg)
+- [Diagrama Entidade Relacionamento - Modelo Lógico SQLite](docs/modelo_logico_sqlite.jpg)
 - [Resultado de Pesquisa de Opinião](docs/user_research_results.md)
 
 ## **Tecnologias que serão usadas:**
