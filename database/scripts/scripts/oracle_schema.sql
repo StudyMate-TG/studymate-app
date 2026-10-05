@@ -62,6 +62,9 @@ CREATE TABLE tarefa (
     status VARCHAR2(20) NOT NULL,
     prioridade VARCHAR2(20) NOT NULL,
     xp_gerado NUMBER(38) NOT NULL,
+    updated_at TIMESTAMP WITH TIME ZONE,
+    deleted_at TIMESTAMP WITH TIME ZONE,
+    version NUMBER(19),
     CONSTRAINT pk_tarefa PRIMARY KEY (id_tarefa),
     CONSTRAINT fk_tarefa_disciplina FOREIGN KEY (id_disciplina)
         REFERENCES disciplina (id_disciplina),
@@ -147,9 +150,25 @@ CREATE TABLE progresso_estudante (
     CONSTRAINT ck_progresso_maior_seq CHECK (maior_sequencia >= 0)
 );
 
--- =========================
--- SEQUENCES
--- =========================
+CREATE TABLE sync_request (
+    client_tx_id VARCHAR2(36) NOT NULL,
+    id_usuario NUMBER(38) NOT NULL,
+    entity_type VARCHAR2(30) NOT NULL,
+    operation VARCHAR2(10) NOT NULL,
+    response_resource_id NUMBER(38),
+    processed_at TIMESTAMP WITH TIME ZONE DEFAULT SYSTIMESTAMP NOT NULL,
+    CONSTRAINT pk_sync_request
+        PRIMARY KEY (client_tx_id),
+    CONSTRAINT fk_sync_request_usuario
+        FOREIGN KEY (id_usuario)
+        REFERENCES usuario (id_usuario)
+);
+
+CREATE INDEX ix_tarefa_disc_upd
+    ON tarefa (id_disciplina, updated_at);
+
+CREATE INDEX ix_tarefa_deleted
+    ON tarefa (deleted_at);
 
 CREATE SEQUENCE seq_usuario
     START WITH 1
