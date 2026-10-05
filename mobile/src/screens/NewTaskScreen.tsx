@@ -1,5 +1,4 @@
-import React, { useState } from "react";
-
+import React, { useEffect, useState } from "react";
 import {
   View,
   Text,
@@ -14,14 +13,21 @@ import {
 import { useNavigation } from "@react-navigation/native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 
-import { RootStackParamList } from "../types";
-
+import { RootStackParamList, DisciplinaResponse } from "../types";
 import { MobileHeader } from "../components/MobileHeader";
 import { Card } from "../components/Card";
 import { Input } from "../components/Input";
 import { Button } from "../components/Button";
 
+
 import { CheckCircle2 } from "lucide-react-native";
+
+import { cadastrarTarefa } from "../services/tarefaService";
+
+import { obterUsuarioSessao } from "../services/authService";
+import { listarDisciplinas } from "../services/disciplinaService";
+import axios from "axios";
+
 
 type Priority = "low" | "medium" | "high";
 
@@ -42,6 +48,10 @@ export const NewTaskScreen: React.FC = () => {
 
   const [showSuccess, setShowSuccess] = useState(false);
 
+  const [disciplinas, setDisciplinas] = useState<DisciplinaResponse[]>([]);
+const [idDisciplinaSelecionada, setIdDisciplinaSelecionada] =
+  useState<number | null>(null);
+
   const [form, setForm] = useState({
     title: "",
     subject: "",
@@ -57,6 +67,31 @@ export const NewTaskScreen: React.FC = () => {
       Alert.alert(title, message);
     }
   };
+
+  useEffect(() => {
+  const carregarDisciplinas = async () => {
+    try {
+      const usuario = await obterUsuarioSessao();
+
+      if (!usuario?.idUsuario) {
+        throw new Error("Usuário não encontrado. Faça login novamente.");
+      }
+
+      const dados = await listarDisciplinas(usuario.idUsuario);
+
+      setDisciplinas(dados);
+    } catch (error) {
+      showAlert(
+        "Erro",
+        error instanceof Error
+          ? error.message
+          : "Erro ao carregar disciplinas."
+      );
+    }
+  };
+
+  carregarDisciplinas();
+}, []);
 
   const isValidDateTime = (value: string) => {
     const regex = /^(\d{2})\/(\d{2})\/(\d{4})(?:\s+(\d{2}):(\d{2}))?$/;
@@ -96,22 +131,74 @@ export const NewTaskScreen: React.FC = () => {
     );
   };
 
-  const handleSubmit = () => {
-    if (!form.title.trim()) {
-      showAlert("Atenção", "Informe o título da tarefa.");
-      return;
-    }
+  const converterDataParaBackend = (data: string) => {
+  const valor = data.trim();
 
-    if (form.dueDate.trim() && !isValidDateTime(form.dueDate.trim())) {
-      showAlert(
-        "Atenção",
-        "Informe a data no formato DD/MM/AAAA ou DD/MM/AAAA HH:mm."
-      );
-      return;
-    }
+  const [dataParte, horaParte = "23:59"] = valor.split(" ");
+  const [dia, mes, ano] = dataParte.split("/");
 
-    setShowSuccess(true);
-  };
+  return `${ano}-${mes}-${dia}T${horaParte}:00`;
+};
+
+  const handleSubmit = async () => {
+  if (!form.title.trim()) {
+    showAlert("Atenção", "Informe o título da tarefa.");
+    return;
+  }
+
+  if (!form.dueDate.trim()) {
+    showAlert("Atenção", "Informe a data de entrega.");
+    return;
+  }
+
+  if (idDisciplinaSelecionada === null) {
+  showAlert("Atenção", "Selecione uma disciplina.");
+  return;
+}
+
+  if (!isValidDateTime(form.dueDate.trim())) {
+    showAlert(
+      "Atenção",
+      "Informe a data no formato DD/MM/AAAA ou DD/MM/AAAA HH:mm."
+    );
+    return;
+  }
+
+ try {
+  // Busca o usuário que está logado no app
+  const usuario = await obterUsuarioSessao();
+
+  if (!usuario?.idUsuario) {
+    showAlert(
+      "Erro",
+      "Usuário não encontrado. Faça login novamente."
+    );
+    return;
+  }
+
+  await cadastrarTarefa({
+    idUsuario: usuario.idUsuario, // agora usa o usuário logado
+    idDisciplina: idDisciplinaSelecionada, // por enquanto deixa 1
+    titulo: form.title,
+    tipo: "TAREFA",
+    descricao: form.description,
+    dataHoraInicio: null,
+    dataEntrega: converterDataParaBackend(form.dueDate),
+    prioridade: form.priority.toUpperCase(),
+  });
+
+  setShowSuccess(true);
+} catch (error) {
+  console.error("Erro ao cadastrar tarefa:", error);
+
+  showAlert(
+    "Erro",
+    error instanceof Error
+      ? error.message
+      : "Não foi possível cadastrar a tarefa."
+    );
+  }
+};
 
   if (showSuccess) {
     return (
@@ -168,12 +255,41 @@ export const NewTaskScreen: React.FC = () => {
             onChangeText={(text) => setForm({ ...form, title: text })}
           />
 
-          <Input
-            label="Disciplina"
-            placeholder="Ex: Banco de Dados"
-            value={form.subject}
-            onChangeText={(text) => setForm({ ...form, subject: text })}
-          />
+          <Text style={styles.sectionLabel}>Disciplina</Text>
+
+<View style={styles.subjectContainer}>
+  {disciplinas.map((disciplina) => {
+    const selecionada =
+      idDisciplinaSelecionada === disciplina.idDisciplina;
+
+    return (
+      <Pressable
+        key={disciplina.idDisciplina}
+        onPress={() => {
+          setIdDisciplinaSelecionada(disciplina.idDisciplina);
+
+          setForm({
+            ...form,
+            subject: disciplina.nome,
+          });
+        }}
+        style={[
+          styles.subjectButton,
+          selecionada && styles.subjectButtonSelected,
+        ]}
+      >
+        <Text
+          style={[
+            styles.subjectText,
+            selecionada && styles.subjectTextSelected,
+          ]}
+        >
+          {disciplina.nome}
+        </Text>
+      </Pressable>
+    );
+  })}
+</View>
 
           <Input
             label="Data e Hora de Entrega"
@@ -364,4 +480,31 @@ const styles = StyleSheet.create({
     width: "100%",
     maxWidth: 240,
   },
+  subjectContainer: {
+  gap: 8,
+  marginBottom: 16,
+},
+
+subjectButton: {
+  padding: 12,
+  borderRadius: 10,
+  borderWidth: 1,
+  borderColor: "#E2E8F0",
+  backgroundColor: "#FFFFFF",
+},
+
+subjectButtonSelected: {
+  borderColor: "#2563EB",
+  backgroundColor: "#EFF6FF",
+},
+
+subjectText: {
+  fontSize: 14,
+  color: "#64748B",
+},
+
+subjectTextSelected: {
+  color: "#2563EB",
+  fontWeight: "700",
+},
 });
