@@ -15,6 +15,7 @@ export type TarefaResponse = {
   idTarefa: number;
   idUsuario: number;
   idDisciplina: number;
+  nomeDisciplina: string;
   titulo: string;
   tipo: string;
   descricao: string | null;
@@ -84,4 +85,64 @@ export const listarTarefas = async (
   );
 
   return handleResponse<TarefaResponse[]>(response);
+};
+
+export const buscarTarefaPorId = async (
+  idTarefa: number,
+  idUsuario: number
+): Promise<TarefaResponse> => {
+  const response = await fetch(
+    `${API_BASE_URL}/tarefas/${idTarefa}?idUsuario=${idUsuario}`
+  );
+
+  return handleResponse<TarefaResponse>(response);
+};
+
+export const atualizarTarefa = async (
+  idTarefa: number,
+  idUsuario: number,
+  payload: TarefaRequest
+): Promise<TarefaResponse> => {
+  const response = await fetch(
+    `${API_BASE_URL}/tarefas/${idTarefa}?idUsuario=${idUsuario}`,
+    {
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(payload),
+    }
+  );
+
+  return handleResponse<TarefaResponse>(response);
+};
+export const excluirTarefa = async (
+  idTarefa: number,
+  idUsuario: number
+): Promise<void> => {
+  const response = await fetch(
+    `${API_BASE_URL}/tarefas/${idTarefa}?idUsuario=${idUsuario}`,
+    {
+      method: "DELETE",
+    }
+  );
+
+  if (!response.ok) {
+    const text = await response.text();
+
+    let data: any = {};
+
+    try {
+      data = text ? JSON.parse(text) : {};
+    } catch {
+      data = {};
+    }
+
+    throw new Error(
+      data.mensagem ||
+        data.message ||
+        text ||
+        "Erro ao excluir tarefa."
+    );
+  }
 };
