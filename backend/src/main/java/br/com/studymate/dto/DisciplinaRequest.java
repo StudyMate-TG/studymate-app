@@ -2,6 +2,7 @@ package br.com.studymate.dto;
 
 public class DisciplinaRequest {
 
+    @com.fasterxml.jackson.annotation.JsonIgnore
     private Integer idUsuario;
 
     private Integer idPeriodo;

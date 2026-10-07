@@ -27,7 +27,7 @@ import {
 import { obterUsuarioSessao } from "../services/authService";
 
 import * as tarefaService from "../services/tarefaService";
-import type { TarefaResponse } from "../services/tarefaService";
+import type { TarefaResumoResponse } from "../services/tarefaService";
 
 import { MobileHeader } from "../components/MobileHeader";
 import { Card } from "../components/Card";
@@ -53,42 +53,47 @@ export const HomeScreen: React.FC = () => {
     null
   );
 
-  const [tarefas, setTarefas] = useState<TarefaResponse[]>([]);
+  const [tarefas, setTarefas] = useState<TarefaResumoResponse[]>([]);
+  const [nextPage, setNextPage] = useState<number | null>(null);
+  const [carregandoTarefas, setCarregandoTarefas] = useState(false);
+  const [erroTarefas, setErroTarefas] = useState("");
 
   const [isActionModalVisible, setIsActionModalVisible] = useState(false);
 
-useEffect(() => {
-  const carregarDados = async () => {
-    try {
-      const usuario = await obterUsuarioSessao();
-
-      setUsuarioLogado(usuario);
-
-      if (!usuario?.idUsuario) {
+  useEffect(() => {
+    let ativo = true;
+    const carregarDados = async () => {
+      setCarregandoTarefas(true);
+      setErroTarefas("");
+      try {
+        const usuario = await obterUsuarioSessao();
+        if (!ativo) return;
+        setUsuarioLogado(usuario);
         setTarefas([]);
-        return;
-      }
+        setNextPage(null);
+        if (!usuario?.idUsuario) return;
+        const pagina = await tarefaService.listarTarefas(usuario.idUsuario);
+        if (ativo) { setTarefas(pagina.tarefas); setNextPage(pagina.nextPage); }
+      } catch (error) {
+        if (ativo) setErroTarefas(error instanceof Error ? error.message : "Erro ao carregar tarefas.");
+      } finally { if (ativo) setCarregandoTarefas(false); }
+    };
+    if (isFocused) void carregarDados();
+    return () => { ativo = false; };
+  }, [isFocused]);
 
-      console.log("ID do usuário na Home:", usuario.idUsuario);
-
-console.log("Exports do tarefaService:", Object.keys(tarefaService));
-
-const tarefasDoUsuario = await tarefaService.listarTarefas(
-  usuario.idUsuario
-);
-console.log("Tarefas recebidas na Home:", tarefasDoUsuario);
-
-setTarefas(tarefasDoUsuario);
+  const carregarMaisTarefas = async () => {
+    if (!usuarioLogado || nextPage === null || carregandoTarefas) return;
+    setCarregandoTarefas(true);
+    setErroTarefas("");
+    try {
+      const pagina = await tarefaService.listarTarefas(usuarioLogado.idUsuario, nextPage);
+      setTarefas((anteriores) => [...anteriores, ...pagina.tarefas.filter((nova) => !anteriores.some((atual) => atual.idTarefa === nova.idTarefa))]);
+      setNextPage(pagina.nextPage);
     } catch (error) {
-      console.error("Erro ao carregar dados da Home:", error);
-      setTarefas([]);
-    }
+      setErroTarefas(error instanceof Error ? error.message : "Erro ao carregar tarefas.");
+    } finally { setCarregandoTarefas(false); }
   };
-
-  if (isFocused) {
-    carregarDados();
-  }
-}, [isFocused]);
 
   const nomeExibicao = useMemo(() => {
     if (!usuarioLogado?.nome) {
@@ -190,7 +195,7 @@ setTarefas(tarefasDoUsuario);
         {tarefas.length === 0 ? (
   <Card style={styles.infoCard}>
     <Text style={styles.infoCardText}>
-      Nenhuma entrega próxima cadastrada.
+      {carregandoTarefas ? "Carregando entregas..." : erroTarefas || "Nenhuma entrega próxima cadastrada."}
     </Text>
   </Card>
 ) : (
@@ -216,6 +221,8 @@ setTarefas(tarefasDoUsuario);
     </Card>
   ))
 )}
+        {erroTarefas && tarefas.length > 0 ? <Text style={styles.infoCardText}>{erroTarefas}</Text> : null}
+        {nextPage !== null ? <Button title="Carregar mais entregas" variant="outline" onPress={carregarMaisTarefas} loading={carregandoTarefas} /> : null}
       </ScrollView>
 
       <Pressable

@@ -1,3 +1,4 @@
+import { apiFetch, handleResponse } from "./apiClient";
 import { API_BASE_URL } from "./apiConfig";
 
 export type AvaliacaoRequest = {
@@ -25,29 +26,6 @@ export type MediaDisciplinaResponse = {
   avaliacoesPendentes: number;
 };
 
-const handleResponse = async <T>(
-  response: Response
-): Promise<T> => {
-  let data: any = null;
-
-  try {
-    data = await response.json();
-  } catch {
-    // Algumas respostas, como DELETE,
-    // podem não possuir corpo JSON.
-  }
-
-  if (!response.ok) {
-    const mensagem =
-      data?.mensagem ||
-      "Erro ao processar a solicitação.";
-
-    throw new Error(mensagem);
-  }
-
-  return data as T;
-};
-
 export const listarAvaliacoes = async (
   idUsuario: number,
   idDisciplina: number
@@ -57,7 +35,7 @@ export const listarAvaliacoes = async (
     idDisciplina: idDisciplina.toString(),
   });
 
-  const response = await fetch(
+  const response = await apiFetch(
     `${API_BASE_URL}/avaliacoes?${params.toString()}`
   );
 
@@ -70,7 +48,7 @@ export const buscarAvaliacaoPorId = async (
   idAvaliacao: number,
   idUsuario: number
 ): Promise<AvaliacaoResponse> => {
-  const response = await fetch(
+  const response = await apiFetch(
     `${API_BASE_URL}/avaliacoes/${idAvaliacao}?idUsuario=${idUsuario}`
   );
 
@@ -83,7 +61,7 @@ export const cadastrarAvaliacao = async (
   idUsuario: number,
   payload: AvaliacaoRequest
 ): Promise<AvaliacaoResponse> => {
-  const response = await fetch(
+  const response = await apiFetch(
     `${API_BASE_URL}/avaliacoes?idUsuario=${idUsuario}`,
     {
       method: "POST",
@@ -104,7 +82,7 @@ export const atualizarAvaliacao = async (
   idUsuario: number,
   payload: AvaliacaoRequest
 ): Promise<AvaliacaoResponse> => {
-  const response = await fetch(
+  const response = await apiFetch(
     `${API_BASE_URL}/avaliacoes/${idAvaliacao}?idUsuario=${idUsuario}`,
     {
       method: "PUT",
@@ -124,7 +102,7 @@ export const excluirAvaliacao = async (
   idAvaliacao: number,
   idUsuario: number
 ): Promise<void> => {
-  const response = await fetch(
+  const response = await apiFetch(
     `${API_BASE_URL}/avaliacoes/${idAvaliacao}?idUsuario=${idUsuario}`,
     {
       method: "DELETE",
@@ -158,7 +136,7 @@ export const buscarMediaDisciplina = async (
     idDisciplina: idDisciplina.toString(),
   });
 
-  const response = await fetch(
+  const response = await apiFetch(
     `${API_BASE_URL}/avaliacoes/media?${params.toString()}`
   );
 

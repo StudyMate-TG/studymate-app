@@ -9,6 +9,7 @@ import br.com.studymate.repository.PeriodoLetivoRepository;
 import br.com.studymate.repository.UsuarioRepository;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
@@ -30,17 +31,20 @@ public class DisciplinaService {
         this.periodoService = periodoService;
     }
 
+    @PreAuthorize("#idUsuario != null and #idUsuario.toString() == authentication.name")
     public List<DisciplinaResponse> listar(Integer idUsuario, String termo) {
         validarIdUsuario(idUsuario);
         String busca = termo == null || termo.isBlank() ? "%" : "%" + termo.trim().replace("!", "!!") + "%";
         return disciplinaRepository.listarPorUsuario(idUsuario, busca);
     }
 
+    @PreAuthorize("#idUsuario != null and #idUsuario.toString() == authentication.name")
     public DisciplinaResponse consultarPorId(Integer idDisciplina, Integer idUsuario) {
         return resposta(buscarDoUsuario(idDisciplina, idUsuario), idUsuario);
     }
 
     @Transactional
+    @PreAuthorize("#request != null and #request.idUsuario != null and #request.idUsuario.toString() == authentication.name")
     public DisciplinaResponse cadastrar(DisciplinaRequest request) {
         validarDadosDisciplina(request);
         bloquearUsuario(request.getIdUsuario());
@@ -56,6 +60,7 @@ public class DisciplinaService {
     }
 
     @Transactional
+    @PreAuthorize("#idUsuario != null and #idUsuario.toString() == authentication.name")
     public DisciplinaResponse alterar(Integer idDisciplina, Integer idUsuario, DisciplinaRequest request) {
         validarDadosDisciplina(request);
         validarIdUsuario(idUsuario);
@@ -70,6 +75,7 @@ public class DisciplinaService {
     }
 
     @Transactional
+    @PreAuthorize("#idUsuario != null and #idUsuario.toString() == authentication.name")
     public void excluir(Integer idDisciplina, Integer idUsuario) {
         bloquearUsuario(idUsuario);
         Disciplina disciplina = buscarDoUsuario(idDisciplina, idUsuario);

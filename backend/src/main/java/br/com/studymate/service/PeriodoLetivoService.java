@@ -7,6 +7,7 @@ import br.com.studymate.repository.DisciplinaRepository;
 import br.com.studymate.repository.PeriodoLetivoRepository;
 import br.com.studymate.repository.UsuarioRepository;
 import org.springframework.stereotype.Service;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
@@ -28,6 +29,7 @@ public class PeriodoLetivoService {
         this.disciplinaRepository = disciplinaRepository;
     }
 
+    @PreAuthorize("#idUsuario != null and #idUsuario.toString() == authentication.name")
     public List<PeriodoLetivoResponse> listar(Integer idUsuario) {
         validarIdUsuario(idUsuario);
         validarUsuarioExiste(idUsuario);
@@ -35,10 +37,12 @@ public class PeriodoLetivoService {
                 .stream().map(PeriodoLetivoResponse::new).toList();
     }
 
+    @PreAuthorize("#idUsuario != null and #idUsuario.toString() == authentication.name")
     public PeriodoLetivoResponse consultarPorId(Integer idPeriodo, Integer idUsuario) {
         return new PeriodoLetivoResponse(buscarDoUsuario(idPeriodo, idUsuario));
     }
 
+    @PreAuthorize("#idUsuario != null and #idUsuario.toString() == authentication.name")
     public PeriodoLetivoResponse consultarAtivo(Integer idUsuario) {
         validarIdUsuario(idUsuario);
         validarUsuarioExiste(idUsuario);
@@ -48,6 +52,7 @@ public class PeriodoLetivoService {
     }
 
     @Transactional
+    @PreAuthorize("#request != null and #request.idUsuario != null and #request.idUsuario.toString() == authentication.name")
     public PeriodoLetivoResponse cadastrar(PeriodoLetivoRequest request) {
         validarRequest(request);
         bloquearUsuario(request.getIdUsuario());
@@ -61,6 +66,7 @@ public class PeriodoLetivoService {
     }
 
     @Transactional
+    @PreAuthorize("#idUsuario != null and #idUsuario.toString() == authentication.name")
     public PeriodoLetivoResponse alterar(Integer idPeriodo, Integer idUsuario, PeriodoLetivoRequest request) {
         validarIdPeriodo(idPeriodo);
         validarIdUsuario(idUsuario);
@@ -82,6 +88,7 @@ public class PeriodoLetivoService {
     }
 
     @Transactional
+    @PreAuthorize("#idUsuario != null and #idUsuario.toString() == authentication.name")
     public PeriodoLetivoResponse ativar(Integer idPeriodo, Integer idUsuario) {
         validarIdPeriodo(idPeriodo);
         bloquearUsuario(idUsuario);
@@ -92,6 +99,7 @@ public class PeriodoLetivoService {
     }
 
     @Transactional
+    @PreAuthorize("#idUsuario != null and #idUsuario.toString() == authentication.name")
     public void excluir(Integer idPeriodo, Integer idUsuario) {
         validarIdPeriodo(idPeriodo);
         bloquearUsuario(idUsuario);
@@ -105,6 +113,7 @@ public class PeriodoLetivoService {
 
     // O lock do usuario serializa alteracoes dos periodos e disciplinas desse usuario.
     @Transactional
+    @PreAuthorize("#idUsuario != null and #idUsuario.toString() == authentication.name")
     public PeriodoLetivo obterOuCriarPeriodoPadrao(Integer idUsuario) {
         bloquearUsuario(idUsuario);
         return periodoRepository.findFirstByIdUsuarioAndStatusOrderByIdPeriodoDesc(idUsuario, "ATIVO")

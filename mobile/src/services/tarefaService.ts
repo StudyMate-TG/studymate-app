@@ -1,3 +1,4 @@
+import { apiFetch, handleResponse } from "./apiClient";
 import { API_BASE_URL } from "./apiConfig";
 
 export type TarefaRequest = {
@@ -25,30 +26,6 @@ export type TarefaResponse = {
   prioridade: string;
 };
 
-const handleResponse = async <T>(response: Response): Promise<T> => {
-  const text = await response.text();
-
-  let data: any = {};
-
-  try {
-    data = text ? JSON.parse(text) : {};
-  } catch {
-    data = {};
-  }
-
-  if (!response.ok) {
-    throw new Error(
-      data.mensagem ||
-        data.message ||
-        data.error ||
-        text ||
-        "Erro ao processar a requisição."
-    );
-  }
-
-  return data as T;
-};
-
 export const cadastrarTarefa = async (
   payload: TarefaRequest
 ): Promise<TarefaResponse> => {
@@ -63,9 +40,8 @@ export const cadastrarTarefa = async (
     prioridade: payload.prioridade,
   };
 
-  console.log("Body enviado para API de tarefas:", body);
 
-  const response = await fetch(`${API_BASE_URL}/tarefas`, {
+  const response = await apiFetch(`${API_BASE_URL}/tarefas`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -76,12 +52,24 @@ export const cadastrarTarefa = async (
   return handleResponse<TarefaResponse>(response);
 };
 
-export const listarTarefas = async (
-  idUsuario: number
-): Promise<TarefaResponse[]> => {
-  const response = await fetch(
-    `${API_BASE_URL}/tarefas?idUsuario=${idUsuario}`
-  );
+export type TarefaResumoResponse = Omit<TarefaResponse, "descricao">;
+export type PaginaTarefas = { tarefas: TarefaResumoResponse[]; nextPage: number | null };
 
-  return handleResponse<TarefaResponse[]>(response);
+export const listarTarefas = async (
+  idUsuario: number,
+  page = 0,
+  size = 50
+): Promise<PaginaTarefas> => {
+  if (!Number.isInteger(page) || page < 0 || !Number.isInteger(size) || size < 1 || size > 50) {
+    throw new Error("Página de tarefas inválida.");
+  }
+  const response = await apiFetch(
+    `${API_BASE_URL}/tarefas?idUsuario=${idUsuario}&page=${page}&size=${size}`
+  );
+  const tarefas = await handleResponse<TarefaResumoResponse[]>(response);
+  const header = response.headers.get("X-Next-Page");
+  const nextPage = header !== null && /^\d+$/.test(header) && Number(header) === page + 1
+    ? Number(header)
+    : tarefas.length === size ? page + 1 : null;
+  return { tarefas, nextPage };
 };

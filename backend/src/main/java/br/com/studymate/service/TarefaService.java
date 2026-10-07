@@ -2,12 +2,16 @@ package br.com.studymate.service;
 
 import br.com.studymate.dto.TarefaRequest;
 import br.com.studymate.dto.TarefaResponse;
+import br.com.studymate.dto.TarefaResumoResponse;
 import br.com.studymate.model.Disciplina;
 import br.com.studymate.model.Tarefa;
 import br.com.studymate.repository.DisciplinaRepository;
 import br.com.studymate.repository.TarefaRepository;
 import br.com.studymate.repository.UsuarioRepository;
 import org.springframework.stereotype.Service;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
@@ -20,22 +24,47 @@ public class TarefaService {
     private final TarefaRepository tarefaRepository;
     private final DisciplinaRepository disciplinaRepository;
     private final UsuarioRepository usuarioRepository;
+    private final int maxCount;
+    private final int maxDescription;
+    private final long maxStoredChars;
 
     public TarefaService(
             TarefaRepository tarefaRepository,
             DisciplinaRepository disciplinaRepository,
-            UsuarioRepository usuarioRepository) {
+            UsuarioRepository usuarioRepository,
+            @Value("${app.tasks.max-count:1000}") int maxCount,
+            @Value("${app.tasks.max-description:4096}") int maxDescription,
+            @Value("${app.tasks.max-stored-chars:4096000}") long maxStoredChars) {
 
         this.tarefaRepository = tarefaRepository;
         this.disciplinaRepository = disciplinaRepository;
         this.usuarioRepository = usuarioRepository;
+        if (maxCount < 1 || maxCount > 1000
+                || maxDescription < 1 || maxDescription > 4096
+                || maxStoredChars < 1 || maxStoredChars > 4096000L) {
+            throw new IllegalArgumentException("Os limites de tarefas excedem os limites permitidos.");
+        }
+        this.maxCount = maxCount;
+        this.maxDescription = maxDescription;
+        this.maxStoredChars = maxStoredChars;
     }
 
-    public List<TarefaResponse> listar(Integer idUsuario) {
+    @PreAuthorize("#idUsuario != null and #idUsuario.toString() == authentication.name")
+    public List<TarefaResumoResponse> listar(Integer idUsuario) {
+        return listar(idUsuario, 0, 50);
+    }
+
+    @PreAuthorize("#idUsuario != null and #idUsuario.toString() == authentication.name")
+    public List<TarefaResumoResponse> listar(Integer idUsuario, Integer page, Integer size) {
         validarIdUsuario(idUsuario);
-        return tarefaRepository.listarPorUsuario(idUsuario);
+        if (page == null || page < 0 || page > 10000
+                || size == null || size < 1 || size > 50) {
+            throw new IllegalArgumentException("Informe page entre 0 e 10000 e size entre 1 e 50.");
+        }
+        return tarefaRepository.listarPorUsuario(idUsuario, PageRequest.of(page, size));
     }
 
+    @PreAuthorize("#idUsuario != null and #idUsuario.toString() == authentication.name")
     public TarefaResponse consultarPorId(
             Integer idTarefa,
             Integer idUsuario) {
@@ -46,11 +75,13 @@ public class TarefaService {
     }
 
     @Transactional
+    @PreAuthorize("#request != null and #request.idUsuario != null and #request.idUsuario.toString() == authentication.name")
     public TarefaResponse cadastrar(TarefaRequest request) {
 
         validarDadosTarefa(request);
 
         bloquearUsuario(request.getIdUsuario());
+        validarCotaCadastro(request.getIdUsuario(), tamanhoDescricaoNormalizada(request));
 
         Disciplina disciplina =
                 disciplinaRepository.buscarPorIdEUsuario(
@@ -86,6 +117,7 @@ public class TarefaService {
     }
 
     @Transactional
+    @PreAuthorize("#idUsuario != null and #idUsuario.toString() == authentication.name")
     public TarefaResponse alterar(
             Integer idTarefa,
             Integer idUsuario,
@@ -104,8 +136,7 @@ public class TarefaService {
 
         bloquearUsuario(idUsuario);
 
-        Tarefa tarefa =
-                buscarDoUsuario(idTarefa, idUsuario);
+        long tamanhoAnterior = tamanhoDescricaoDoUsuario(idTarefa, idUsuario);
 
         Disciplina disciplina =
                 disciplinaRepository.buscarPorIdEUsuario(
@@ -118,22 +149,19 @@ public class TarefaService {
                         )
                 );
 
-        tarefa.setIdDisciplina(
-                disciplina.getIdDisciplina()
-        );
-
-        preencherDados(tarefa, request);
-
-        Tarefa salva =
-                tarefaRepository.saveAndFlush(tarefa);
-
-        return new TarefaResponse(
-                salva,
-                disciplina.getNome()
-        );
+        validarCotaAlteracao(idUsuario, tamanhoAnterior, tamanhoDescricaoNormalizada(request));
+        int alteradas = tarefaRepository.atualizarPorIdEUsuario(
+                idTarefa, idUsuario, disciplina.getIdDisciplina(),
+                request.getTitulo().trim(), request.getTipo().trim(), descricaoNormalizada(request),
+                request.getDataHoraInicio(), request.getDataEntrega(), request.getPrioridade().trim());
+        if (alteradas != 1) {
+            throw new IllegalArgumentException("Tarefa não encontrada.");
+        }
+        return new TarefaResponse(buscarDoUsuario(idTarefa, idUsuario), disciplina.getNome());
     }
 
     @Transactional
+    @PreAuthorize("#idUsuario != null and #idUsuario.toString() == authentication.name")
     public TarefaResponse concluir(
             Integer idTarefa,
             Integer idUsuario) {
@@ -163,29 +191,27 @@ public class TarefaService {
     }
 
     @Transactional
+    @PreAuthorize("#idUsuario != null and #idUsuario.toString() == authentication.name")
     public void excluir(
             Integer idTarefa,
             Integer idUsuario) {
 
         bloquearUsuario(idUsuario);
 
-        Tarefa tarefa =
-                buscarDoUsuario(idTarefa, idUsuario);
-
-        tarefaRepository.delete(tarefa);
-        tarefaRepository.flush();
+        validarIdTarefa(idTarefa);
+        if (tarefaRepository.excluirPorIdEUsuario(idTarefa, idUsuario) != 1) {
+            throw new IllegalArgumentException("Tarefa não encontrada.");
+        }
     }
 
     private Tarefa buscarDoUsuario(
             Integer idTarefa,
             Integer idUsuario) {
 
-        validarIdUsuario(idUsuario);
-
-        if (idTarefa == null || idTarefa <= 0) {
+        long tamanho = tamanhoDescricaoDoUsuario(idTarefa, idUsuario);
+        if (tamanho > maxDescription) {
             throw new IllegalArgumentException(
-                    "A tarefa informada é inválida."
-            );
+                    "A descrição desta tarefa excede o limite. Edite a tarefa antes de consultar ou concluir.");
         }
 
         return tarefaRepository
@@ -198,6 +224,46 @@ public class TarefaService {
                                 "Tarefa não encontrada."
                         )
                 );
+    }
+
+    private long tamanhoDescricaoDoUsuario(Integer idTarefa, Integer idUsuario) {
+        validarIdUsuario(idUsuario);
+        validarIdTarefa(idTarefa);
+        return tarefaRepository.tamanhoDescricaoPorIdEUsuario(idTarefa, idUsuario)
+                .orElseThrow(() -> new IllegalArgumentException("Tarefa não encontrada."));
+    }
+
+    private void validarIdTarefa(Integer idTarefa) {
+        if (idTarefa == null || idTarefa <= 0) {
+            throw new IllegalArgumentException("A tarefa informada é inválida.");
+        }
+    }
+
+    private void validarCotaCadastro(Integer idUsuario, int tamanhoNovo) {
+        if (tarefaRepository.contarPorUsuario(idUsuario) >= maxCount) {
+            throw new IllegalArgumentException("O limite de tarefas por usuário foi atingido.");
+        }
+        if (tarefaRepository.totalCaracteresPorUsuario(idUsuario) > maxStoredChars - tamanhoNovo) {
+            throw new IllegalArgumentException("O limite de caracteres das tarefas foi atingido.");
+        }
+    }
+
+    private void validarCotaAlteracao(Integer idUsuario, long tamanhoAnterior, int tamanhoNovo) {
+        long total = tarefaRepository.totalCaracteresPorUsuario(idUsuario);
+        long novoTotal = total - tamanhoAnterior + tamanhoNovo;
+        // Uma conta legada acima da cota pode reparar seus registros em etapas.
+        if (novoTotal > maxStoredChars && novoTotal >= total) {
+            throw new IllegalArgumentException("O limite de caracteres das tarefas foi atingido.");
+        }
+    }
+
+    private String descricaoNormalizada(TarefaRequest request) {
+        return request.getDescricao() == null ? null : request.getDescricao().trim();
+    }
+
+    private int tamanhoDescricaoNormalizada(TarefaRequest request) {
+        String descricao = descricaoNormalizada(request);
+        return descricao == null ? 0 : descricao.length();
     }
 
     private TarefaResponse resposta(
@@ -234,11 +300,7 @@ public class TarefaService {
                 request.getTipo().trim()
         );
 
-        tarefa.setDescricao(
-                request.getDescricao() == null
-                        ? null
-                        : request.getDescricao().trim()
-        );
+        tarefa.setDescricao(descricaoNormalizada(request));
 
         tarefa.setDataHoraInicio(
                 request.getDataHoraInicio()
@@ -300,6 +362,12 @@ public class TarefaService {
             throw new IllegalArgumentException(
                     "A disciplina é obrigatória."
             );
+        }
+
+        // Valide o texto bruto antes de trim, inclusive descricoes so com espacos.
+        if (request.getDescricao() != null && request.getDescricao().length() > maxDescription) {
+            throw new IllegalArgumentException(
+                    "A descrição deve ter até " + maxDescription + " caracteres.");
         }
 
         if (request.getTitulo() == null

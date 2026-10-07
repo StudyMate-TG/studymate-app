@@ -9,6 +9,7 @@ import br.com.studymate.exception.AvaliacaoNaoEncontradaException;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotNull;
 import org.springframework.stereotype.Service;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.validation.annotation.Validated;
 import java.math.BigDecimal;
@@ -30,17 +31,20 @@ public class AvaliacaoService {
         this.usuarios = usuarios;
     }
 
+    @PreAuthorize("#idUsuario != null and #idUsuario.toString() == authentication.name")
     public List<AvaliacaoResponse> listar(Integer idDisciplina, Integer idUsuario) {
         validarDisciplina(idDisciplina, idUsuario);
         return avaliacoes.findByIdDisciplinaOrderByDataAvaliacaoDescIdAvaliacaoDesc(idDisciplina)
                 .stream().map(AvaliacaoResponse::new).toList();
     }
 
+    @PreAuthorize("#idUsuario != null and #idUsuario.toString() == authentication.name")
     public AvaliacaoResponse consultar(Long idAvaliacao, Integer idUsuario) {
         return new AvaliacaoResponse(buscar(idAvaliacao, idUsuario));
     }
 
     @Transactional
+    @PreAuthorize("#idUsuario != null and #idUsuario.toString() == authentication.name")
     public AvaliacaoResponse cadastrar(Integer idUsuario, @NotNull @Valid AvaliacaoRequest request) {
         bloquearUsuario(idUsuario);
         validarDisciplina(request.idDisciplina(), idUsuario);
@@ -50,6 +54,7 @@ public class AvaliacaoService {
     }
 
     @Transactional
+    @PreAuthorize("#idUsuario != null and #idUsuario.toString() == authentication.name")
     public AvaliacaoResponse alterar(Long idAvaliacao, Integer idUsuario,
                                       @NotNull @Valid AvaliacaoRequest request) {
         bloquearUsuario(idUsuario);
@@ -60,12 +65,14 @@ public class AvaliacaoService {
     }
 
     @Transactional
+    @PreAuthorize("#idUsuario != null and #idUsuario.toString() == authentication.name")
     public void excluir(Long idAvaliacao, Integer idUsuario) {
         bloquearUsuario(idUsuario);
         avaliacoes.delete(buscar(idAvaliacao, idUsuario));
         avaliacoes.flush();
     }
 
+    @PreAuthorize("#idUsuario != null and #idUsuario.toString() == authentication.name")
     public MediaDisciplinaResponse calcularMedia(Integer idDisciplina, Integer idUsuario) {
         validarDisciplina(idDisciplina, idUsuario);
         List<Avaliacao> lista = avaliacoes.findByIdDisciplinaOrderByDataAvaliacaoDescIdAvaliacaoDesc(idDisciplina);

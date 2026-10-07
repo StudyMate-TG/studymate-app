@@ -1,33 +1,10 @@
+import { apiFetch, handleResponse } from "./apiClient";
 import { API_BASE_URL } from "./apiConfig";
 
 import type { DisciplinaRequest, DisciplinaResponse } from "../types";
 
 type MensagemResponse = {
   mensagem: string;
-};
-
-const handleResponse = async <T>(response: Response): Promise<T> => {
-  const text = await response.text();
-
-  let data: any = {};
-
-  try {
-    data = text ? JSON.parse(text) : {};
-  } catch {
-    data = {};
-  }
-
-  if (!response.ok) {
-    throw new Error(
-      data.mensagem ||
-        data.message ||
-        data.error ||
-        text ||
-        "Erro ao processar a requisição."
-    );
-  }
-
-  return data as T;
 };
 
 export const listarDisciplinas = async (
@@ -44,7 +21,7 @@ export const listarDisciplinas = async (
     params.append("termo", termoTratado);
   }
 
-  const response = await fetch(
+  const response = await apiFetch(
     `${API_BASE_URL}/disciplinas?${params.toString()}`
   );
 
@@ -54,7 +31,7 @@ export const listarDisciplinas = async (
 export const cadastrarDisciplina = async (
   payload: DisciplinaRequest
 ): Promise<DisciplinaResponse> => {
-  console.log("Payload recebido no service:", payload);
+
 
   const body = {
     idUsuario: payload.idUsuario,
@@ -65,9 +42,8 @@ export const cadastrarDisciplina = async (
     limiteFaltas: payload.limiteFaltas,
   };
 
-  console.log("Body enviado para API:", body);
 
-  const response = await fetch(`${API_BASE_URL}/disciplinas`, {
+  const response = await apiFetch(`${API_BASE_URL}/disciplinas`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -82,7 +58,7 @@ export const buscarDisciplinaPorId = async (
   idDisciplina: number,
   idUsuario: number
 ): Promise<DisciplinaResponse> => {
-  const response = await fetch(
+  const response = await apiFetch(
     `${API_BASE_URL}/disciplinas/${idDisciplina}?idUsuario=${idUsuario}`
   );
 
@@ -94,7 +70,7 @@ export const atualizarDisciplina = async (
   idUsuario: number,
   payload: DisciplinaRequest
 ): Promise<DisciplinaResponse> => {
-  const response = await fetch(
+  const response = await apiFetch(
     `${API_BASE_URL}/disciplinas/${idDisciplina}?idUsuario=${idUsuario}`,
     {
       method: "PUT",
@@ -119,7 +95,7 @@ export const excluirDisciplina = async (
   idDisciplina: number,
   idUsuario: number
 ): Promise<MensagemResponse> => {
-  const response = await fetch(
+  const response = await apiFetch(
     `${API_BASE_URL}/disciplinas/${idDisciplina}?idUsuario=${idUsuario}`,
     {
       method: "DELETE",

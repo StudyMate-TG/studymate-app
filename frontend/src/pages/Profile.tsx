@@ -1,3 +1,4 @@
+import { encerrarSessao } from "@/services/authService";
 import type { ElementType } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -121,6 +122,7 @@ const Profile = () => {
         <Button
           variant="outline"
           className="w-full border-destructive text-destructive hover:bg-destructive hover:text-destructive-foreground"
+          onClick={() => { encerrarSessao(); navigate("/"); }}
         >
           <LogOut className="w-5 h-5 mr-2" />
           Sair da Conta

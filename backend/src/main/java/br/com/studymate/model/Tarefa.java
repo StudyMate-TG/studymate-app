@@ -43,6 +43,7 @@ public class Tarefa {
     @Column(name = "tipo", nullable = false, length = 20)
     private String tipo;
 
+    @Size(max = 4096)
     @Lob
     @Column(name = "descricao")
     private String descricao;

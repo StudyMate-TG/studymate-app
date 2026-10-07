@@ -1,10 +1,14 @@
 package br.com.studymate.controller;
 
+import br.com.studymate.exception.RespostaErroInterno;
+
 import br.com.studymate.dto.TarefaRequest;
 import br.com.studymate.service.TarefaService;
 
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.oauth2.jwt.Jwt;
 
 import java.util.Map;
 
@@ -20,55 +24,53 @@ public class TarefaController {
 
     @GetMapping
     public ResponseEntity<?> listar(
-            @RequestParam Integer idUsuario
+            @AuthenticationPrincipal Jwt principal,
+            @RequestParam(defaultValue = "0") Integer page,
+            @RequestParam(defaultValue = "50") Integer size
     ) {
         try {
-            return ResponseEntity.ok(
-                    tarefaService.listar(idUsuario)
-            );
+            var tarefas = tarefaService.listar(Integer.valueOf(principal.getSubject()), page, size);
+            var resposta = ResponseEntity.ok();
+            if (tarefas.size() == size && page < 10000) {
+                resposta.header("X-Next-Page", Integer.toString(page + 1));
+            }
+            return resposta.body(tarefas);
         } catch (IllegalArgumentException erro) {
             return ResponseEntity.badRequest().body(
                     Map.of("mensagem", erro.getMessage())
             );
+        } catch (org.springframework.security.access.AccessDeniedException erro) {
+            throw erro;
         } catch (Exception erro) {
-            erro.printStackTrace();
-            return ResponseEntity.internalServerError().body(
-                    Map.of(
-                            "mensagem",
-                            "Erro interno ao listar tarefas: " + erro.getMessage()
-                    )
-            );
+            return RespostaErroInterno.responder(erro);
         }
     }
 
     @GetMapping("/{id}")
     public ResponseEntity<?> consultarPorId(
             @PathVariable Integer id,
-            @RequestParam Integer idUsuario
+            @AuthenticationPrincipal Jwt principal
     ) {
         try {
             return ResponseEntity.ok(
-                    tarefaService.consultarPorId(id, idUsuario)
+                    tarefaService.consultarPorId(id, Integer.valueOf(principal.getSubject()))
             );
         } catch (IllegalArgumentException erro) {
             return ResponseEntity.badRequest().body(
                     Map.of("mensagem", erro.getMessage())
             );
+        } catch (org.springframework.security.access.AccessDeniedException erro) {
+            throw erro;
         } catch (Exception erro) {
-            erro.printStackTrace();
-            return ResponseEntity.internalServerError().body(
-                    Map.of(
-                            "mensagem",
-                            "Erro interno ao consultar tarefa: " + erro.getMessage()
-                    )
-            );
+            return RespostaErroInterno.responder(erro);
         }
     }
 
     @PostMapping
     public ResponseEntity<?> cadastrar(
-            @RequestBody TarefaRequest request
+            @AuthenticationPrincipal Jwt principal, @RequestBody TarefaRequest request
     ) {
+        request.setIdUsuario(Integer.valueOf(principal.getSubject()));
         try {
             return ResponseEntity.ok(
                     tarefaService.cadastrar(request)
@@ -77,28 +79,25 @@ public class TarefaController {
             return ResponseEntity.badRequest().body(
                     Map.of("mensagem", erro.getMessage())
             );
+        } catch (org.springframework.security.access.AccessDeniedException erro) {
+            throw erro;
         } catch (Exception erro) {
-            erro.printStackTrace();
-            return ResponseEntity.internalServerError().body(
-                    Map.of(
-                            "mensagem",
-                            "Erro interno ao cadastrar tarefa: " + erro.getMessage()
-                    )
-            );
+            return RespostaErroInterno.responder(erro);
         }
     }
 
     @PutMapping("/{id}")
     public ResponseEntity<?> alterar(
             @PathVariable Integer id,
-            @RequestParam Integer idUsuario,
+            @AuthenticationPrincipal Jwt principal,
             @RequestBody TarefaRequest request
     ) {
+        request.setIdUsuario(Integer.valueOf(principal.getSubject()));
         try {
             return ResponseEntity.ok(
                     tarefaService.alterar(
                             id,
-                            idUsuario,
+                            Integer.valueOf(principal.getSubject()),
                             request
                     )
             );
@@ -106,53 +105,45 @@ public class TarefaController {
             return ResponseEntity.badRequest().body(
                     Map.of("mensagem", erro.getMessage())
             );
+        } catch (org.springframework.security.access.AccessDeniedException erro) {
+            throw erro;
         } catch (Exception erro) {
-            erro.printStackTrace();
-            return ResponseEntity.internalServerError().body(
-                    Map.of(
-                            "mensagem",
-                            "Erro interno ao alterar tarefa: " + erro.getMessage()
-                    )
-            );
+            return RespostaErroInterno.responder(erro);
         }
     }
 
     @PatchMapping("/{id}/concluir")
     public ResponseEntity<?> concluir(
             @PathVariable Integer id,
-            @RequestParam Integer idUsuario
+            @AuthenticationPrincipal Jwt principal
     ) {
         try {
             return ResponseEntity.ok(
                     tarefaService.concluir(
                             id,
-                            idUsuario
+                            Integer.valueOf(principal.getSubject())
                     )
             );
         } catch (IllegalArgumentException erro) {
             return ResponseEntity.badRequest().body(
                     Map.of("mensagem", erro.getMessage())
             );
+        } catch (org.springframework.security.access.AccessDeniedException erro) {
+            throw erro;
         } catch (Exception erro) {
-            erro.printStackTrace();
-            return ResponseEntity.internalServerError().body(
-                    Map.of(
-                            "mensagem",
-                            "Erro interno ao concluir tarefa: " + erro.getMessage()
-                    )
-            );
+            return RespostaErroInterno.responder(erro);
         }
     }
 
     @DeleteMapping("/{id}")
     public ResponseEntity<?> excluir(
             @PathVariable Integer id,
-            @RequestParam Integer idUsuario
+            @AuthenticationPrincipal Jwt principal
     ) {
         try {
             tarefaService.excluir(
                     id,
-                    idUsuario
+                    Integer.valueOf(principal.getSubject())
             );
 
             return ResponseEntity.ok(
@@ -165,14 +156,10 @@ public class TarefaController {
             return ResponseEntity.badRequest().body(
                     Map.of("mensagem", erro.getMessage())
             );
+        } catch (org.springframework.security.access.AccessDeniedException erro) {
+            throw erro;
         } catch (Exception erro) {
-            erro.printStackTrace();
-            return ResponseEntity.internalServerError().body(
-                    Map.of(
-                            "mensagem",
-                            "Erro interno ao excluir tarefa: " + erro.getMessage()
-                    )
-            );
+            return RespostaErroInterno.responder(erro);
         }
     }
 }

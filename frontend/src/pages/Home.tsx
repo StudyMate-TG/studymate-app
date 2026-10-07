@@ -6,6 +6,7 @@ import { Clock, ChevronRight, Plus } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import type { ElementType } from "react";
 import { useEffect, useState } from "react";
+import { obterUsuarioSessao } from "@/services/authService";
 
   type UsuarioLogado = {
   idUsuario: number;
@@ -23,11 +24,7 @@ const Home = () => {
    const [usuarioLogado, setUsuarioLogado] = useState<UsuarioLogado | null>(null);
 
     useEffect(() => {
-      const usuarioSalvo = localStorage.getItem("studymate_current_user");
-
-      if (usuarioSalvo) {
-        setUsuarioLogado(JSON.parse(usuarioSalvo));
-      }
+      setUsuarioLogado(obterUsuarioSessao());
     }, []);
 
   type DashboardStat = {

@@ -1,4 +1,4 @@
-import { cadastrarUsuario, loginUsuario } from "@/services/authService";
+import { cadastrarUsuario, loginUsuario, salvarUsuarioSessao, verificarEmail } from "@/services/authService";
 import { useState, type FormEvent } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -17,6 +17,10 @@ import mascot from "@/assets/mascot.png";
 const Login = () => {
   const navigate = useNavigate();
   const [isLoading, setIsLoading] = useState(false);
+  const [activeTab, setActiveTab] = useState("login");
+  const [confirmarCadastro, setConfirmarCadastro] = useState(false);
+  const [confirmacao, setConfirmacao] = useState({ codigo: "", senha: "" });
+  const [mensagem, setMensagem] = useState("");
 
   const [formularioLogin, setFormularioLogin] = useState({
     email: "",
@@ -40,7 +44,7 @@ const Login = () => {
         senha: formularioLogin.senha,
       });
 
-      localStorage.setItem("studymate_current_user", JSON.stringify(usuario));
+      salvarUsuarioSessao(usuario);
 
       navigate("/home");
     } catch (error) {
@@ -61,20 +65,35 @@ const Login = () => {
     setIsLoading(true);
 
     try {
-      const usuario = await cadastrarUsuario({
+      const resposta = await cadastrarUsuario({
         nome: formularioCadastro.nome,
         email: formularioCadastro.email,
         senha: formularioCadastro.senha,
       });
 
-      localStorage.setItem("studymate_current_user", JSON.stringify(usuario));
-
-      navigate("/home");
+      setMensagem(resposta.mensagem);
+      setFormularioCadastro({ ...formularioCadastro, senha: "", confirmarSenha: "" });
+      setConfirmarCadastro(true);
     } catch (error) {
       alert(error instanceof Error ? error.message : "Erro ao cadastrar usuário.");
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const handleVerify = async (e: FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    setIsLoading(true);
+    try {
+      const resposta = await verificarEmail(confirmacao);
+      setMensagem(resposta.mensagem + " Agora tente entrar com seu e-mail e senha.");
+      setConfirmacao({ codigo: "", senha: "" });
+      setConfirmarCadastro(false);
+      setActiveTab("login");
+      setFormularioLogin({ email: formularioCadastro.email, senha: "" });
+    } catch (error) {
+      alert(error instanceof Error ? error.message : "Erro ao confirmar e-mail.");
+    } finally { setIsLoading(false); }
   };
 
   return (
@@ -94,7 +113,9 @@ const Login = () => {
           </p>
         </div>
 
-        <Tabs defaultValue="login" className="w-full">
+        <p className="text-sm text-muted-foreground">Por segurança, entre novamente após recarregar ou fechar o aplicativo.</p>
+        {mensagem && <p role="status" className="text-sm text-primary">{mensagem}</p>}
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
           <TabsList className="grid w-full grid-cols-2">
             <TabsTrigger value="login">Entrar</TabsTrigger>
             <TabsTrigger value="signup">Cadastrar</TabsTrigger>
@@ -167,6 +188,17 @@ const Login = () => {
               </CardHeader>
 
               <CardContent>
+                {confirmarCadastro ? (
+                  <form onSubmit={handleVerify} className="space-y-4">
+                    <p className="text-sm text-muted-foreground">Cole o código recebido por e-mail e digite novamente a senha escolhida no cadastro.</p>
+                    <Label htmlFor="verification-code">Código de confirmação</Label>
+                    <Input id="verification-code" value={confirmacao.codigo} onChange={(e) => setConfirmacao({ ...confirmacao, codigo: e.target.value })} autoComplete="off" maxLength={64} required />
+                    <Label htmlFor="verification-password">Senha do cadastro</Label>
+                    <Input id="verification-password" type="password" value={confirmacao.senha} onChange={(e) => setConfirmacao({ ...confirmacao, senha: e.target.value })} autoComplete="current-password" required />
+                    <Button type="submit" className="w-full" disabled={isLoading}>Confirmar e-mail</Button>
+                    <Button type="button" variant="outline" className="w-full" disabled={isLoading} onClick={() => { setConfirmarCadastro(false); setConfirmacao({ codigo: "", senha: "" }); }}>Voltar ao cadastro</Button>
+                  </form>
+                ) : (
                 <form onSubmit={handleSignup} className="space-y-4">
                   <div className="space-y-2">
                     <Label htmlFor="name">Nome completo</Label>
@@ -243,7 +275,9 @@ const Login = () => {
                   >
                     {isLoading ? "Cadastrando..." : "Cadastrar"}
                   </Button>
+                  <Button type="button" variant="outline" className="w-full" disabled={isLoading} onClick={() => setConfirmarCadastro(true)}>Já recebi um código</Button>
                 </form>
+                )}
               </CardContent>
             </Card>
           </TabsContent>
