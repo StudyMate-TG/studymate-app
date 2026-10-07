@@ -161,8 +161,13 @@ CREATE TABLE sync_request (
         PRIMARY KEY (client_tx_id),
     CONSTRAINT fk_sync_request_usuario
         FOREIGN KEY (id_usuario)
-        REFERENCES usuario (id_usuario)
+        REFERENCES usuario (id_usuario),
+    CONSTRAINT ck_sync_request_operation
+        CHECK (operation IN ('CREATE', 'UPDATE', 'DELETE'))
 );
+
+CREATE INDEX ix_sync_request_usuario
+    ON sync_request (id_usuario);
 
 CREATE INDEX ix_tarefa_disc_upd
     ON tarefa (id_disciplina, updated_at);

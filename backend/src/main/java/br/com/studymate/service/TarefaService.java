@@ -11,6 +11,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
 import java.util.List;
 
 @Service
@@ -162,19 +163,20 @@ public class TarefaService {
         return resposta(salva, idUsuario);
     }
 
-    @Transactional
-    public void excluir(
-            Integer idTarefa,
-            Integer idUsuario) {
+        @Transactional
+        public void excluir(
+                Integer idTarefa,
+                Integer idUsuario) {
 
         bloquearUsuario(idUsuario);
 
         Tarefa tarefa =
                 buscarDoUsuario(idTarefa, idUsuario);
 
-        tarefaRepository.delete(tarefa);
-        tarefaRepository.flush();
-    }
+        tarefa.setDeletedAt(OffsetDateTime.now());
+
+        tarefaRepository.saveAndFlush(tarefa);
+        }
 
     private Tarefa buscarDoUsuario(
             Integer idTarefa,
