@@ -1,5 +1,4 @@
-import React, { useMemo, useState } from "react";
-
+import React, { useEffect, useMemo, useState } from "react";
 import {
   View,
   Text,
@@ -17,8 +16,69 @@ import {
   Calendar as CalendarIcon,
 } from "lucide-react-native";
 
+import { useIsFocused, useNavigation } from "@react-navigation/native";
+import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
+
+import { RootStackParamList } from "../types";
+import { obterUsuarioSessao } from "../services/authService";
+import * as tarefaService from "../services/tarefaService";
+import type { TarefaResponse } from "../services/tarefaService";
+
+
 export const CalendarScreen: React.FC = () => {
   const [selectedDate, setSelectedDate] = useState(new Date());
+
+  const navigation =
+  useNavigation<NativeStackNavigationProp<RootStackParamList>>();
+
+const isFocused = useIsFocused();
+
+const [tarefas, setTarefas] = useState<TarefaResponse[]>([]);
+useEffect(() => {
+  const carregarTarefas = async () => {
+    try {
+      const usuario = await obterUsuarioSessao();
+
+      if (!usuario?.idUsuario) {
+        setTarefas([]);
+        return;
+      }
+      
+     const dados = await tarefaService.listarTarefas(
+  usuario.idUsuario
+);
+
+console.log("TAREFAS RECEBIDAS NA AGENDA:", dados);
+
+setTarefas(dados);
+    } catch (error) {
+      console.error("Erro ao carregar tarefas da agenda:", error);
+      setTarefas([]);
+    }
+  };
+
+  if (isFocused) {
+    carregarTarefas();
+  }
+}, [isFocused]);
+
+const tarefasDoDia = useMemo(() => {
+  const ano = selectedDate.getFullYear();
+  const mes = String(selectedDate.getMonth() + 1).padStart(2, "0");
+  const dia = String(selectedDate.getDate()).padStart(2, "0");
+
+  const dataSelecionada = `${ano}-${mes}-${dia}`;
+
+  return tarefas.filter((tarefa) => {
+    if (!tarefa.dataEntrega) {
+      return false;
+    }
+
+    const dataEntrega = tarefa.dataEntrega.substring(0, 10);
+
+    return dataEntrega === dataSelecionada;
+  });
+}, [tarefas, selectedDate]);
 
   const monthLabel = useMemo(() => {
     return selectedDate.toLocaleDateString("pt-BR", {
@@ -35,50 +95,81 @@ export const CalendarScreen: React.FC = () => {
     });
   }, [selectedDate]);
 
-  const weekDays = useMemo(() => {
-    const baseDate = new Date(selectedDate);
-    const currentDay = baseDate.getDay();
+  const monthDays = useMemo(() => {
+  const ano = selectedDate.getFullYear();
+  const mes = selectedDate.getMonth();
 
-    const startOfWeek = new Date(baseDate);
-    startOfWeek.setDate(baseDate.getDate() - currentDay);
+  const primeiroDiaDoMes = new Date(ano, mes, 1);
+  const ultimoDiaDoMes = new Date(ano, mes + 1, 0);
 
-    return Array.from({ length: 7 }, (_, index) => {
-      const date = new Date(startOfWeek);
-      date.setDate(startOfWeek.getDate() + index);
+  const quantidadeDias = ultimoDiaDoMes.getDate();
+  const diaSemanaInicial = primeiroDiaDoMes.getDay();
 
-      const isSelected =
-        date.getFullYear() === selectedDate.getFullYear() &&
-        date.getMonth() === selectedDate.getMonth() &&
-        date.getDate() === selectedDate.getDate();
+  const dias: Array<{
+    fullDate: Date;
+    key: string;
+    dayNumber: number;
+    isSelected: boolean;
+    hasTask: boolean;
+  } | null> = [];
 
-      return {
-        fullDate: date,
-        key: `${date.getFullYear()}-${date.getMonth()}-${date.getDate()}`,
-        dayNumber: date.getDate().toString().padStart(2, "0"),
-        dayName: date
-          .toLocaleDateString("pt-BR", { weekday: "short" })
-          .replace(".", "")
-          .toUpperCase(),
-        isSelected,
-      };
+  // Espaços vazios antes do primeiro dia do mês
+  for (let i = 0; i < diaSemanaInicial; i++) {
+    dias.push(null);
+  }
+
+  // Dias do mês
+  for (let dia = 1; dia <= quantidadeDias; dia++) {
+    const date = new Date(ano, mes, dia);
+
+    const dataFormatada =
+      `${ano}-${String(mes + 1).padStart(2, "0")}-${String(dia).padStart(2, "0")}`;
+
+    const isSelected =
+      selectedDate.getFullYear() === ano &&
+      selectedDate.getMonth() === mes &&
+      selectedDate.getDate() === dia;
+
+    const hasTask = tarefas.some((tarefa) => {
+      if (!tarefa.dataEntrega) {
+        return false;
+      }
+
+      return tarefa.dataEntrega.substring(0, 10) === dataFormatada;
     });
-  }, [selectedDate]);
 
-  const goToPreviousMonth = () => {
-    setSelectedDate((currentDate) => {
-      const date = new Date(currentDate);
-      date.setMonth(currentDate.getMonth() - 1);
-      return date;
+    dias.push({
+      fullDate: date,
+      key: dataFormatada,
+      dayNumber: dia,
+      isSelected,
+      hasTask,
     });
-  };
+  }
 
-  const goToNextMonth = () => {
-    setSelectedDate((currentDate) => {
-      const date = new Date(currentDate);
-      date.setMonth(currentDate.getMonth() + 1);
-      return date;
-    });
-  };
+  return dias;
+}, [selectedDate, tarefas]);
+
+  //mudança dia 07/10
+ const goToPreviousMonth = () => {
+  setSelectedDate((currentDate) => {
+    return new Date(
+      currentDate.getFullYear(),
+      currentDate.getMonth() - 1,
+      1
+    );
+  });
+};
+
+const goToNextMonth = () => {
+  setSelectedDate((currentDate) => {
+    return new Date(
+      currentDate.getFullYear(),
+      currentDate.getMonth() + 1,
+      1
+    );
+  });
+};
 
   return (
     <View style={styles.container}>
@@ -105,40 +196,64 @@ export const CalendarScreen: React.FC = () => {
           </View>
         </Card>
 
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={styles.weekContainer}
+        <Card style={styles.calendarCard}>
+  <View style={styles.weekHeader}>
+    {["DOM", "SEG", "TER", "QUA", "QUI", "SEX", "SÁB"].map(
+      (dia) => (
+        <Text key={dia} style={styles.weekHeaderText}>
+          {dia}
+        </Text>
+      )
+    )}
+  </View>
+
+  <View style={styles.calendarGrid}>
+    {monthDays.map((day, index) => {
+      if (!day) {
+        return (
+          <View
+            key={`empty-${index}`}
+            style={styles.calendarDayContainer}
+          />
+        );
+      }
+
+      return (
+        <View
+          key={day.key}
+          style={styles.calendarDayContainer}
         >
-          {weekDays.map((day) => (
-            <Pressable
-              key={day.key}
-              onPress={() => setSelectedDate(day.fullDate)}
+          <Pressable
+            onPress={() => setSelectedDate(day.fullDate)}
+            style={[
+              styles.calendarDay,
+              day.isSelected && styles.calendarDaySelected,
+            ]}
+          >
+            <Text
               style={[
-                styles.dayButton,
-                day.isSelected && styles.dayButtonSelected,
+                styles.calendarDayText,
+                day.isSelected &&
+                  styles.calendarDayTextSelected,
               ]}
             >
-              <Text
-                style={[
-                  styles.dayName,
-                  day.isSelected && styles.dayNameSelected,
-                ]}
-              >
-                {day.dayName}
-              </Text>
+              {day.dayNumber}
+            </Text>
 
-              <Text
+            {day.hasTask && (
+              <View
                 style={[
-                  styles.dayNumber,
-                  day.isSelected && styles.dayNumberSelected,
+                  styles.taskDot,
+                  day.isSelected && styles.taskDotSelected,
                 ]}
-              >
-                {day.dayNumber}
-              </Text>
-            </Pressable>
-          ))}
-        </ScrollView>
+              />
+            )}
+          </Pressable>
+        </View>
+      );
+    })}
+  </View>
+</Card>
 
         <Card style={styles.summaryCard}>
           <View style={styles.summaryHeader}>
@@ -149,19 +264,65 @@ export const CalendarScreen: React.FC = () => {
           <Text style={styles.summaryDate}>{selectedDateLabel}</Text>
 
           <Text style={styles.summaryText}>
-            Os eventos acadêmicos serão exibidos após a integração com o backend.
-          </Text>
+  {tarefasDoDia.length === 0
+    ? "Nenhuma tarefa com entrega neste dia."
+    : tarefasDoDia.length === 1
+    ? "1 tarefa com entrega neste dia."
+    : `${tarefasDoDia.length} tarefas com entrega neste dia.`}
+</Text>
         </Card>
 
-        <Card style={styles.eventsCard}>
-          <Text style={styles.eventsEmptyTitle}>
-            Nenhum evento cadastrado
-          </Text>
+        {tarefasDoDia.length === 0 ? (
+  <Card style={styles.eventsCard}>
+    <Text style={styles.eventsEmptyTitle}>
+      Nenhuma tarefa para este dia
+    </Text>
 
-          <Text style={styles.eventsEmptyText}>
-            Tarefas, avaliações, horários de aula e prazos serão listados aqui.
+    <Text style={styles.eventsEmptyText}>
+      Não existem tarefas com entrega na data selecionada.
+    </Text>
+  </Card>
+) : (
+  tarefasDoDia.map((tarefa) => (
+    <Pressable
+      key={tarefa.idTarefa}
+      onPress={() =>
+        navigation.navigate("EditTask", {
+          idTarefa: tarefa.idTarefa,
+        })
+      }
+    >
+      <Card style={styles.taskCard}>
+        <View style={styles.taskHeader}>
+          <View style={styles.taskContent}>
+            <Text style={styles.taskTitle}>
+              {tarefa.titulo}
+            </Text>
+
+            <Text style={styles.taskSubject}>
+              {tarefa.nomeDisciplina}
+            </Text>
+          </View>
+
+          <Text style={styles.taskPriority}>
+            {tarefa.prioridade}
           </Text>
-        </Card>
+        </View>
+
+        <Text style={styles.taskTime}>
+          Entrega:{" "}
+          {new Date(tarefa.dataEntrega).toLocaleTimeString(
+            "pt-BR",
+            {
+              hour: "2-digit",
+              minute: "2-digit",
+            }
+          )}
+        </Text>
+      </Card>
+    </Pressable>
+  ))
+)}
       </ScrollView>
     </View>
   );
@@ -214,49 +375,68 @@ const styles = StyleSheet.create({
     marginTop: 2,
   },
 
-  weekContainer: {
-    flexDirection: "row",
-    gap: 8,
-    paddingBottom: 16,
-  },
+calendarCard: {
+  marginBottom: 16,
+  padding: 12,
+},
 
-  dayButton: {
-    alignItems: "center",
-    justifyContent: "center",
-    minWidth: 56,
-    height: 64,
-    borderRadius: 12,
-    backgroundColor: "#FFFFFF",
-    borderWidth: 1,
-    borderColor: "#E2E8F0",
-  },
+weekHeader: {
+  flexDirection: "row",
+  marginBottom: 8,
+},
 
-  dayButtonSelected: {
-    backgroundColor: "#2563EB",
-    borderColor: "#2563EB",
-  },
+weekHeaderText: {
+  width: "14.2857%",
+  textAlign: "center",
+  fontSize: 10,
+  fontWeight: "700",
+  color: "#64748B",
+},
 
-  dayName: {
-    fontSize: 11,
-    fontWeight: "600",
-    color: "#64748B",
-  },
+calendarGrid: {
+  flexDirection: "row",
+  flexWrap: "wrap",
+},
 
-  dayNameSelected: {
-    color: "#FFFFFF",
-    opacity: 0.9,
-  },
+calendarDayContainer: {
+  width: "14.2857%",
+  alignItems: "center",
+  marginBottom: 6,
+},
 
-  dayNumber: {
-    fontSize: 18,
-    fontWeight: "700",
-    color: "#0F172A",
-    marginTop: 2,
-  },
+calendarDay: {
+  width: 38,
+  height: 42,
+  alignItems: "center",
+  justifyContent: "center",
+  borderRadius: 10,
+},
 
-  dayNumberSelected: {
-    color: "#FFFFFF",
-  },
+calendarDaySelected: {
+  backgroundColor: "#2563EB",
+},
+
+calendarDayText: {
+  fontSize: 14,
+  fontWeight: "600",
+  color: "#0F172A",
+},
+
+calendarDayTextSelected: {
+  color: "#FFFFFF",
+},
+
+taskDot: {
+  width: 5,
+  height: 5,
+  borderRadius: 3,
+  backgroundColor: "#2563EB",
+  marginTop: 3,
+},
+
+taskDotSelected: {
+  backgroundColor: "#FFFFFF",
+},
 
   summaryCard: {
     backgroundColor: "#EFF6FF",
@@ -308,4 +488,42 @@ const styles = StyleSheet.create({
     color: "#64748B",
     textAlign: "center",
   },
+  taskCard: {
+  marginBottom: 12,
+},
+
+taskHeader: {
+  flexDirection: "row",
+  justifyContent: "space-between",
+  alignItems: "flex-start",
+},
+
+taskContent: {
+  flex: 1,
+  marginRight: 12,
+},
+
+taskTitle: {
+  fontSize: 15,
+  fontWeight: "700",
+  color: "#0F172A",
+},
+
+taskSubject: {
+  fontSize: 13,
+  color: "#64748B",
+  marginTop: 4,
+},
+
+taskPriority: {
+  fontSize: 11,
+  fontWeight: "700",
+  color: "#2563EB",
+},
+
+taskTime: {
+  fontSize: 13,
+  color: "#475569",
+  marginTop: 10,
+},
 });

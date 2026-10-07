@@ -195,7 +195,15 @@ setTarefas(tarefasDoUsuario);
   </Card>
 ) : (
   tarefas.map((tarefa) => (
-    <Card key={tarefa.idTarefa} style={styles.taskCard}>
+  <Pressable
+    key={tarefa.idTarefa}
+    onPress={() =>
+      navigation.navigate("EditTask", {
+        idTarefa: tarefa.idTarefa,
+      })
+    }
+  >
+    <Card style={styles.taskCard}>
       <View style={styles.taskHeader}>
         <View style={styles.taskContent}>
           <Text style={styles.taskTitle}>
@@ -214,8 +222,10 @@ setTarefas(tarefasDoUsuario);
         Entrega: {formatarDataTarefa(tarefa.dataEntrega)}
       </Text>
     </Card>
-  ))
+  </Pressable>
+))
 )}
+
       </ScrollView>
 
       <Pressable
@@ -269,6 +279,7 @@ setTarefas(tarefasDoUsuario);
     </View>
   );
 };
+
 
 const styles = StyleSheet.create({
   container: {
