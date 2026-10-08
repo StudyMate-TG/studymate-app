@@ -1,0 +1,20 @@
+package br.com.studymate.dto;
+
+import lombok.Getter;
+
+import java.util.List;
+
+@Getter
+public class SyncTarefaPullResponse {
+
+    private final List<TarefaResponse> tarefas;
+    private final String cursor;
+
+    public SyncTarefaPullResponse(
+            List<TarefaResponse> tarefas,
+            String cursor) {
+
+        this.tarefas = tarefas;
+        this.cursor = cursor;
+    }
+}
