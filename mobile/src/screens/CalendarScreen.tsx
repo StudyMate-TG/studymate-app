@@ -21,8 +21,10 @@ import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 
 import { RootStackParamList } from "../types";
 import { obterUsuarioSessao } from "../services/authService";
-import * as tarefaService from "../services/tarefaService";
-import type { TarefaResponse } from "../services/tarefaService";
+import * as tarefaService from "../services/tarefaService.web";
+import type { TarefaResponse } from "../services/tarefaService.web";
+import { formatarPrioridade } from "../utils/tarefaUtils";
+import { TaskDeadline } from "../components/TaskDeadline";
 
 
 export const CalendarScreen: React.FC = () => {
@@ -285,10 +287,14 @@ const goToNextMonth = () => {
 ) : (
   tarefasDoDia.map((tarefa) => (
     <Pressable
-      key={tarefa.idTarefa}
+      key={
+        tarefa.localId ??
+        String(tarefa.idTarefa)
+      }
       onPress={() =>
         navigation.navigate("EditTask", {
           idTarefa: tarefa.idTarefa,
+          localId: tarefa.localId,
         })
       }
     >
@@ -305,20 +311,13 @@ const goToNextMonth = () => {
           </View>
 
           <Text style={styles.taskPriority}>
-            {tarefa.prioridade}
+            {formatarPrioridade(tarefa.prioridade)}
           </Text>
         </View>
-
-        <Text style={styles.taskTime}>
-          Entrega:{" "}
-          {new Date(tarefa.dataEntrega).toLocaleTimeString(
-            "pt-BR",
-            {
-              hour: "2-digit",
-              minute: "2-digit",
-            }
-          )}
-        </Text>
+        <TaskDeadline
+          dataEntrega={tarefa.dataEntrega}
+          compact
+        />
       </Card>
     </Pressable>
   ))
@@ -519,11 +518,5 @@ taskPriority: {
   fontSize: 11,
   fontWeight: "700",
   color: "#2563EB",
-},
-
-taskTime: {
-  fontSize: 13,
-  color: "#475569",
-  marginTop: 10,
 },
 });

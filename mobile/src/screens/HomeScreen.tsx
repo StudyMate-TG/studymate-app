@@ -26,12 +26,17 @@ import {
 
 import { obterUsuarioSessao } from "../services/authService";
 
-import * as tarefaService from "../services/tarefaService";
-import type { TarefaResponse } from "../services/tarefaService";
+import * as tarefaService from "../services/tarefaService.web";
+import type { TarefaResponse } from "../services/tarefaService.web";
 
 import { MobileHeader } from "../components/MobileHeader";
 import { Card } from "../components/Card";
 import { Button } from "../components/Button";
+import { formatarPrioridade } from "../utils/tarefaUtils";
+
+import {
+  TaskDeadline,
+} from "../components/TaskDeadline";
 
 import {
   ChevronRight,
@@ -195,14 +200,18 @@ setTarefas(tarefasDoUsuario);
   </Card>
 ) : (
   tarefas.map((tarefa) => (
-  <Pressable
-    key={tarefa.idTarefa}
-    onPress={() =>
-      navigation.navigate("EditTask", {
-        idTarefa: tarefa.idTarefa,
-      })
-    }
-  >
+    <Pressable
+      key={
+        tarefa.localId ??
+        String(tarefa.idTarefa)
+      }
+      onPress={() =>
+        navigation.navigate("EditTask", {
+          idTarefa: tarefa.idTarefa,
+          localId: tarefa.localId,
+        })
+      }
+    >
     <Card style={styles.taskCard}>
       <View style={styles.taskHeader}>
         <View style={styles.taskContent}>
@@ -213,14 +222,13 @@ setTarefas(tarefasDoUsuario);
 
         <View style={styles.priorityBadge}>
           <Text style={styles.priorityText}>
-            {tarefa.prioridade}
+            {formatarPrioridade(tarefa.prioridade)}
           </Text>
         </View>
       </View>
-
-      <Text style={styles.taskDate}>
-        Entrega: {formatarDataTarefa(tarefa.dataEntrega)}
-      </Text>
+      <TaskDeadline
+        dataEntrega={tarefa.dataEntrega}
+      />
     </Card>
   </Pressable>
 ))
@@ -491,12 +499,6 @@ taskSubject: {
   fontSize: 13,
   color: "#64748B",
   marginTop: 4,
-},
-
-taskDate: {
-  fontSize: 13,
-  color: "#475569",
-  marginTop: 12,
 },
 
 priorityBadge: {

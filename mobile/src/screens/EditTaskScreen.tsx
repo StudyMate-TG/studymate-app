@@ -31,7 +31,7 @@ import { Button } from "../components/Button";
 
 import { obterUsuarioSessao } from "../services/authService";
 import { listarDisciplinas } from "../services/disciplinaService";
-
+import { ChevronDown } from "lucide-react-native";
 import {
   buscarTarefaPorId,
   atualizarTarefa,
@@ -59,13 +59,25 @@ export const EditTaskScreen: React.FC = () => {
     >();
 
   const route =
-    useRoute<RouteProp<RootStackParamList, "EditTask">>();
+    useRoute<
+      RouteProp<RootStackParamList, "EditTask">
+    >();
 
-  const { idTarefa } = route.params;
+  const { idTarefa, localId } = route.params;
 
-  const [carregando, setCarregando] = useState(true);
-  const [salvando, setSalvando] = useState(false);
-  const [excluindo, setExcluindo] = useState(false);
+  const referencia = {
+    idTarefa,
+    localId,
+  };
+
+  const [carregando, setCarregando] =
+    useState(true);
+
+  const [salvando, setSalvando] =
+    useState(false);
+
+  const [excluindo, setExcluindo] =
+    useState(false);
 
   const [disciplinas, setDisciplinas] =
     useState<DisciplinaResponse[]>([]);
@@ -75,6 +87,9 @@ export const EditTaskScreen: React.FC = () => {
     setIdDisciplinaSelecionada,
   ] = useState<number | null>(null);
 
+  const [disciplinasAberta, setDisciplinasAberta] =
+  useState(false);
+
   const [form, setForm] = useState({
     title: "",
     subject: "",
@@ -83,7 +98,10 @@ export const EditTaskScreen: React.FC = () => {
     description: "",
   });
 
-  const showAlert = (title: string, message: string) => {
+  const showAlert = (
+    title: string,
+    message: string
+  ) => {
     if (
       Platform.OS === "web" &&
       typeof window !== "undefined"
@@ -98,14 +116,18 @@ export const EditTaskScreen: React.FC = () => {
   // 2026-10-05T23:00:00
   // para:
   // 05/10/2026 23:00
-  const formatarDataParaFormulario = (data: string) => {
+  const formatarDataParaFormulario = (
+    data: string
+  ) => {
     if (!data) {
       return "";
     }
 
-    const [dataParte, horaParte] = data.split("T");
+    const [dataParte, horaParte] =
+      data.split("T");
 
-    const [ano, mes, dia] = dataParte.split("-");
+    const [ano, mes, dia] =
+      dataParte.split("-");
 
     if (!ano || !mes || !dia) {
       return data;
@@ -115,7 +137,8 @@ export const EditTaskScreen: React.FC = () => {
       return `${dia}/${mes}/${ano}`;
     }
 
-    const hora = horaParte.substring(0, 5);
+    const hora =
+      horaParte.substring(0, 5);
 
     return `${dia}/${mes}/${ano} ${hora}`;
   };
@@ -124,32 +147,53 @@ export const EditTaskScreen: React.FC = () => {
   // 05/10/2026 23:00
   // para:
   // 2026-10-05T23:00:00
-  const converterDataParaBackend = (data: string) => {
+  const converterDataParaBackend = (
+    data: string
+  ) => {
     const valor = data.trim();
 
-    const [dataParte, horaParte = "23:59"] =
-      valor.split(" ");
+    const [
+      dataParte,
+      horaParte = "23:59",
+    ] = valor.split(" ");
 
-    const [dia, mes, ano] = dataParte.split("/");
+    const [dia, mes, ano] =
+      dataParte.split("/");
 
     return `${ano}-${mes}-${dia}T${horaParte}:00`;
   };
 
-  const isValidDateTime = (value: string) => {
+  const isValidDateTime = (
+    value: string
+  ) => {
     const regex =
       /^(\d{2})\/(\d{2})\/(\d{4})(?:\s+(\d{2}):(\d{2}))?$/;
 
-    const match = value.match(regex);
+    const match =
+      value.match(regex);
 
     if (!match) {
       return false;
     }
 
-    const day = Number(match[1]);
-    const month = Number(match[2]);
-    const year = Number(match[3]);
-    const hour = match[4] ? Number(match[4]) : 0;
-    const minute = match[5] ? Number(match[5]) : 0;
+    const day =
+      Number(match[1]);
+
+    const month =
+      Number(match[2]);
+
+    const year =
+      Number(match[3]);
+
+    const hour =
+      match[4]
+        ? Number(match[4])
+        : 0;
+
+    const minute =
+      match[5]
+        ? Number(match[5])
+        : 0;
 
     if (
       day < 1 ||
@@ -181,13 +225,14 @@ export const EditTaskScreen: React.FC = () => {
     );
   };
 
-  // Carrega a tarefa e as disciplinas
+  // Carrega a tarefa e as disciplinas.
   useEffect(() => {
     const carregarDados = async () => {
       try {
         setCarregando(true);
 
-        const usuario = await obterUsuarioSessao();
+        const usuario =
+          await obterUsuarioSessao();
 
         if (!usuario?.idUsuario) {
           showAlert(
@@ -199,26 +244,31 @@ export const EditTaskScreen: React.FC = () => {
           return;
         }
 
-        const [tarefa, disciplinasUsuario] =
-          await Promise.all([
-            buscarTarefaPorId(
-              idTarefa,
-              usuario.idUsuario
-            ),
+        const [
+          tarefa,
+          disciplinasUsuario,
+        ] = await Promise.all([
+          buscarTarefaPorId(
+            referencia,
+            usuario.idUsuario
+          ),
 
-            listarDisciplinas(
-              usuario.idUsuario
-            ),
-          ]);
+          listarDisciplinas(
+            usuario.idUsuario
+          ),
+        ]);
 
-        setDisciplinas(disciplinasUsuario);
+        setDisciplinas(
+          disciplinasUsuario
+        );
 
         setIdDisciplinaSelecionada(
           tarefa.idDisciplina
         );
 
         const prioridade =
-          tarefa.prioridade?.toLowerCase();
+          tarefa.prioridade
+            ?.toLowerCase();
 
         const prioridadeFormulario: Priority =
           prioridade === "low" ||
@@ -227,19 +277,30 @@ export const EditTaskScreen: React.FC = () => {
             ? prioridade
             : "medium";
 
-        const disciplina = disciplinasUsuario.find(
-          (item) =>
-            item.idDisciplina === tarefa.idDisciplina
-        );
+    const disciplina =
+      disciplinasUsuario.find(
+        (item: DisciplinaResponse) =>
+          item.idDisciplina ===
+          tarefa.idDisciplina
+      );
 
         setForm({
-          title: tarefa.titulo || "",
-          subject: disciplina?.nome || "",
-          dueDate: formatarDataParaFormulario(
-            tarefa.dataEntrega
-          ),
-          priority: prioridadeFormulario,
-          description: tarefa.descricao || "",
+          title:
+            tarefa.titulo || "",
+
+          subject:
+            disciplina?.nome || "",
+
+          dueDate:
+            formatarDataParaFormulario(
+              tarefa.dataEntrega
+            ),
+
+          priority:
+            prioridadeFormulario,
+
+          description:
+            tarefa.descricao || "",
         });
       } catch (error) {
         console.error(
@@ -259,7 +320,7 @@ export const EditTaskScreen: React.FC = () => {
     };
 
     carregarDados();
-  }, [idTarefa]);
+  }, [idTarefa, localId]);
 
   const handleSubmit = async () => {
     if (!form.title.trim()) {
@@ -267,14 +328,18 @@ export const EditTaskScreen: React.FC = () => {
         "Atenção",
         "Informe o título da tarefa."
       );
+
       return;
     }
 
-    if (idDisciplinaSelecionada === null) {
+    if (
+      idDisciplinaSelecionada === null
+    ) {
       showAlert(
         "Atenção",
         "Selecione uma disciplina."
       );
+
       return;
     }
 
@@ -283,45 +348,65 @@ export const EditTaskScreen: React.FC = () => {
         "Atenção",
         "Informe a data de entrega."
       );
+
       return;
     }
 
-    if (!isValidDateTime(form.dueDate.trim())) {
+    if (
+      !isValidDateTime(
+        form.dueDate.trim()
+      )
+    ) {
       showAlert(
         "Atenção",
         "Informe a data no formato DD/MM/AAAA ou DD/MM/AAAA HH:mm."
       );
+
       return;
     }
 
     try {
       setSalvando(true);
 
-      const usuario = await obterUsuarioSessao();
+      const usuario =
+        await obterUsuarioSessao();
 
       if (!usuario?.idUsuario) {
         showAlert(
           "Erro",
           "Usuário não encontrado. Faça login novamente."
         );
+
         return;
       }
 
       await atualizarTarefa(
-        idTarefa,
+        referencia,
         usuario.idUsuario,
         {
-          idUsuario: usuario.idUsuario,
+          idUsuario:
+            usuario.idUsuario,
+
           idDisciplina:
             idDisciplinaSelecionada,
-          titulo: form.title,
-          tipo: "TAREFA",
-          descricao: form.description,
-          dataHoraInicio: null,
+
+          titulo:
+            form.title,
+
+          tipo:
+            "TAREFA",
+
+          descricao:
+            form.description,
+
+          dataHoraInicio:
+            null,
+
           dataEntrega:
             converterDataParaBackend(
               form.dueDate
             ),
+
           prioridade:
             form.priority.toUpperCase(),
         }
@@ -350,56 +435,60 @@ export const EditTaskScreen: React.FC = () => {
     }
   };
 
-  const executarExclusao = async () => {
-    try {
-      setExcluindo(true);
+  const executarExclusao =
+    async () => {
+      try {
+        setExcluindo(true);
 
-      const usuario = await obterUsuarioSessao();
+        const usuario =
+          await obterUsuarioSessao();
 
-      if (!usuario?.idUsuario) {
+        if (!usuario?.idUsuario) {
+          showAlert(
+            "Erro",
+            "Usuário não encontrado. Faça login novamente."
+          );
+
+          return;
+        }
+
+        await excluirTarefa(
+          referencia,
+          usuario.idUsuario
+        );
+
+        showAlert(
+          "Sucesso",
+          "Tarefa excluída com sucesso!"
+        );
+
+        navigation.goBack();
+      } catch (error) {
+        console.error(
+          "Erro ao excluir tarefa:",
+          error
+        );
+
         showAlert(
           "Erro",
-          "Usuário não encontrado. Faça login novamente."
+          error instanceof Error
+            ? error.message
+            : "Não foi possível excluir a tarefa."
         );
-        return;
+      } finally {
+        setExcluindo(false);
       }
-
-      await excluirTarefa(
-        idTarefa,
-        usuario.idUsuario
-      );
-
-      showAlert(
-        "Sucesso",
-        "Tarefa excluída com sucesso!"
-      );
-
-      navigation.goBack();
-    } catch (error) {
-      console.error(
-        "Erro ao excluir tarefa:",
-        error
-      );
-
-      showAlert(
-        "Erro",
-        error instanceof Error
-          ? error.message
-          : "Não foi possível excluir a tarefa."
-      );
-    } finally {
-      setExcluindo(false);
-    }
-  };
+    };
 
   const handleExcluir = () => {
     if (
       Platform.OS === "web" &&
       typeof window !== "undefined"
     ) {
-      const confirmou = window.confirm(
-        "Tem certeza que deseja excluir esta tarefa?"
-      );
+      const confirmou =
+        window.confirm(
+          "Tem certeza que deseja excluir esta tarefa?"
+        );
 
       if (confirmou) {
         executarExclusao();
@@ -419,11 +508,19 @@ export const EditTaskScreen: React.FC = () => {
         {
           text: "Excluir",
           style: "destructive",
-          onPress: executarExclusao,
+          onPress:
+            executarExclusao,
         },
       ]
     );
   };
+
+  const disciplinaSelecionada =
+  disciplinas.find(
+    (disciplina) =>
+      disciplina.idDisciplina ===
+      idDisciplinaSelecionada
+  );
 
   if (carregando) {
     return (
@@ -431,11 +528,19 @@ export const EditTaskScreen: React.FC = () => {
         <MobileHeader
           title="Editar Tarefa"
           showBack
-          onBack={() => navigation.goBack()}
+          onBack={() =>
+            navigation.goBack()
+          }
         />
 
-        <View style={styles.loadingContainer}>
-          <Text style={styles.loadingText}>
+        <View
+          style={
+            styles.loadingContainer
+          }
+        >
+          <Text
+            style={styles.loadingText}
+          >
             Carregando tarefa...
           </Text>
         </View>
@@ -455,7 +560,9 @@ export const EditTaskScreen: React.FC = () => {
       <MobileHeader
         title="Editar Tarefa"
         showBack
-        onBack={() => navigation.goBack()}
+        onBack={() =>
+          navigation.goBack()
+        }
       />
 
       <ScrollView
@@ -476,49 +583,96 @@ export const EditTaskScreen: React.FC = () => {
               })
             }
           />
+        <Text style={styles.sectionLabel}>
+          Disciplina
+        </Text>
 
-          <Text style={styles.sectionLabel}>
-            Disciplina
-          </Text>
+        <View style={styles.dropdownContainer}>
+          <Pressable
+            style={styles.dropdownButton}
+            onPress={() =>
+              setDisciplinasAberta(
+                !disciplinasAberta
+              )
+            }
+          >
+            <Text
+              style={[
+                styles.dropdownButtonText,
+                !disciplinaSelecionada &&
+                  styles.dropdownPlaceholder,
+              ]}
+            >
+              {disciplinaSelecionada
+                ? disciplinaSelecionada.nome
+                : "Selecione uma disciplina"}
+            </Text>
 
-          <View style={styles.subjectContainer}>
-            {disciplinas.map((disciplina) => {
-              const selecionada =
-                idDisciplinaSelecionada ===
-                disciplina.idDisciplina;
+            <View
+              style={
+                disciplinasAberta
+                  ? styles.chevronOpen
+                  : undefined
+              }
+            >
+              <ChevronDown
+                size={20}
+                color="#64748B"
+              />
+            </View>
+          </Pressable>
 
-              return (
-                <Pressable
-                  key={disciplina.idDisciplina}
-                  onPress={() => {
-                    setIdDisciplinaSelecionada(
-                      disciplina.idDisciplina
-                    );
-
-                    setForm({
-                      ...form,
-                      subject: disciplina.nome,
-                    });
-                  }}
-                  style={[
-                    styles.subjectButton,
-                    selecionada &&
-                      styles.subjectButtonSelected,
-                  ]}
-                >
-                  <Text
-                    style={[
-                      styles.subjectText,
-                      selecionada &&
-                        styles.subjectTextSelected,
-                    ]}
-                  >
-                    {disciplina.nome}
+          {disciplinasAberta && (
+            <View style={styles.dropdownOptions}>
+              {disciplinas.length === 0 ? (
+                <View style={styles.dropdownEmpty}>
+                  <Text style={styles.dropdownEmptyText}>
+                    Nenhuma disciplina disponível.
                   </Text>
-                </Pressable>
-              );
-            })}
-          </View>
+                </View>
+              ) : (
+                disciplinas.map((disciplina) => {
+                  const selecionada =
+                    idDisciplinaSelecionada ===
+                    disciplina.idDisciplina;
+
+                  return (
+                    <Pressable
+                      key={disciplina.idDisciplina}
+                      style={[
+                        styles.dropdownOption,
+                        selecionada &&
+                          styles.dropdownOptionSelected,
+                      ]}
+                      onPress={() => {
+                        setIdDisciplinaSelecionada(
+                          disciplina.idDisciplina
+                        );
+
+                        setForm({
+                          ...form,
+                          subject: disciplina.nome,
+                        });
+
+                        setDisciplinasAberta(false);
+                      }}
+                    >
+                      <Text
+                        style={[
+                          styles.dropdownOptionText,
+                          selecionada &&
+                            styles.dropdownOptionTextSelected,
+                        ]}
+                      >
+                        {disciplina.nome}
+                      </Text>
+                    </Pressable>
+                  );
+                })
+              )}
+            </View>
+          )}
+        </View>
 
           <Input
             label="Data e Hora de Entrega"
@@ -532,11 +686,15 @@ export const EditTaskScreen: React.FC = () => {
             }
           />
 
-          <Text style={styles.sectionLabel}>
+          <Text
+            style={styles.sectionLabel}
+          >
             Prioridade
           </Text>
 
-          <View style={styles.priorityRow}>
+          <View
+            style={styles.priorityRow}
+          >
             {(
               [
                 "low",
@@ -545,7 +703,8 @@ export const EditTaskScreen: React.FC = () => {
               ] as const
             ).map((priority) => {
               const isSelected =
-                form.priority === priority;
+                form.priority ===
+                priority;
 
               return (
                 <Pressable
@@ -621,17 +780,25 @@ export const EditTaskScreen: React.FC = () => {
             }
             variant="outline"
             onPress={handleExcluir}
-            style={styles.deleteButton}
+            style={
+              styles.deleteButton
+            }
           />
 
-          <View style={styles.actionButtons}>
+          <View
+            style={
+              styles.actionButtons
+            }
+          >
             <Button
               title="Cancelar"
               variant="outline"
               onPress={() =>
                 navigation.goBack()
               }
-              style={styles.cancelButton}
+              style={
+                styles.cancelButton
+              }
             />
 
             <Button
@@ -641,7 +808,9 @@ export const EditTaskScreen: React.FC = () => {
                   : "Salvar alterações"
               }
               onPress={handleSubmit}
-              style={styles.submitButton}
+              style={
+                styles.submitButton
+              }
             />
           </View>
         </Card>
@@ -675,34 +844,79 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
 
-  subjectContainer: {
-    gap: 8,
-    marginBottom: 16,
-  },
+  dropdownContainer: {
+  marginBottom: 16,
+},
 
-  subjectButton: {
-    padding: 12,
-    borderRadius: 10,
-    borderWidth: 1,
-    borderColor: "#E2E8F0",
-    backgroundColor: "#FFFFFF",
-  },
+dropdownButton: {
+  minHeight: 48,
+  paddingHorizontal: 14,
+  borderWidth: 1,
+  borderColor: "#E2E8F0",
+  borderRadius: 10,
+  backgroundColor: "#FFFFFF",
+  flexDirection: "row",
+  alignItems: "center",
+  justifyContent: "space-between",
+},
 
-  subjectButtonSelected: {
-    borderColor: "#2563EB",
-    backgroundColor: "#EFF6FF",
-  },
+dropdownButtonText: {
+  flex: 1,
+  fontSize: 14,
+  color: "#0F172A",
+},
 
-  subjectText: {
-    fontSize: 14,
-    color: "#64748B",
-  },
+dropdownPlaceholder: {
+  color: "#94A3B8",
+},
 
-  subjectTextSelected: {
-    color: "#2563EB",
-    fontWeight: "700",
-  },
+chevronOpen: {
+  transform: [
+    {
+      rotate: "180deg",
+    },
+  ],
+},
 
+dropdownOptions: {
+  marginTop: 6,
+  borderWidth: 1,
+  borderColor: "#E2E8F0",
+  borderRadius: 10,
+  backgroundColor: "#FFFFFF",
+  overflow: "hidden",
+},
+
+dropdownOption: {
+  paddingHorizontal: 14,
+  paddingVertical: 13,
+  borderBottomWidth: 1,
+  borderBottomColor: "#F1F5F9",
+},
+
+dropdownOptionSelected: {
+  backgroundColor: "#EFF6FF",
+},
+
+dropdownOptionText: {
+  fontSize: 14,
+  color: "#334155",
+},
+
+dropdownOptionTextSelected: {
+  color: "#2563EB",
+  fontWeight: "600",
+},
+
+dropdownEmpty: {
+  padding: 14,
+},
+
+dropdownEmptyText: {
+  fontSize: 14,
+  color: "#94A3B8",
+},
+  
   priorityRow: {
     flexDirection: "row",
     gap: 8,

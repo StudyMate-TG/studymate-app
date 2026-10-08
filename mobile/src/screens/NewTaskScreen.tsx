@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from "react";
+
 import {
   View,
   Text,
@@ -13,55 +14,78 @@ import {
 import { useNavigation } from "@react-navigation/native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 
-import { RootStackParamList, DisciplinaResponse } from "../types";
+import {
+  RootStackParamList,
+  DisciplinaResponse,
+} from "../types";
+
 import { MobileHeader } from "../components/MobileHeader";
 import { Card } from "../components/Card";
 import { Input } from "../components/Input";
 import { Button } from "../components/Button";
 
-
-import { CheckCircle2 } from "lucide-react-native";
+import {
+  CheckCircle2,
+  ChevronDown,
+} from "lucide-react-native";
 
 import { cadastrarTarefa } from "../services/tarefaService";
 
 import { obterUsuarioSessao } from "../services/authService";
 import { listarDisciplinas } from "../services/disciplinaService";
-import axios from "axios";
 
-
-type Priority = "low" | "medium" | "high";
+type Priority = "BAIXA" | "MEDIA" | "ALTA";
 
 const priorityLabels: Record<Priority, string> = {
-  low: "Baixa",
-  medium: "Média",
-  high: "Alta",
+  BAIXA: "Baixa",
+  MEDIA: "Média",
+  ALTA: "Alta",
 };
 
 const priorityColors: Record<Priority, string> = {
-  low: "#22C55E",
-  medium: "#EAB308",
-  high: "#EF4444",
+  BAIXA: "#22C55E",
+  MEDIA: "#EAB308",
+  ALTA: "#EF4444",
 };
 
 export const NewTaskScreen: React.FC = () => {
-  const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
+  const navigation =
+    useNavigation<
+      NativeStackNavigationProp<RootStackParamList>
+    >();
 
-  const [showSuccess, setShowSuccess] = useState(false);
+  const [showSuccess, setShowSuccess] =
+    useState(false);
 
-  const [disciplinas, setDisciplinas] = useState<DisciplinaResponse[]>([]);
-const [idDisciplinaSelecionada, setIdDisciplinaSelecionada] =
-  useState<number | null>(null);
+  const [disciplinas, setDisciplinas] =
+    useState<DisciplinaResponse[]>([]);
+
+  const [
+    idDisciplinaSelecionada,
+    setIdDisciplinaSelecionada,
+  ] = useState<number | null>(null);
+
+  const [
+    disciplinasAberta,
+    setDisciplinasAberta,
+  ] = useState(false);
 
   const [form, setForm] = useState({
     title: "",
     subject: "",
     dueDate: "",
-    priority: "medium" as Priority,
+    priority: "MEDIA" as Priority,
     description: "",
   });
 
-  const showAlert = (title: string, message: string) => {
-    if (Platform.OS === "web" && typeof window !== "undefined") {
+  const showAlert = (
+    title: string,
+    message: string
+  ) => {
+    if (
+      Platform.OS === "web" &&
+      typeof window !== "undefined"
+    ) {
       window.alert(`${title}: ${message}`);
     } else {
       Alert.alert(title, message);
@@ -69,43 +93,68 @@ const [idDisciplinaSelecionada, setIdDisciplinaSelecionada] =
   };
 
   useEffect(() => {
-  const carregarDisciplinas = async () => {
-    try {
-      const usuario = await obterUsuarioSessao();
+    const carregarDisciplinas =
+      async () => {
+        try {
+          const usuario =
+            await obterUsuarioSessao();
 
-      if (!usuario?.idUsuario) {
-        throw new Error("Usuário não encontrado. Faça login novamente.");
-      }
+          if (!usuario?.idUsuario) {
+            throw new Error(
+              "Usuário não encontrado. Faça login novamente."
+            );
+          }
 
-      const dados = await listarDisciplinas(usuario.idUsuario);
+          const dados =
+            await listarDisciplinas(
+              usuario.idUsuario
+            );
 
-      setDisciplinas(dados);
-    } catch (error) {
-      showAlert(
-        "Erro",
-        error instanceof Error
-          ? error.message
-          : "Erro ao carregar disciplinas."
-      );
-    }
-  };
+          setDisciplinas(dados);
+        } catch (error) {
+          showAlert(
+            "Erro",
+            error instanceof Error
+              ? error.message
+              : "Erro ao carregar disciplinas."
+          );
+        }
+      };
 
-  carregarDisciplinas();
-}, []);
+    carregarDisciplinas();
+  }, []);
 
-  const isValidDateTime = (value: string) => {
-    const regex = /^(\d{2})\/(\d{2})\/(\d{4})(?:\s+(\d{2}):(\d{2}))?$/;
-    const match = value.match(regex);
+  const isValidDateTime = (
+    value: string
+  ) => {
+    const regex =
+      /^(\d{2})\/(\d{2})\/(\d{4})(?:\s+(\d{2}):(\d{2}))?$/;
+
+    const match =
+      value.match(regex);
 
     if (!match) {
       return false;
     }
 
-    const day = Number(match[1]);
-    const month = Number(match[2]);
-    const year = Number(match[3]);
-    const hour = match[4] ? Number(match[4]) : 0;
-    const minute = match[5] ? Number(match[5]) : 0;
+    const day =
+      Number(match[1]);
+
+    const month =
+      Number(match[2]);
+
+    const year =
+      Number(match[3]);
+
+    const hour =
+      match[4]
+        ? Number(match[4])
+        : 0;
+
+    const minute =
+      match[5]
+        ? Number(match[5])
+        : 0;
 
     if (
       day < 1 ||
@@ -120,7 +169,13 @@ const [idDisciplinaSelecionada, setIdDisciplinaSelecionada] =
       return false;
     }
 
-    const date = new Date(year, month - 1, day, hour, minute);
+    const date = new Date(
+      year,
+      month - 1,
+      day,
+      hour,
+      minute
+    );
 
     return (
       date.getFullYear() === year &&
@@ -131,74 +186,129 @@ const [idDisciplinaSelecionada, setIdDisciplinaSelecionada] =
     );
   };
 
-  const converterDataParaBackend = (data: string) => {
-  const valor = data.trim();
+  const converterDataParaBackend = (
+    data: string
+  ) => {
+    const valor =
+      data.trim();
 
-  const [dataParte, horaParte = "23:59"] = valor.split(" ");
-  const [dia, mes, ano] = dataParte.split("/");
+    const [
+      dataParte,
+      horaParte = "23:59",
+    ] = valor.split(" ");
 
-  return `${ano}-${mes}-${dia}T${horaParte}:00`;
-};
+    const [dia, mes, ano] =
+      dataParte.split("/");
+
+    return `${ano}-${mes}-${dia}T${horaParte}:00`;
+  };
 
   const handleSubmit = async () => {
-  if (!form.title.trim()) {
-    showAlert("Atenção", "Informe o título da tarefa.");
-    return;
-  }
+    if (!form.title.trim()) {
+      showAlert(
+        "Atenção",
+        "Informe o título da tarefa."
+      );
 
-  if (!form.dueDate.trim()) {
-    showAlert("Atenção", "Informe a data de entrega.");
-    return;
-  }
+      return;
+    }
 
-  if (idDisciplinaSelecionada === null) {
-  showAlert("Atenção", "Selecione uma disciplina.");
-  return;
-}
+    if (
+      idDisciplinaSelecionada === null
+    ) {
+      showAlert(
+        "Atenção",
+        "Selecione uma disciplina."
+      );
 
-  if (!isValidDateTime(form.dueDate.trim())) {
-    showAlert(
-      "Atenção",
-      "Informe a data no formato DD/MM/AAAA ou DD/MM/AAAA HH:mm."
+      return;
+    }
+
+    if (!form.dueDate.trim()) {
+      showAlert(
+        "Atenção",
+        "Informe a data de entrega."
+      );
+
+      return;
+    }
+
+    if (
+      !isValidDateTime(
+        form.dueDate.trim()
+      )
+    ) {
+      showAlert(
+        "Atenção",
+        "Informe a data no formato DD/MM/AAAA ou DD/MM/AAAA HH:mm."
+      );
+
+      return;
+    }
+
+    try {
+      const usuario =
+        await obterUsuarioSessao();
+
+      if (!usuario?.idUsuario) {
+        showAlert(
+          "Erro",
+          "Usuário não encontrado. Faça login novamente."
+        );
+
+        return;
+      }
+
+      await cadastrarTarefa({
+        idUsuario:
+          usuario.idUsuario,
+
+        idDisciplina:
+          idDisciplinaSelecionada,
+
+        titulo:
+          form.title,
+
+        tipo:
+          "TAREFA",
+
+        descricao:
+          form.description,
+
+        dataHoraInicio:
+          null,
+
+        dataEntrega:
+          converterDataParaBackend(
+            form.dueDate
+          ),
+
+        prioridade:
+          form.priority,
+      });
+
+      setShowSuccess(true);
+    } catch (error) {
+      console.error(
+        "Erro ao cadastrar tarefa:",
+        error
+      );
+
+      showAlert(
+        "Erro",
+        error instanceof Error
+          ? error.message
+          : "Não foi possível cadastrar a tarefa."
+      );
+    }
+  };
+
+  const disciplinaSelecionada =
+    disciplinas.find(
+      (disciplina) =>
+        disciplina.idDisciplina ===
+        idDisciplinaSelecionada
     );
-    return;
-  }
-
- try {
-  // Busca o usuário que está logado no app
-  const usuario = await obterUsuarioSessao();
-
-  if (!usuario?.idUsuario) {
-    showAlert(
-      "Erro",
-      "Usuário não encontrado. Faça login novamente."
-    );
-    return;
-  }
-
-  await cadastrarTarefa({
-    idUsuario: usuario.idUsuario, // agora usa o usuário logado
-    idDisciplina: idDisciplinaSelecionada, // por enquanto deixa 1
-    titulo: form.title,
-    tipo: "TAREFA",
-    descricao: form.description,
-    dataHoraInicio: null,
-    dataEntrega: converterDataParaBackend(form.dueDate),
-    prioridade: form.priority.toUpperCase(),
-  });
-
-  setShowSuccess(true);
-} catch (error) {
-  console.error("Erro ao cadastrar tarefa:", error);
-
-  showAlert(
-    "Erro",
-    error instanceof Error
-      ? error.message
-      : "Não foi possível cadastrar a tarefa."
-    );
-  }
-};
 
   if (showSuccess) {
     return (
@@ -206,25 +316,46 @@ const [idDisciplinaSelecionada, setIdDisciplinaSelecionada] =
         <MobileHeader
           title="Nova Tarefa"
           showBack
-          onBack={() => navigation.goBack()}
+          onBack={() =>
+            navigation.goBack()
+          }
         />
 
-        <View style={styles.successContainer}>
-          <View style={styles.iconCircle}>
-            <CheckCircle2 size={64} color="#16A34A" />
+        <View
+          style={
+            styles.successContainer
+          }
+        >
+          <View
+            style={styles.iconCircle}
+          >
+            <CheckCircle2
+              size={64}
+              color="#16A34A"
+            />
           </View>
 
-          <Text style={styles.successTitle}>
+          <Text
+            style={
+              styles.successTitle
+            }
+          >
             Tarefa registrada com sucesso!
           </Text>
 
-          <Text style={styles.successSubtitle}>
-            A tarefa foi registrada no protótipo acadêmico.
+          <Text
+            style={
+              styles.successSubtitle
+            }
+          >
+            A tarefa foi registrada com sucesso.
           </Text>
 
           <Button
             title="Voltar"
-            onPress={() => navigation.goBack()}
+            onPress={() =>
+              navigation.goBack()
+            }
             style={styles.backButton}
           />
         </View>
@@ -234,17 +365,25 @@ const [idDisciplinaSelecionada, setIdDisciplinaSelecionada] =
 
   return (
     <KeyboardAvoidingView
-      behavior={Platform.OS === "ios" ? "padding" : undefined}
+      behavior={
+        Platform.OS === "ios"
+          ? "padding"
+          : undefined
+      }
       style={styles.container}
     >
       <MobileHeader
         title="Nova Tarefa"
         showBack
-        onBack={() => navigation.goBack()}
+        onBack={() =>
+          navigation.goBack()
+        }
       />
 
       <ScrollView
-        contentContainerStyle={styles.scrollContent}
+        contentContainerStyle={
+          styles.scrollContent
+        }
         keyboardShouldPersistTaps="handled"
       >
         <Card style={styles.formCard}>
@@ -252,84 +391,212 @@ const [idDisciplinaSelecionada, setIdDisciplinaSelecionada] =
             label="Título da Tarefa"
             placeholder="Ex: Entrega do trabalho"
             value={form.title}
-            onChangeText={(text) => setForm({ ...form, title: text })}
+            onChangeText={(text) =>
+              setForm({
+                ...form,
+                title: text,
+              })
+            }
           />
 
-          <Text style={styles.sectionLabel}>Disciplina</Text>
+          <Text
+            style={styles.sectionLabel}
+          >
+            Disciplina
+          </Text>
 
-<View style={styles.subjectContainer}>
-  {disciplinas.map((disciplina) => {
-    const selecionada =
-      idDisciplinaSelecionada === disciplina.idDisciplina;
+          <View
+            style={
+              styles.dropdownContainer
+            }
+          >
+            <Pressable
+              style={
+                styles.dropdownButton
+              }
+              onPress={() =>
+                setDisciplinasAberta(
+                  !disciplinasAberta
+                )
+              }
+            >
+              <Text
+                style={[
+                  styles.dropdownButtonText,
+                  !disciplinaSelecionada &&
+                    styles.dropdownPlaceholder,
+                ]}
+              >
+                {disciplinaSelecionada
+                  ? disciplinaSelecionada.nome
+                  : "Selecione uma disciplina"}
+              </Text>
 
-    return (
-      <Pressable
-        key={disciplina.idDisciplina}
-        onPress={() => {
-          setIdDisciplinaSelecionada(disciplina.idDisciplina);
+              <View
+                style={
+                  disciplinasAberta
+                    ? styles.chevronOpen
+                    : undefined
+                }
+              >
+                <ChevronDown
+                  size={20}
+                  color="#64748B"
+                />
+              </View>
+            </Pressable>
 
-          setForm({
-            ...form,
-            subject: disciplina.nome,
-          });
-        }}
-        style={[
-          styles.subjectButton,
-          selecionada && styles.subjectButtonSelected,
-        ]}
-      >
-        <Text
-          style={[
-            styles.subjectText,
-            selecionada && styles.subjectTextSelected,
-          ]}
-        >
-          {disciplina.nome}
-        </Text>
-      </Pressable>
-    );
-  })}
-</View>
+            {disciplinasAberta && (
+              <View
+                style={
+                  styles.dropdownOptions
+                }
+              >
+                {disciplinas.length ===
+                0 ? (
+                  <View
+                    style={
+                      styles.dropdownEmpty
+                    }
+                  >
+                    <Text
+                      style={
+                        styles.dropdownEmptyText
+                      }
+                    >
+                      Nenhuma disciplina disponível.
+                    </Text>
+                  </View>
+                ) : (
+                  disciplinas.map(
+                    (disciplina) => {
+                      const selecionada =
+                        idDisciplinaSelecionada ===
+                        disciplina.idDisciplina;
+
+                      return (
+                        <Pressable
+                          key={
+                            disciplina.idDisciplina
+                          }
+                          style={[
+                            styles.dropdownOption,
+                            selecionada &&
+                              styles.dropdownOptionSelected,
+                          ]}
+                          onPress={() => {
+                            setIdDisciplinaSelecionada(
+                              disciplina.idDisciplina
+                            );
+
+                            setForm({
+                              ...form,
+                              subject:
+                                disciplina.nome,
+                            });
+
+                            setDisciplinasAberta(
+                              false
+                            );
+                          }}
+                        >
+                          <Text
+                            style={[
+                              styles.dropdownOptionText,
+                              selecionada &&
+                                styles.dropdownOptionTextSelected,
+                            ]}
+                          >
+                            {
+                              disciplina.nome
+                            }
+                          </Text>
+                        </Pressable>
+                      );
+                    }
+                  )
+                )}
+              </View>
+            )}
+          </View>
 
           <Input
             label="Data e Hora de Entrega"
             placeholder="Ex: 25/11/2026 23:59"
             value={form.dueDate}
-            onChangeText={(text) => setForm({ ...form, dueDate: text })}
+            onChangeText={(text) =>
+              setForm({
+                ...form,
+                dueDate: text,
+              })
+            }
           />
 
-          <Text style={styles.sectionLabel}>Prioridade</Text>
+          <Text
+            style={styles.sectionLabel}
+          >
+            Prioridade
+          </Text>
 
-          <View style={styles.priorityRow}>
-            {(["low", "medium", "high"] as const).map((priority) => {
-              const isSelected = form.priority === priority;
+          <View
+            style={styles.priorityRow}
+          >
+            {(
+              [
+                "BAIXA",
+                "MEDIA",
+                "ALTA",
+              ] as const
+            ).map((priority) => {
+              const isSelected =
+                form.priority ===
+                priority;
 
               return (
                 <Pressable
                   key={priority}
-                  onPress={() => setForm({ ...form, priority })}
+                  onPress={() =>
+                    setForm({
+                      ...form,
+                      priority,
+                    })
+                  }
                   style={[
                     styles.priorityButton,
                     isSelected && {
-                      borderColor: priorityColors[priority],
-                      backgroundColor: "#F8FAFC",
+                      borderColor:
+                        priorityColors[
+                          priority
+                        ],
+                      backgroundColor:
+                        "#F8FAFC",
                     },
                   ]}
                 >
                   <View
                     style={[
                       styles.priorityDot,
-                      { backgroundColor: priorityColors[priority] },
+                      {
+                        backgroundColor:
+                          priorityColors[
+                            priority
+                          ],
+                      },
                     ]}
                   />
 
                   <Text
                     style={[
                       styles.priorityText,
-                      isSelected && styles.priorityTextSelected,
+                      isSelected &&
+                        styles.priorityTextSelected,
                     ]}
                   >
-                    {priorityLabels[priority]}
+                    {
+                      priorityLabels[
+                        priority
+                      ]
+                    }
                   </Text>
                 </Pressable>
               );
@@ -342,22 +609,37 @@ const [idDisciplinaSelecionada, setIdDisciplinaSelecionada] =
             multiline
             numberOfLines={4}
             value={form.description}
-            onChangeText={(text) => setForm({ ...form, description: text })}
+            onChangeText={(text) =>
+              setForm({
+                ...form,
+                description: text,
+              })
+            }
             style={styles.textArea}
           />
 
-          <View style={styles.actionButtons}>
+          <View
+            style={
+              styles.actionButtons
+            }
+          >
             <Button
               title="Cancelar"
               variant="outline"
-              onPress={() => navigation.goBack()}
-              style={styles.cancelButton}
+              onPress={() =>
+                navigation.goBack()
+              }
+              style={
+                styles.cancelButton
+              }
             />
 
             <Button
               title="Cadastrar"
               onPress={handleSubmit}
-              style={styles.submitButton}
+              style={
+                styles.submitButton
+              }
             />
           </View>
         </Card>
@@ -374,6 +656,7 @@ const styles = StyleSheet.create({
 
   scrollContent: {
     padding: 16,
+    paddingBottom: 40,
     maxWidth: 600,
     width: "100%",
     alignSelf: "center",
@@ -388,6 +671,79 @@ const styles = StyleSheet.create({
     fontWeight: "500",
     color: "#334155",
     marginBottom: 8,
+  },
+
+  dropdownContainer: {
+    marginBottom: 16,
+  },
+
+  dropdownButton: {
+    minHeight: 48,
+    paddingHorizontal: 14,
+    borderWidth: 1,
+    borderColor: "#E2E8F0",
+    borderRadius: 10,
+    backgroundColor: "#FFFFFF",
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+  },
+
+  dropdownButtonText: {
+    flex: 1,
+    fontSize: 14,
+    color: "#0F172A",
+  },
+
+  dropdownPlaceholder: {
+    color: "#94A3B8",
+  },
+
+  chevronOpen: {
+    transform: [
+      {
+        rotate: "180deg",
+      },
+    ],
+  },
+
+  dropdownOptions: {
+    marginTop: 6,
+    borderWidth: 1,
+    borderColor: "#E2E8F0",
+    borderRadius: 10,
+    backgroundColor: "#FFFFFF",
+    overflow: "hidden",
+  },
+
+  dropdownOption: {
+    paddingHorizontal: 14,
+    paddingVertical: 13,
+    borderBottomWidth: 1,
+    borderBottomColor: "#F1F5F9",
+  },
+
+  dropdownOptionSelected: {
+    backgroundColor: "#EFF6FF",
+  },
+
+  dropdownOptionText: {
+    fontSize: 14,
+    color: "#334155",
+  },
+
+  dropdownOptionTextSelected: {
+    color: "#2563EB",
+    fontWeight: "600",
+  },
+
+  dropdownEmpty: {
+    padding: 14,
+  },
+
+  dropdownEmptyText: {
+    fontSize: 14,
+    color: "#94A3B8",
   },
 
   priorityRow: {
@@ -480,31 +836,4 @@ const styles = StyleSheet.create({
     width: "100%",
     maxWidth: 240,
   },
-  subjectContainer: {
-  gap: 8,
-  marginBottom: 16,
-},
-
-subjectButton: {
-  padding: 12,
-  borderRadius: 10,
-  borderWidth: 1,
-  borderColor: "#E2E8F0",
-  backgroundColor: "#FFFFFF",
-},
-
-subjectButtonSelected: {
-  borderColor: "#2563EB",
-  backgroundColor: "#EFF6FF",
-},
-
-subjectText: {
-  fontSize: 14,
-  color: "#64748B",
-},
-
-subjectTextSelected: {
-  color: "#2563EB",
-  fontWeight: "700",
-},
 });
