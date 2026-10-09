@@ -69,7 +69,7 @@ class TaskSecurityTests {
 
     @BeforeEach
     void preparar() {
-        for (String tabela : new String[]{"email_verification", "tarefa", "avaliacao", "falta", "disciplina",
+        for (String tabela : new String[]{"sync_request","email_verification", "tarefa", "avaliacao", "falta", "disciplina",
                 "periodo_letivo", "progresso_estudante", "usuario"}) {
             jdbc.update("DELETE FROM " + tabela);
         }

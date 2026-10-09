@@ -48,7 +48,7 @@ O body de cadastro de disciplina nao precisa de idUsuario; idPeriodo e opcional.
 - 403: identidade enviada para um service ou perfil difere da autenticada.
 - Recurso de terceiro: nao retorna seus dados; mantem 400/404 conforme contrato existente do modulo.
 
-API stateless, sem cookies de sessao e sem refresh token nesta etapa. Logout do app remove o token local; um token ja emitido continua valido ate expirar. Uma troca de chave invalida tokens anteriores. Mobile deve armazenar o token no Expo SecureStore e enviar o header em cada chamada. Os clientes web/mobile enviam o token e mantêm JWT apenas na memória da sessão; recarregar ou reabrir exige novo login.
+API stateless, sem cookies de sessao e sem refresh token nesta etapa. Logout do app remove o token local; um token ja emitido continua valido ate expirar. Uma troca de chave invalida tokens anteriores. Os clientes web/mobile enviam o token e mantêm JWT apenas na memória da sessão; recarregar ou reabrir exige novo login.
 
 ## Validacao
 

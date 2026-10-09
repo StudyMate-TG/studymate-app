@@ -41,6 +41,9 @@ class AcademicoFlowTests {
 
     @BeforeEach
     void preparar() {
+        jdbc.update("DELETE FROM sync_request");
+        jdbc.update("DELETE FROM email_verification");
+        jdbc.update("DELETE FROM tarefa");
         jdbc.update("DELETE FROM avaliacao");
         jdbc.update("DELETE FROM falta");
         jdbc.update("DELETE FROM disciplina");

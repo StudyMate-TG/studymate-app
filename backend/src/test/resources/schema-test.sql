@@ -60,7 +60,10 @@ CREATE TABLE tarefa (
  id_disciplina INTEGER NOT NULL REFERENCES disciplina(id_disciplina),
  titulo VARCHAR(100) NOT NULL, tipo VARCHAR(20) NOT NULL, descricao CLOB,
  data_hora_inicio TIMESTAMP, data_entrega TIMESTAMP NOT NULL, data_conclusao TIMESTAMP,
- status VARCHAR(20) NOT NULL, prioridade VARCHAR(20) NOT NULL, xp_gerado INTEGER NOT NULL
+ status VARCHAR(20) NOT NULL, prioridade VARCHAR(20) NOT NULL, xp_gerado INTEGER NOT NULL,
+ version BIGINT DEFAULT 0 NOT NULL CHECK (version >= 0),
+ updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP NOT NULL,
+ deleted_at TIMESTAMP WITH TIME ZONE
 );
 CREATE SEQUENCE seq_tarefa START WITH 1 INCREMENT BY 1;
 CREATE TABLE auth_rate_limit_bucket (
@@ -77,3 +80,14 @@ CREATE TABLE email_verification (
  nome VARCHAR(100), senha_hash VARCHAR(255), expires_at TIMESTAMP WITH TIME ZONE NOT NULL,
  used_at TIMESTAMP WITH TIME ZONE
 );
+
+CREATE TABLE sync_request (
+ client_tx_id VARCHAR(36) PRIMARY KEY,
+ id_usuario INTEGER NOT NULL REFERENCES usuario(id_usuario),
+ entity_type VARCHAR(30) NOT NULL,
+ operation VARCHAR(10) NOT NULL CHECK (operation IN ('CREATE','UPDATE','DELETE')),
+ response_resource_id INTEGER,
+ processed_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP NOT NULL
+);
+CREATE INDEX ix_sync_request_usuario ON sync_request(id_usuario);
+CREATE INDEX ix_tarefa_delta ON tarefa(id_disciplina, updated_at, id_tarefa);

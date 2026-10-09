@@ -42,7 +42,7 @@ class JwtSecurityTests {
  Integer ana,bia;
  String tokenAna,tokenBia;
  @BeforeEach void preparar() throws Exception {
-  for(String table:new String[]{"email_verification","tarefa","avaliacao","falta","disciplina","periodo_letivo","progresso_estudante","usuario"}) jdbc.update("DELETE FROM "+table);
+  for(String table:new String[]{"sync_request","email_verification","tarefa","avaliacao","falta","disciplina","periodo_letivo","progresso_estudante","usuario"}) jdbc.update("DELETE FROM "+table);
   mvc=MockMvcBuilders.webAppContextSetup(context).apply(springSecurity()).build();
   registrar("ana@example.com"); registrar("bia@example.com");
   ana=usuarios.findByEmailIgnoreCase("ana@example.com").orElseThrow().getIdUsuario();

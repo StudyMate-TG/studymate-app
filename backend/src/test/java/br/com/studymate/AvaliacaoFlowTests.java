@@ -32,7 +32,7 @@ class AvaliacaoFlowTests {
     Integer usuario, outro, disciplina, disciplinaOutro;
     MockMvc mvc;
     @BeforeEach void preparar() {
-        for (String tabela : new String[]{"email_verification","tarefa","avaliacao","falta","disciplina","periodo_letivo","progresso_estudante","usuario"})
+        for (String tabela : new String[]{"sync_request","email_verification","tarefa","avaliacao","falta","disciplina","periodo_letivo","progresso_estudante","usuario"})
             jdbc.update("DELETE FROM " + tabela);
         usuario = usuario("ana@example.com"); outro = usuario("bia@example.com");
         disciplina = disciplina(usuario); disciplinaOutro = disciplina(outro);

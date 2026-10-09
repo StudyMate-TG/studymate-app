@@ -27,11 +27,16 @@ import {
 import { obterUsuarioSessao } from "../services/authService";
 
 import * as tarefaService from "../services/tarefaService";
-import type { TarefaResumoResponse } from "../services/tarefaService";
+import type { TarefaResponse } from "../services/tarefaService";
 
 import { MobileHeader } from "../components/MobileHeader";
 import { Card } from "../components/Card";
 import { Button } from "../components/Button";
+import { formatarPrioridade } from "../utils/tarefaUtils";
+
+import {
+  TaskDeadline,
+} from "../components/TaskDeadline";
 
 import {
   ChevronRight,
@@ -53,8 +58,8 @@ export const HomeScreen: React.FC = () => {
     null
   );
 
-  const [tarefas, setTarefas] = useState<TarefaResumoResponse[]>([]);
-  const [nextPage, setNextPage] = useState<number | null>(null);
+  const [tarefas, setTarefas] = useState<TarefaResponse[]>([]);
+  const [limiteExibicao, setLimiteExibicao] = useState(50);
   const [carregandoTarefas, setCarregandoTarefas] = useState(false);
   const [erroTarefas, setErroTarefas] = useState("");
 
@@ -65,35 +70,24 @@ export const HomeScreen: React.FC = () => {
     const carregarDados = async () => {
       setCarregandoTarefas(true);
       setErroTarefas("");
+      setTarefas([]);
+      setLimiteExibicao(50);
       try {
         const usuario = await obterUsuarioSessao();
         if (!ativo) return;
         setUsuarioLogado(usuario);
-        setTarefas([]);
-        setNextPage(null);
         if (!usuario?.idUsuario) return;
-        const pagina = await tarefaService.listarTarefas(usuario.idUsuario);
-        if (ativo) { setTarefas(pagina.tarefas); setNextPage(pagina.nextPage); }
+        const dados = await tarefaService.listarTarefas(usuario.idUsuario);
+        if (ativo) setTarefas(dados);
       } catch (error) {
         if (ativo) setErroTarefas(error instanceof Error ? error.message : "Erro ao carregar tarefas.");
-      } finally { if (ativo) setCarregandoTarefas(false); }
+      } finally {
+        if (ativo) setCarregandoTarefas(false);
+      }
     };
     if (isFocused) void carregarDados();
     return () => { ativo = false; };
   }, [isFocused]);
-
-  const carregarMaisTarefas = async () => {
-    if (!usuarioLogado || nextPage === null || carregandoTarefas) return;
-    setCarregandoTarefas(true);
-    setErroTarefas("");
-    try {
-      const pagina = await tarefaService.listarTarefas(usuarioLogado.idUsuario, nextPage);
-      setTarefas((anteriores) => [...anteriores, ...pagina.tarefas.filter((nova) => !anteriores.some((atual) => atual.idTarefa === nova.idTarefa))]);
-      setNextPage(pagina.nextPage);
-    } catch (error) {
-      setErroTarefas(error instanceof Error ? error.message : "Erro ao carregar tarefas.");
-    } finally { setCarregandoTarefas(false); }
-  };
 
   const nomeExibicao = useMemo(() => {
     if (!usuarioLogado?.nome) {
@@ -199,8 +193,20 @@ export const HomeScreen: React.FC = () => {
     </Text>
   </Card>
 ) : (
-  tarefas.map((tarefa) => (
-    <Card key={tarefa.idTarefa} style={styles.taskCard}>
+  tarefas.slice(0, limiteExibicao).map((tarefa) => (
+    <Pressable
+      key={
+        tarefa.localId ??
+        String(tarefa.idTarefa)
+      }
+      onPress={() =>
+        navigation.navigate("EditTask", {
+          idTarefa: tarefa.idTarefa,
+          localId: tarefa.localId,
+        })
+      }
+    >
+    <Card style={styles.taskCard}>
       <View style={styles.taskHeader}>
         <View style={styles.taskContent}>
           <Text style={styles.taskTitle}>
@@ -210,19 +216,21 @@ export const HomeScreen: React.FC = () => {
 
         <View style={styles.priorityBadge}>
           <Text style={styles.priorityText}>
-            {tarefa.prioridade}
+            {formatarPrioridade(tarefa.prioridade)}
           </Text>
         </View>
       </View>
-
-      <Text style={styles.taskDate}>
-        Entrega: {formatarDataTarefa(tarefa.dataEntrega)}
-      </Text>
+      <TaskDeadline
+        dataEntrega={tarefa.dataEntrega}
+      />
     </Card>
-  ))
-)}
+  </Pressable>
+))
+ )}
         {erroTarefas && tarefas.length > 0 ? <Text style={styles.infoCardText}>{erroTarefas}</Text> : null}
-        {nextPage !== null ? <Button title="Carregar mais entregas" variant="outline" onPress={carregarMaisTarefas} loading={carregandoTarefas} /> : null}
+        {limiteExibicao < tarefas.length ? (
+          <Button title="Carregar mais entregas" variant="outline" onPress={() => setLimiteExibicao((limite) => limite + 50)} />
+        ) : null}
       </ScrollView>
 
       <Pressable
@@ -276,6 +284,7 @@ export const HomeScreen: React.FC = () => {
     </View>
   );
 };
+
 
 const styles = StyleSheet.create({
   container: {
@@ -487,12 +496,6 @@ taskSubject: {
   fontSize: 13,
   color: "#64748B",
   marginTop: 4,
-},
-
-taskDate: {
-  fontSize: 13,
-  color: "#475569",
-  marginTop: 12,
 },
 
 priorityBadge: {

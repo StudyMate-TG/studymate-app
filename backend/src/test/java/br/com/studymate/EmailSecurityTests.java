@@ -44,7 +44,7 @@ class EmailSecurityTests {
  MockMvc mvc;
  @BeforeEach void setup(){
   mvc=MockMvcBuilders.webAppContextSetup(context).apply(springSecurity()).build();
-  for(String table:new String[]{"email_verification","tarefa","avaliacao","falta","disciplina","periodo_letivo","progresso_estudante","usuario"})jdbc.update("DELETE FROM "+table);
+  for(String table:new String[]{"sync_request","email_verification","tarefa","avaliacao","falta","disciplina","periodo_letivo","progresso_estudante","usuario"})jdbc.update("DELETE FROM "+table);
   jdbc.update("DELETE FROM auth_rate_limit_bucket WHERE bucket_key NOT LIKE '%:GLOBAL'");
   jdbc.update("UPDATE auth_rate_limit_bucket SET attempts=0,window_end=TIMESTAMP WITH TIME ZONE '1970-01-01 00:00:00+00:00'");
   reset(mail);

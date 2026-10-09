@@ -66,6 +66,11 @@ export type RootStackParamList = {
 
   NewTask: undefined;
 
+  EditTask: {
+    idTarefa?: number;
+    localId?: string;
+  };
+
   NewAttendance: undefined;
 
   Evaluations: {

@@ -39,7 +39,7 @@ class UsuarioFlowTests {
  MockMvc mvc;
  @BeforeEach void preparar(){
   mvc=MockMvcBuilders.webAppContextSetup(context).apply(springSecurity()).build();
-  for(String table:new String[]{"email_verification","tarefa","avaliacao","falta","disciplina","periodo_letivo","progresso_estudante","usuario"})jdbc.update("DELETE FROM "+table);
+  for(String table:new String[]{"sync_request","email_verification","tarefa","avaliacao","falta","disciplina","periodo_letivo","progresso_estudante","usuario"})jdbc.update("DELETE FROM "+table);
   reset(mail);
  }
  @Test void cadastroSoCriaContaDepoisDeConfirmarEmailEMantemHashEProgresso()throws Exception{

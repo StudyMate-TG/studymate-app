@@ -1,75 +1,229 @@
-import { apiFetch, handleResponse } from "./apiClient";
-import { API_BASE_URL } from "./apiConfig";
+import { requireSessionUser } from "./apiClient";
 
-export type TarefaRequest = {
-  idUsuario: number;
-  idDisciplina: number;
-  titulo: string;
-  tipo: string;
-  descricao?: string;
-  dataHoraInicio?: string | null;
-  dataEntrega: string;
-  prioridade: string;
-};
+import {
+  criarTarefaOffline,
+  atualizarTarefaOffline,
+  excluirTarefaOffline,
+} from "../database/repositories/tarefaOfflineRepository";
 
-export type TarefaResponse = {
-  idTarefa: number;
-  idUsuario: number;
-  idDisciplina: number;
-  titulo: string;
-  tipo: string;
-  descricao: string | null;
-  dataHoraInicio: string | null;
-  dataEntrega: string;
-  dataConclusao: string | null;
-  status: string;
-  prioridade: string;
-};
+import {
+  listarTarefasLocais,
+  buscarTarefaLocalPorLocalId,
+  buscarTarefaLocalPorServerId,
+  type LocalTarefa,
+} from "../database/repositories/tarefaLocalRepository";
 
-export const cadastrarTarefa = async (
-  payload: TarefaRequest
-): Promise<TarefaResponse> => {
-  const body = {
-    idUsuario: payload.idUsuario,
-    idDisciplina: payload.idDisciplina,
-    titulo: payload.titulo.trim(),
-    tipo: payload.tipo,
-    descricao: payload.descricao?.trim() || "",
-    dataHoraInicio: payload.dataHoraInicio || null,
-    dataEntrega: payload.dataEntrega,
-    prioridade: payload.prioridade,
+import {
+  sincronizarTarefas,
+} from "./tarefaSyncEngine";
+
+import type {
+  TarefaReferencia,
+  TarefaRequest,
+  TarefaResponse,
+} from "./tarefaTypes";
+
+export type {
+  TarefaReferencia,
+  TarefaRequest,
+  TarefaResponse,
+} from "./tarefaTypes";
+
+function mapearLocalParaResponse(
+  tarefa: LocalTarefa
+): TarefaResponse {
+  return {
+    idTarefa:
+      tarefa.serverId ?? undefined,
+
+    localId:
+      tarefa.localId,
+
+    idDisciplina:
+      tarefa.idDisciplina,
+
+    nomeDisciplina:
+      tarefa.nomeDisciplina,
+
+    titulo:
+      tarefa.titulo,
+
+    tipo:
+      tarefa.tipo,
+
+    descricao:
+      tarefa.descricao,
+
+    dataHoraInicio:
+      tarefa.dataHoraInicio,
+
+    dataEntrega:
+      tarefa.dataEntrega,
+
+    dataConclusao:
+      tarefa.dataConclusao,
+
+    status:
+      tarefa.status,
+
+    prioridade:
+      tarefa.prioridade,
+
+    xpGerado:
+      tarefa.xpGerado,
+
+    updatedAt:
+      tarefa.updatedAtLocal,
+
+    deletedAt:
+      null,
+
+    version:
+      tarefa.serverVersion ??
+      undefined,
+
+    syncStatus:
+      tarefa.syncStatus,
   };
+}
 
-
-  const response = await apiFetch(`${API_BASE_URL}/tarefas`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify(body),
-  });
-
-  return handleResponse<TarefaResponse>(response);
-};
-
-export type TarefaResumoResponse = Omit<TarefaResponse, "descricao">;
-export type PaginaTarefas = { tarefas: TarefaResumoResponse[]; nextPage: number | null };
-
-export const listarTarefas = async (
-  idUsuario: number,
-  page = 0,
-  size = 50
-): Promise<PaginaTarefas> => {
-  if (!Number.isInteger(page) || page < 0 || !Number.isInteger(size) || size < 1 || size > 50) {
-    throw new Error("Página de tarefas inválida.");
+async function tentarSincronizar(
+  idUsuario: number
+): Promise<void> {
+  try {
+    await sincronizarTarefas(
+      idUsuario
+    );
+  } catch (error) {
+    requireSessionUser(idUsuario);
+    console.warn(
+      "Sincronização de tarefas não concluída. Utilizando dados locais.",
+      error
+    );
   }
-  const response = await apiFetch(
-    `${API_BASE_URL}/tarefas?idUsuario=${idUsuario}&page=${page}&size=${size}`
+}
+
+export async function cadastrarTarefa(
+  payload: TarefaRequest
+): Promise<TarefaResponse> {
+  requireSessionUser(payload.idUsuario);
+  const tarefaLocal =
+    await criarTarefaOffline(
+      payload
+    );
+
+  await tentarSincronizar(
+    payload.idUsuario
   );
-  const tarefas = await handleResponse<TarefaResumoResponse[]>(response);
-  const header = response.headers.get("X-Next-Page");
-  const nextPage = header !== null && /^\d+$/.test(header) && Number(header) === page + 1
-    ? Number(header)
-    : tarefas.length === size ? page + 1 : null;
-  return { tarefas, nextPage };
-};
+
+  const tarefaAtualizada =
+    await buscarTarefaLocalPorLocalId(
+      tarefaLocal.localId
+    );
+
+  return mapearLocalParaResponse(
+    tarefaAtualizada ??
+      tarefaLocal
+  );
+}
+
+export async function listarTarefas(
+  idUsuario: number
+): Promise<TarefaResponse[]> {
+  requireSessionUser(idUsuario);
+  await tentarSincronizar(
+    idUsuario
+  );
+
+  const tarefas =
+    await listarTarefasLocais();
+
+  return tarefas.map(
+    mapearLocalParaResponse
+  );
+}
+
+export async function buscarTarefaPorId(
+  referencia: TarefaReferencia,
+  idUsuario: number
+): Promise<TarefaResponse> {
+  requireSessionUser(idUsuario);
+  await tentarSincronizar(
+    idUsuario
+  );
+
+  let tarefa:
+    | LocalTarefa
+    | null = null;
+
+  if (referencia.localId) {
+    tarefa =
+      await buscarTarefaLocalPorLocalId(
+        referencia.localId
+      );
+  }
+
+  if (
+    !tarefa &&
+    referencia.idTarefa !==
+      undefined
+  ) {
+    tarefa =
+      await buscarTarefaLocalPorServerId(
+        referencia.idTarefa
+      );
+  }
+
+  if (!tarefa) {
+    throw new Error(
+      "Tarefa não encontrada no armazenamento local."
+    );
+  }
+
+  return mapearLocalParaResponse(
+    tarefa
+  );
+}
+
+export async function atualizarTarefa(
+  referencia: TarefaReferencia,
+  idUsuario: number,
+  payload: TarefaRequest
+): Promise<TarefaResponse> {
+  requireSessionUser(idUsuario);
+  if (payload.idUsuario !== idUsuario) throw new Error("Usuário da tarefa inválido.");
+  const tarefaLocal =
+    await atualizarTarefaOffline(
+      referencia,
+      payload
+    );
+
+  await tentarSincronizar(
+    idUsuario
+  );
+
+  const tarefaAtualizada =
+    await buscarTarefaLocalPorLocalId(
+      tarefaLocal.localId
+    );
+
+  return mapearLocalParaResponse(
+    tarefaAtualizada ??
+      tarefaLocal
+  );
+}
+
+export async function excluirTarefa(
+  referencia: TarefaReferencia,
+  idUsuario: number
+): Promise<void> {
+  requireSessionUser(idUsuario);
+  await excluirTarefaOffline(
+    referencia,
+    idUsuario
+  );
+
+  await tentarSincronizar(
+    idUsuario
+  );
+}

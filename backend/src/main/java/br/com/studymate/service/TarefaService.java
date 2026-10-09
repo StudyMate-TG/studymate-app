@@ -15,6 +15,7 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
 import java.util.List;
 
 @Service
@@ -153,7 +154,8 @@ public class TarefaService {
         int alteradas = tarefaRepository.atualizarPorIdEUsuario(
                 idTarefa, idUsuario, disciplina.getIdDisciplina(),
                 request.getTitulo().trim(), request.getTipo().trim(), descricaoNormalizada(request),
-                request.getDataHoraInicio(), request.getDataEntrega(), request.getPrioridade().trim());
+                request.getDataHoraInicio(), request.getDataEntrega(), request.getPrioridade().trim(),
+                OffsetDateTime.now());
         if (alteradas != 1) {
             throw new IllegalArgumentException("Tarefa não encontrada.");
         }
@@ -199,7 +201,7 @@ public class TarefaService {
         bloquearUsuario(idUsuario);
 
         validarIdTarefa(idTarefa);
-        if (tarefaRepository.excluirPorIdEUsuario(idTarefa, idUsuario) != 1) {
+        if (tarefaRepository.excluirPorIdEUsuario(idTarefa, idUsuario, OffsetDateTime.now()) != 1) {
             throw new IllegalArgumentException("Tarefa não encontrada.");
         }
     }

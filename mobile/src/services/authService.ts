@@ -53,7 +53,7 @@ export const loginUsuario = async (payload: LoginUsuarioPayload): Promise<Usuari
   }, false);
   const data = await handleResponse<LoginResponse>(response);
   if (data.tipo !== "Bearer") throw new Error("Resposta de autenticação inválida.");
-  setAccessToken(data.token, data.expiresIn);
+  setAccessToken(data.token, data.expiresIn, data.idUsuario);
   return perfilUsuario(data);
 };
 

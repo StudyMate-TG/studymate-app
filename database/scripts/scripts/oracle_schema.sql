@@ -168,7 +168,8 @@ BEGIN
     processed_at TIMESTAMP WITH TIME ZONE DEFAULT SYSTIMESTAMP NOT NULL,
     CONSTRAINT pk_sync_request PRIMARY KEY (client_tx_id),
     CONSTRAINT fk_sync_request_usuario FOREIGN KEY (id_usuario)
-        REFERENCES usuario (id_usuario)
+        REFERENCES usuario (id_usuario),
+    CONSTRAINT ck_sync_request_operation CHECK (operation IN ('CREATE','UPDATE','DELETE'))
 )~');
 END;
 /
@@ -185,13 +186,39 @@ DECLARE
             EXECUTE IMMEDIATE 'ALTER TABLE tarefa ADD (' || definicao || ')';
         END IF;
     END;
+    PROCEDURE garantir_nao_nulo(nome VARCHAR2) IS
+        anulavel VARCHAR2(1);
+    BEGIN
+        SELECT nullable INTO anulavel FROM user_tab_columns
+        WHERE table_name = 'TAREFA' AND column_name = UPPER(nome);
+        IF anulavel = 'Y' THEN
+            EXECUTE IMMEDIATE 'ALTER TABLE tarefa MODIFY (' || nome || ' NOT NULL)';
+        END IF;
+    END;
 BEGIN
     adicionar_coluna('version', 'version NUMBER(19,0) DEFAULT 0 NOT NULL');
     adicionar_coluna('updated_at', 'updated_at TIMESTAMP(6) WITH TIME ZONE DEFAULT SYSTIMESTAMP NOT NULL');
     adicionar_coluna('deleted_at', 'deleted_at TIMESTAMP(6) WITH TIME ZONE');
+    -- Bancos anteriores podem ter estas colunas presentes, mas ainda anulaveis.
+    UPDATE tarefa SET version = 0 WHERE version IS NULL;
+    UPDATE tarefa SET updated_at = SYSTIMESTAMP WHERE updated_at IS NULL;
+    EXECUTE IMMEDIATE 'ALTER TABLE tarefa MODIFY (version DEFAULT 0, updated_at DEFAULT SYSTIMESTAMP)';
+    garantir_nao_nulo('version');
+    garantir_nao_nulo('updated_at');
     SELECT COUNT(*) INTO quantidade FROM user_constraints WHERE constraint_name = 'CK_TAREFA_VERSION';
     IF quantidade = 0 THEN
         EXECUTE IMMEDIATE 'ALTER TABLE tarefa ADD CONSTRAINT ck_tarefa_version CHECK (version >= 0)';
+    END IF;
+END;
+/
+
+DECLARE
+    quantidade NUMBER;
+BEGIN
+    SELECT COUNT(*) INTO quantidade FROM user_constraints
+    WHERE constraint_name = 'CK_SYNC_REQUEST_OPERATION';
+    IF quantidade = 0 THEN
+        EXECUTE IMMEDIATE 'ALTER TABLE sync_request ADD CONSTRAINT ck_sync_request_operation CHECK (operation IN (''CREATE'',''UPDATE'',''DELETE''))';
     END IF;
 END;
 /
@@ -267,6 +294,7 @@ BEGIN
     criar_indice('ix_tarefa_delta', 'CREATE INDEX ix_tarefa_delta ON tarefa(id_disciplina,updated_at,id_tarefa)');
     criar_indice('ix_tarefa_disc_upd', 'CREATE INDEX ix_tarefa_disc_upd ON tarefa(id_disciplina,updated_at)');
     criar_indice('ix_tarefa_deleted', 'CREATE INDEX ix_tarefa_deleted ON tarefa(deleted_at)');
+    criar_indice('ix_sync_request_usuario', 'CREATE INDEX ix_sync_request_usuario ON sync_request(id_usuario)');
     criar_indice('ix_falta_disciplina', 'CREATE INDEX ix_falta_disciplina ON falta(id_disciplina)');
     criar_indice('ix_avaliacao_disciplina', 'CREATE INDEX ix_avaliacao_disciplina ON avaliacao(id_disciplina)');
     criar_indice('ix_horario_disciplina', 'CREATE INDEX ix_horario_disciplina ON horario_aula(id_disciplina)');

@@ -5,8 +5,10 @@ import jakarta.validation.constraints.*;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
+import org.hibernate.annotations.UpdateTimestamp;
 
 import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
 
 @Getter
 @Setter
@@ -72,6 +74,17 @@ public class Tarefa {
     @PositiveOrZero
     @Column(name = "xp_gerado", nullable = false)
     private Integer xpGerado;
+
+    @UpdateTimestamp
+    @Column(name = "updated_at", nullable = false)
+    private OffsetDateTime updatedAt;
+
+    @Column(name = "deleted_at")
+    private OffsetDateTime deletedAt;
+
+    @Version
+    @Column(name = "version", nullable = false)
+    private Long version;
 
     public Tarefa(
         Integer idDisciplina,

@@ -4,6 +4,7 @@ import br.com.studymate.model.Tarefa;
 import lombok.Getter;
 
 import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
 
 @Getter
 public class TarefaResponse {
@@ -21,6 +22,10 @@ public class TarefaResponse {
     private final String prioridade;
     private final Integer xpGerado;
 
+    private final OffsetDateTime updatedAt;
+    private final OffsetDateTime deletedAt;
+    private final Long version;
+
     public TarefaResponse(Tarefa tarefa, String nomeDisciplina) {
         this.idTarefa = tarefa.getIdTarefa();
         this.idDisciplina = tarefa.getIdDisciplina();
@@ -34,5 +39,9 @@ public class TarefaResponse {
         this.status = tarefa.getStatus();
         this.prioridade = tarefa.getPrioridade();
         this.xpGerado = tarefa.getXpGerado();
+
+        this.updatedAt = tarefa.getUpdatedAt();
+        this.deletedAt = tarefa.getDeletedAt();
+        this.version = tarefa.getVersion();
     }
 }

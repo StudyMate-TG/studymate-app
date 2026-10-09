@@ -51,6 +51,9 @@ import {
   User,
 } from "lucide-react-native";
 
+import { EditTaskScreen } from "../screens/EditTaskScreen";
+
+
 const Stack =
   createNativeStackNavigator<RootStackParamList>();
 
@@ -258,6 +261,9 @@ export const RootNavigator: React.FC = () => {
         name="NewTask"
         component={NewTaskScreen}
       />
+      <Stack.Screen name="EditTask"
+       component={EditTaskScreen}
+        />
 
       <Stack.Screen
         name="NewAttendance"
