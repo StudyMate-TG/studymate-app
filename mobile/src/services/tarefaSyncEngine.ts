@@ -17,6 +17,10 @@ import type {
   TarefaRequest,
 } from "./tarefaTypes";
 
+import {
+  salvarMetadata,
+} from "../database/repositories/syncMetadataRepository";
+
 type SyncTarefaResponse = {
   clientTxId: string;
   status: string;
@@ -316,12 +320,16 @@ async function executarPushTarefas(
 export async function sincronizarTarefas(
   idUsuario: number
 ): Promise<void> {
-
   await executarPushTarefas(
     idUsuario
   );
 
   await executarPullTarefas(
     idUsuario
+  );
+
+  await salvarMetadata(
+    `tarefas_last_sync_at_${idUsuario}`,
+    new Date().toISOString()
   );
 }

@@ -103,22 +103,28 @@ public class SyncService {
 
         switch (operation) {
 
-            case "CREATE" ->
-                    idTarefa = criar(request);
+    case "CREATE" ->
+            idTarefa = criar(request);
 
-            case "UPDATE" ->
-                    idTarefa = alterar(request);
+    case "UPDATE" ->
+            idTarefa = alterar(request);
 
-            case "DELETE" -> {
-                excluir(request);
-                idTarefa = request.getIdTarefa();
-            }
+    case "COMPLETE" ->
+            idTarefa = concluir(request);
 
-            default ->
-                    throw new IllegalArgumentException(
-                            "Operação de sincronização inválida."
-                    );
-        }
+    case "REOPEN" ->
+        idTarefa = reabrir(request);
+
+    case "DELETE" -> {
+        excluir(request);
+        idTarefa = request.getIdTarefa();
+    }
+
+    default ->
+            throw new IllegalArgumentException(
+                    "Operação de sincronização inválida."
+            );
+}
 
         SyncRequest syncRequest =
                 new SyncRequest(
@@ -236,6 +242,34 @@ public class SyncService {
 
         return response.getIdTarefa();
     }
+
+    private Integer concluir(
+                SyncTarefaRequest request) {
+
+        validarIdTarefa(request);
+
+        TarefaResponse response =
+                tarefaService.concluir(
+                        request.getIdTarefa(),
+                        request.getIdUsuario()
+                );
+
+        return response.getIdTarefa();
+        }
+
+    private Integer reabrir(
+                SyncTarefaRequest request) {
+
+        validarIdTarefa(request);
+
+        TarefaResponse response =
+                tarefaService.reabrir(
+                        request.getIdTarefa(),
+                        request.getIdUsuario()
+                );
+
+        return response.getIdTarefa();
+        }
 
     private void excluir(
             SyncTarefaRequest request) {

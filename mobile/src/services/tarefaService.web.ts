@@ -1,6 +1,8 @@
 import {
   criarTarefaOffline,
   atualizarTarefaOffline,
+  concluirTarefaOffline,
+  reabrirTarefaOffline,
   excluirTarefaOffline,
 } from "../database/repositories/tarefaOfflineRepository";
 
@@ -20,6 +22,10 @@ import type {
   TarefaRequest,
   TarefaResponse,
 } from "./tarefaTypes";
+
+import {
+  buscarMetadata,
+} from "../database/repositories/syncMetadataRepository";
 
 export type {
   TarefaReferencia,
@@ -126,12 +132,12 @@ export async function cadastrarTarefa(
 export async function listarTarefas(
   idUsuario: number
 ): Promise<TarefaResponse[]> {
-  await tentarSincronizar(
-    idUsuario
-  );
-
   const tarefas =
     await listarTarefasLocais();
+
+  void tentarSincronizar(
+    idUsuario
+  );
 
   return tarefas.map(
     mapearLocalParaResponse
@@ -205,6 +211,44 @@ export async function atualizarTarefa(
   );
 }
 
+export async function concluirTarefa(
+  referencia: TarefaReferencia,
+  idUsuario: number
+): Promise<TarefaResponse> {
+  const tarefaLocal =
+    await concluirTarefaOffline(
+      referencia,
+      idUsuario
+    );
+
+  void tentarSincronizar(
+    idUsuario
+  );
+
+  return mapearLocalParaResponse(
+    tarefaLocal
+  );
+}
+
+export async function reabrirTarefa(
+  referencia: TarefaReferencia,
+  idUsuario: number
+): Promise<TarefaResponse> {
+  const tarefaLocal =
+    await reabrirTarefaOffline(
+      referencia,
+      idUsuario
+    );
+
+  void tentarSincronizar(
+    idUsuario
+  );
+
+  return mapearLocalParaResponse(
+    tarefaLocal
+  );
+}
+
 export async function excluirTarefa(
   referencia: TarefaReferencia,
   idUsuario: number
@@ -216,5 +260,13 @@ export async function excluirTarefa(
 
   await tentarSincronizar(
     idUsuario
+  );
+}
+
+export async function obterUltimaSincronizacaoTarefas(
+  idUsuario: number
+): Promise<string | null> {
+  return buscarMetadata(
+    `tarefas_last_sync_at_${idUsuario}`
   );
 }

@@ -5,7 +5,9 @@ import { getDatabase } from "../database";
 export type OutboxOperation =
   | "CREATE"
   | "UPDATE"
-  | "DELETE";
+  | "DELETE"
+  | "COMPLETE"
+  | "REOPEN";
 
 export type OutboxStatus =
   | "PENDING"

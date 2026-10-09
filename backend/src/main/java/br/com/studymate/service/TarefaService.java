@@ -163,6 +163,41 @@ public class TarefaService {
         return resposta(salva, idUsuario);
     }
 
+    @Transactional
+    public TarefaResponse reabrir(
+            Integer idTarefa,
+            Integer idUsuario) {
+
+        bloquearUsuario(idUsuario);
+
+        Tarefa tarefa =
+                buscarDoUsuario(
+                        idTarefa,
+                        idUsuario
+                );
+
+        if ("PENDENTE".equalsIgnoreCase(
+                tarefa.getStatus())) {
+
+                throw new IllegalArgumentException(
+                        "A tarefa já está pendente."
+                );
+        }
+
+        tarefa.setStatus("PENDENTE");
+        tarefa.setDataConclusao(null);
+
+        Tarefa salva =
+                tarefaRepository.saveAndFlush(
+                        tarefa
+                );
+
+        return resposta(
+                salva,
+                idUsuario
+        );
+        }
+
         @Transactional
         public void excluir(
                 Integer idTarefa,

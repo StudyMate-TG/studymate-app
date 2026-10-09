@@ -163,7 +163,7 @@ CREATE TABLE sync_request (
         FOREIGN KEY (id_usuario)
         REFERENCES usuario (id_usuario),
     CONSTRAINT ck_sync_request_operation
-        CHECK (operation IN ('CREATE', 'UPDATE', 'DELETE'))
+        CHECK (operation IN ('CREATE', 'UPDATE', 'DELETE', 'COMPLETE', 'REOPEN'))
 );
 
 CREATE INDEX ix_sync_request_usuario

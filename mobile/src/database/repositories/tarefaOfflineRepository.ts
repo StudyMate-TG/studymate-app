@@ -326,6 +326,367 @@ export async function atualizarTarefaOffline(
   return tarefa;
 }
 
+export async function concluirTarefaOffline(
+  referencia: TarefaReferencia,
+  idUsuario: number
+): Promise<LocalTarefa> {
+  const db = await getDatabase();
+
+  const agora =
+    new Date().toISOString();
+
+  let localIdEncontrado:
+    | string
+    | null = null;
+
+  await db.withExclusiveTransactionAsync(
+    async (txn) => {
+      let tarefaLocal:
+        | {
+            local_id: string;
+            server_id: number | null;
+            status: string;
+          }
+        | null = null;
+
+      if (referencia.localId) {
+        tarefaLocal =
+          await txn.getFirstAsync<{
+            local_id: string;
+            server_id: number | null;
+            status: string;
+          }>(
+            `
+              SELECT
+                local_id,
+                server_id,
+                status
+              FROM local_tarefa
+              WHERE local_id = ?
+            `,
+            referencia.localId
+          );
+      } else if (
+        referencia.idTarefa !== undefined
+      ) {
+        tarefaLocal =
+          await txn.getFirstAsync<{
+            local_id: string;
+            server_id: number | null;
+            status: string;
+          }>(
+            `
+              SELECT
+                local_id,
+                server_id,
+                status
+              FROM local_tarefa
+              WHERE server_id = ?
+            `,
+            referencia.idTarefa
+          );
+      }
+
+      if (!tarefaLocal) {
+        throw new Error(
+          "Tarefa não encontrada no armazenamento local."
+        );
+      }
+
+      localIdEncontrado =
+        tarefaLocal.local_id;
+
+      /*
+       * Se já estiver concluída localmente,
+       * não cria outra operação COMPLETE.
+       */
+      if (
+        tarefaLocal.status
+          .toUpperCase() === "CONCLUIDA"
+      ) {
+        return;
+      }
+
+      /*
+       * Atualização otimista:
+       * a interface passa a enxergar a tarefa
+       * como concluída imediatamente, mesmo
+       * sem conexão.
+       */
+      await txn.runAsync(
+        `
+          UPDATE local_tarefa
+          SET
+            status = 'CONCLUIDA',
+            data_conclusao = ?,
+            sync_status = 'PENDING',
+            updated_at_local = ?
+          WHERE local_id = ?
+        `,
+        agora,
+        agora,
+        tarefaLocal.local_id
+      );
+
+      /*
+       * Evita duplicar COMPLETE caso o usuário
+       * toque mais de uma vez antes da sync.
+       */
+      const completeExistente =
+        await txn.getFirstAsync<{
+          id: number;
+        }>(
+          `
+            SELECT id
+            FROM sync_outbox
+            WHERE
+              entity_local_id = ?
+              AND entity_type = 'TAREFA'
+              AND operation = 'COMPLETE'
+              AND status IN (
+                'PENDING',
+                'PROCESSING',
+                'ERROR'
+              )
+            ORDER BY id DESC
+            LIMIT 1
+          `,
+          tarefaLocal.local_id
+        );
+
+      if (completeExistente) {
+        return;
+      }
+
+      /*
+       * Mesmo se a tarefa ainda não tiver server_id,
+       * mantemos COMPLETE separado do CREATE.
+       *
+       * A fila ficará:
+       *
+       * CREATE
+       * COMPLETE
+       *
+       * Assim o CREATE recebe primeiro o server_id
+       * e depois o COMPLETE pode usar esse id.
+       */
+      await txn.runAsync(
+        `
+          INSERT INTO sync_outbox (
+            client_tx_id,
+            entity_local_id,
+            entity_type,
+            operation,
+            payload,
+            status,
+            attempts,
+            last_error,
+            created_at
+          )
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+        `,
+        Crypto.randomUUID(),
+        tarefaLocal.local_id,
+        "TAREFA",
+        "COMPLETE",
+        JSON.stringify({
+          idUsuario,
+        }),
+        "PENDING",
+        0,
+        null,
+        agora
+      );
+    }
+  );
+
+  if (!localIdEncontrado) {
+    throw new Error(
+      "Não foi possível identificar a tarefa concluída."
+    );
+  }
+
+  const tarefa =
+    await buscarTarefaLocalPorLocalId(
+      localIdEncontrado
+    );
+
+  if (!tarefa) {
+    throw new Error(
+      "Não foi possível recuperar a tarefa concluída localmente."
+    );
+  }
+
+  return tarefa;
+}
+
+export async function reabrirTarefaOffline(
+  referencia: TarefaReferencia,
+  idUsuario: number
+): Promise<LocalTarefa> {
+  const db = await getDatabase();
+
+  const agora =
+    new Date().toISOString();
+
+  let localIdEncontrado:
+    | string
+    | null = null;
+
+  await db.withExclusiveTransactionAsync(
+    async (txn) => {
+      let tarefaLocal:
+        | {
+            local_id: string;
+            server_id: number | null;
+            status: string;
+          }
+        | null = null;
+
+      if (referencia.localId) {
+        tarefaLocal =
+          await txn.getFirstAsync<{
+            local_id: string;
+            server_id: number | null;
+            status: string;
+          }>(
+            `
+              SELECT
+                local_id,
+                server_id,
+                status
+              FROM local_tarefa
+              WHERE local_id = ?
+            `,
+            referencia.localId
+          );
+      } else if (
+        referencia.idTarefa !== undefined
+      ) {
+        tarefaLocal =
+          await txn.getFirstAsync<{
+            local_id: string;
+            server_id: number | null;
+            status: string;
+          }>(
+            `
+              SELECT
+                local_id,
+                server_id,
+                status
+              FROM local_tarefa
+              WHERE server_id = ?
+            `,
+            referencia.idTarefa
+          );
+      }
+
+      if (!tarefaLocal) {
+        throw new Error(
+          "Tarefa não encontrada no armazenamento local."
+        );
+      }
+
+      localIdEncontrado =
+        tarefaLocal.local_id;
+
+      if (
+        tarefaLocal.status
+          .toUpperCase() === "PENDENTE"
+      ) {
+        return;
+      }
+
+      await txn.runAsync(
+        `
+          UPDATE local_tarefa
+          SET
+            status = 'PENDENTE',
+            data_conclusao = NULL,
+            sync_status = 'PENDING',
+            updated_at_local = ?
+          WHERE local_id = ?
+        `,
+        agora,
+        tarefaLocal.local_id
+      );
+
+      const reopenExistente =
+        await txn.getFirstAsync<{
+          id: number;
+        }>(
+          `
+            SELECT id
+            FROM sync_outbox
+            WHERE
+              entity_local_id = ?
+              AND entity_type = 'TAREFA'
+              AND operation = 'REOPEN'
+              AND status IN (
+                'PENDING',
+                'PROCESSING',
+                'ERROR'
+              )
+            ORDER BY id DESC
+            LIMIT 1
+          `,
+          tarefaLocal.local_id
+        );
+
+      if (reopenExistente) {
+        return;
+      }
+
+      await txn.runAsync(
+        `
+          INSERT INTO sync_outbox (
+            client_tx_id,
+            entity_local_id,
+            entity_type,
+            operation,
+            payload,
+            status,
+            attempts,
+            last_error,
+            created_at
+          )
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+        `,
+        Crypto.randomUUID(),
+        tarefaLocal.local_id,
+        "TAREFA",
+        "REOPEN",
+        JSON.stringify({
+          idUsuario,
+        }),
+        "PENDING",
+        0,
+        null,
+        agora
+      );
+    }
+  );
+
+  if (!localIdEncontrado) {
+    throw new Error(
+      "Não foi possível identificar a tarefa reaberta."
+    );
+  }
+
+  const tarefa =
+    await buscarTarefaLocalPorLocalId(
+      localIdEncontrado
+    );
+
+  if (!tarefa) {
+    throw new Error(
+      "Não foi possível recuperar a tarefa reaberta localmente."
+    );
+  }
+
+  return tarefa;
+}
+
 export async function excluirTarefaOffline(
   referencia: TarefaReferencia,
   idUsuario: number
