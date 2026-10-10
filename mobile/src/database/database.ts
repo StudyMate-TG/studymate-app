@@ -6,14 +6,70 @@ import {
   MIGRATION_ADD_REOPEN_TO_SYNC_OUTBOX,
 } from "./migrations";
 
-let database: SQLite.SQLiteDatabase | null = null;
+import {
+  hasSession,
+  requireSessionUser,
+} from "../services/apiClient";
 
-export async function getDatabase(): Promise<SQLite.SQLiteDatabase> {
-  if (!database) {
-    database = await SQLite.openDatabaseAsync("studymate.db");
+// Filas e tarefas de uma conta nunca são abertas pela sessão de outra conta.
+// O banco anterior, sem proprietário, fica preservado e não é sincronizado.
+const databases = new Map<number, Promise<SQLite.SQLiteDatabase>>();
+
+async function openUserDatabase(
+  idUsuario: number
+): Promise<SQLite.SQLiteDatabase> {
+  const db =
+    await SQLite.openDatabaseAsync(
+      `studymate-user-${idUsuario}.db`
+    );
+
+  await db.execAsync(
+    DATABASE_SCHEMA
+  );
+
+  await migrarSyncOutboxParaComplete(
+    db
+  );
+
+  await migrarSyncOutboxParaReopen(
+    db
+  );
+
+  const colunas =
+    await db.getAllAsync<{
+      name: string;
+    }>(
+      "PRAGMA table_info(local_tarefa)"
+    );
+
+  if (
+    !colunas.some(
+      (coluna) =>
+        coluna.name ===
+        "nome_disciplina"
+    )
+  ) {
+    await db.execAsync(
+      "ALTER TABLE local_tarefa " +
+        "ADD COLUMN nome_disciplina TEXT " +
+        "NOT NULL DEFAULT '';"
+    );
   }
 
-  return database;
+  return db;
+}
+
+export async function getDatabase(expectedUserId?: number): Promise<SQLite.SQLiteDatabase> {
+  const idUsuario = requireSessionUser(expectedUserId);
+  let pending = databases.get(idUsuario);
+  if (!pending) {
+    pending = openUserDatabase(idUsuario);
+    databases.set(idUsuario, pending);
+    pending.catch(() => { databases.delete(idUsuario); });
+  }
+  const db = await pending;
+  requireSessionUser(idUsuario);
+  return db;
 }
 
 async function migrarSyncOutboxParaComplete(
@@ -97,33 +153,5 @@ async function migrarSyncOutboxParaReopen(
 }
 
 export async function initializeDatabase(): Promise<void> {
-  const db = await getDatabase();
-
-  await db.execAsync(DATABASE_SCHEMA);
-
-  await migrarSyncOutboxParaComplete(db);
-
-  await migrarSyncOutboxParaReopen(db);
-
-
-  const colunas =
-    await db.getAllAsync<{
-      name: string;
-    }>(`
-      PRAGMA table_info(local_tarefa)
-    `);
-
-  const possuiNomeDisciplina =
-    colunas.some(
-      (coluna) =>
-        coluna.name === "nome_disciplina"
-    );
-
-  if (!possuiNomeDisciplina) {
-    await db.execAsync(`
-      ALTER TABLE local_tarefa
-      ADD COLUMN nome_disciplina TEXT
-      NOT NULL DEFAULT '';
-    `);
-  }
+  if (hasSession()) await getDatabase();
 }

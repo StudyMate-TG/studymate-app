@@ -23,8 +23,8 @@ import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 
 import { RootStackParamList } from "../types";
 import { obterUsuarioSessao } from "../services/authService";
-import * as tarefaService from "../services/tarefaService.web";
-import type { TarefaResponse } from "../services/tarefaService.web";
+import * as tarefaService from "../services/tarefaService";
+import type { TarefaResponse } from "../services/tarefaService";
 import { formatarPrioridade } from "../utils/tarefaUtils";
 import { TaskDeadline } from "../components/TaskDeadline";
 import {
@@ -55,41 +55,53 @@ const [
 ] = useState<string | null>(null);
 
 useEffect(() => {
+  let ativo = true;
   const carregarTarefas = async () => {
     try {
       const usuario = await obterUsuarioSessao();
-
+      if (!ativo) return;
       if (!usuario?.idUsuario) {
         setTarefas([]);
         return;
       }
-      
-     const dados = await tarefaService.listarTarefas(
-  usuario.idUsuario
-);
+      const dados =
+        await tarefaService.listarTarefas(
+          usuario.idUsuario
+        );
 
-console.log("TAREFAS RECEBIDAS NA AGENDA:", dados);
+      if (!ativo) {
+        return;
+      }
 
-setTarefas(dados);
+      setTarefas(dados);
 
-const ultimaSync =
-  await tarefaService.obterUltimaSincronizacaoTarefas(
-    usuario.idUsuario
-  );
+      const ultimaSync =
+        await tarefaService.obterUltimaSincronizacaoTarefas(
+          usuario.idUsuario
+        );
 
-setUltimaSincronizacao(
-  ultimaSync
-);
+      if (!ativo) {
+        return;
+      }
 
+      setUltimaSincronizacao(
+        ultimaSync
+      );
     } catch (error) {
-      console.error("Erro ao carregar tarefas da agenda:", error);
+      if (!ativo) {
+        return;
+      }
+
+      console.error(
+        "Erro ao carregar tarefas da agenda:",
+        error
+      );
+
       setTarefas([]);
     }
   };
-
-  if (isFocused) {
-    carregarTarefas();
-  }
+  if (isFocused) void carregarTarefas();
+  return () => { ativo = false; };
 }, [isFocused]);
 
 const tarefasDoDia = useMemo(() => {

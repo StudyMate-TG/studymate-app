@@ -9,6 +9,7 @@ export type UsuarioResponse = {
   semestre?: string | null;
   matricula: string | null;
   instituicao: string | null;
+  emailAlteracaoPendente?: boolean;
 };
 
 export type DisciplinaResponse = {

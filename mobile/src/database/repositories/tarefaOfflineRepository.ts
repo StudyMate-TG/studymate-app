@@ -50,6 +50,21 @@ export async function criarTarefaOffline(
 
   await db.withExclusiveTransactionAsync(
     async (txn) => {
+      const disciplinaLocal =
+        await txn.getFirstAsync<{
+          nome: string;
+        }>(
+          `
+            SELECT nome
+            FROM local_disciplina
+            WHERE id_disciplina = ?
+          `,
+          tarefaNormalizada.idDisciplina
+        );
+
+      const nomeDisciplina =
+        disciplinaLocal?.nome ?? "";
+
       await txn.runAsync(
         `
           INSERT INTO local_tarefa (
@@ -78,7 +93,7 @@ export async function criarTarefaOffline(
         localId,
         null,
         tarefaNormalizada.idDisciplina,
-        "",
+        nomeDisciplina,
         tarefaNormalizada.titulo,
         tarefaNormalizada.tipo,
         tarefaNormalizada.descricao ?? null,
@@ -159,6 +174,7 @@ export async function atualizarTarefaOffline(
         | {
             local_id: string;
             server_id: number | null;
+            nome_disciplina: string;
           }
         | null = null;
 
@@ -167,11 +183,13 @@ export async function atualizarTarefaOffline(
           await txn.getFirstAsync<{
             local_id: string;
             server_id: number | null;
+            nome_disciplina: string;
           }>(
             `
               SELECT
                 local_id,
-                server_id
+                server_id,
+                nome_disciplina
               FROM local_tarefa
               WHERE local_id = ?
             `,
@@ -185,11 +203,13 @@ export async function atualizarTarefaOffline(
           await txn.getFirstAsync<{
             local_id: string;
             server_id: number | null;
+            nome_disciplina: string;
           }>(
             `
               SELECT
                 local_id,
-                server_id
+                server_id,
+                nome_disciplina
               FROM local_tarefa
               WHERE server_id = ?
             `,
@@ -206,11 +226,28 @@ export async function atualizarTarefaOffline(
       localIdEncontrado =
         tarefaLocal.local_id;
 
+        const disciplinaLocal =
+          await txn.getFirstAsync<{
+            nome: string;
+          }>(
+            `
+              SELECT nome
+              FROM local_disciplina
+              WHERE id_disciplina = ?
+            `,
+            tarefaNormalizada.idDisciplina
+          );
+
+        const nomeDisciplina =
+          disciplinaLocal?.nome ??
+          tarefaLocal.nome_disciplina;
+
       await txn.runAsync(
         `
           UPDATE local_tarefa
           SET
             id_disciplina = ?,
+            nome_disciplina = ?,
             titulo = ?,
             tipo = ?,
             descricao = ?,
@@ -222,6 +259,7 @@ export async function atualizarTarefaOffline(
           WHERE local_id = ?
         `,
         tarefaNormalizada.idDisciplina,
+        nomeDisciplina,
         tarefaNormalizada.titulo,
         tarefaNormalizada.tipo,
         tarefaNormalizada.descricao ??

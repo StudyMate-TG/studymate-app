@@ -6,6 +6,9 @@ import br.com.studymate.service.UsuarioService;
 import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.oauth2.jwt.Jwt;
+import org.springframework.security.access.AccessDeniedException;
 
 @RestController
 @RequestMapping("/api/usuarios")
@@ -18,8 +21,9 @@ public class UsuarioController {
 
     @PutMapping("/{idUsuario}")
     public ResponseEntity<UsuarioResponse> atualizar(
-            @PathVariable Integer idUsuario,
+            @PathVariable Integer idUsuario, @AuthenticationPrincipal Jwt principal,
             @Valid @RequestBody UsuarioUpdateRequest request) {
-        return ResponseEntity.ok(usuarioService.atualizar(idUsuario, request));
+        if (!idUsuario.toString().equals(principal.getSubject())) throw new AccessDeniedException("Acesso não permitido.");
+        return ResponseEntity.ok(usuarioService.atualizar(Integer.valueOf(principal.getSubject()), request));
     }
 }

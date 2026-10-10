@@ -14,7 +14,7 @@ import {
 
 import type { RootStackScreenProps } from "../types";
 
-import { cadastrarUsuario, loginUsuario, salvarUsuarioSessao } from "../services/authService";
+import { cadastrarUsuario, loginUsuario, salvarUsuarioSessao, verificarEmail } from "../services/authService";
 
 import { Input } from "../components/Input";
 import { Button } from "../components/Button";
@@ -25,6 +25,9 @@ type Props = RootStackScreenProps<"Login">;
 export const LoginScreen: React.FC<Props> = ({ navigation }) => {
   const [activeTab, setActiveTab] = useState<"login" | "signup">("login");
   const [isLoading, setIsLoading] = useState(false);
+  const [confirmarCadastro, setConfirmarCadastro] = useState(false);
+  const [confirmacao, setConfirmacao] = useState({ codigo: "", senha: "" });
+  const [mensagem, setMensagem] = useState("");
 
   const [loginData, setLoginData] = useState({
     email: "",
@@ -81,19 +84,34 @@ export const LoginScreen: React.FC<Props> = ({ navigation }) => {
 
     setIsLoading(true);
     try {
-      const usuario = await cadastrarUsuario({
+      const resposta = await cadastrarUsuario({
         nome: signupData.nome.trim(),
         email: signupData.email.trim().toLowerCase(),
         senha: signupData.senha,
       });
 
-      await salvarUsuarioSessao(usuario);
-      navigation.replace("MainTabs");
+      setMensagem(resposta.mensagem);
+      setSignupData({ ...signupData, senha: "", confirmarSenha: "" });
+      setConfirmarCadastro(true);
     } catch (error) {
       showAlert("Erro", error instanceof Error ? error.message : "Erro ao cadastrar usuário.");
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const handleVerify = async () => {
+    setIsLoading(true);
+    try {
+      const resposta = await verificarEmail(confirmacao);
+      setMensagem(resposta.mensagem + " Agora tente entrar com seu e-mail e senha.");
+      setConfirmacao({ codigo: "", senha: "" });
+      setConfirmarCadastro(false);
+      setLoginData({ email: signupData.email, senha: "" });
+      setActiveTab("login");
+    } catch (error) {
+      showAlert("Erro", error instanceof Error ? error.message : "Erro ao confirmar e-mail.");
+    } finally { setIsLoading(false); }
   };
 
   return (
@@ -136,6 +154,8 @@ export const LoginScreen: React.FC<Props> = ({ navigation }) => {
           </Pressable>
         </View>
 
+        <Text style={styles.cardDescription}>Por segurança, entre novamente após recarregar ou fechar o aplicativo.</Text>
+        {mensagem ? <Text accessibilityLiveRegion="polite" style={styles.cardDescription}>{mensagem}</Text> : null}
         <Card style={styles.formCard}>
           {activeTab === "login" ? (
             <View>
@@ -167,6 +187,15 @@ export const LoginScreen: React.FC<Props> = ({ navigation }) => {
                 loading={isLoading}
                 style={styles.submitButton}
               />
+            </View>
+          ) : confirmarCadastro ? (
+            <View>
+              <Text style={styles.cardTitle}>Confirmar e-mail</Text>
+              <Text style={styles.cardDescription}>Cole o código recebido por e-mail e digite novamente a senha escolhida no cadastro.</Text>
+              <Input label="Código de confirmação" value={confirmacao.codigo} onChangeText={(codigo) => setConfirmacao({ ...confirmacao, codigo })} autoCapitalize="none" autoCorrect={false} maxLength={64} />
+              <Input label="Senha do cadastro" value={confirmacao.senha} onChangeText={(senha) => setConfirmacao({ ...confirmacao, senha })} secureTextEntry />
+              <Button title="Confirmar e-mail" onPress={handleVerify} loading={isLoading} />
+              <Button title="Voltar ao cadastro" variant="outline" disabled={isLoading} onPress={() => { setConfirmarCadastro(false); setConfirmacao({ codigo: "", senha: "" }); }} style={styles.submitButton} />
             </View>
           ) : (
             <View>
@@ -215,6 +244,7 @@ export const LoginScreen: React.FC<Props> = ({ navigation }) => {
                 loading={isLoading}
                 style={styles.submitButton}
               />
+              <Button title="Já recebi um código" variant="outline" disabled={isLoading} onPress={() => setConfirmarCadastro(true)} style={styles.submitButton} />
             </View>
           )}
         </Card>

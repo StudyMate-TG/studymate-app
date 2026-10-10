@@ -1,15 +1,15 @@
 # Avaliacoes e media por disciplina
 
-Rotas do backend atual (idUsuario identifica a conta conforme contrato existente; JWT ainda pendente):
+Todas as rotas exigem Authorization: Bearer <token>. A identidade vem do JWT, sem idUsuario em query/body:
 
 | Metodo | Rota | Parametros |
 | --- | --- | --- |
-| POST | /api/avaliacoes | idUsuario |
-| GET | /api/avaliacoes | idUsuario, idDisciplina |
-| GET | /api/avaliacoes/{idAvaliacao} | idUsuario |
-| PUT | /api/avaliacoes/{idAvaliacao} | idUsuario |
-| DELETE | /api/avaliacoes/{idAvaliacao} | idUsuario |
-| GET | /api/avaliacoes/media | idUsuario, idDisciplina |
+| POST | /api/avaliacoes | — |
+| GET | /api/avaliacoes | idDisciplina |
+| GET | /api/avaliacoes/{idAvaliacao} | — |
+| PUT | /api/avaliacoes/{idAvaliacao} | — |
+| DELETE | /api/avaliacoes/{idAvaliacao} | — |
+| GET | /api/avaliacoes/media | idDisciplina |
 
 Body de cadastro e edicao (PUT substitui todos os campos):
 
@@ -24,7 +24,7 @@ Body de cadastro e edicao (PUT substitui todos os campos):
 }
 ```
 
-Nome obrigatorio ate 100 caracteres; tipo obrigatorio ate 20 caracteres, sem inventar uma lista fechada de tipos. Nota opcional, entre 0 e 10; peso obrigatorio maior que zero e no maximo 99.99 (Oracle NUMBER(4,2)). Valores com mais de duas casas decimais sao rejeitados. Datas futuras sao permitidas para agendar avaliacoes. A disciplina de origem e a de destino, em uma edicao, precisam pertencer ao usuario informado.
+Nome obrigatorio ate 100 caracteres; tipo obrigatorio ate 20 caracteres, sem inventar uma lista fechada de tipos. Nota opcional, entre 0 e 10; peso obrigatorio maior que zero e no maximo 99.99 (Oracle NUMBER(4,2)). Valores com mais de duas casas decimais sao rejeitados. Datas futuras sao permitidas para agendar avaliacoes. A disciplina de origem e a de destino, em uma edicao, precisam pertencer ao usuario autenticado.
 
 Media = soma(nota * peso) / soma(peso), considerando somente avaliacoes com nota. Resultado arredondado para duas casas decimais, HALF_UP. Sem notas a media e null, evitando confundir falta de notas com nota zero. Retorna tambem avaliacoesComNota e avaliacoesPendentes. O valor e calculado na consulta; altera automaticamente apos cadastro, edicao ou exclusao. A media parcial nao representa aprovacao definitiva.
 

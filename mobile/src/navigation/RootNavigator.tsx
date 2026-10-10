@@ -23,6 +23,8 @@ import {
   obterUsuarioSessao,
 } from "../services/authService";
 
+import { onSessionEnded } from "../services/apiClient";
+
 import { LoginScreen } from "../screens/LoginScreen";
 import { HomeScreen } from "../screens/HomeScreen";
 import { SubjectsScreen } from "../screens/SubjectsScreen";
@@ -176,6 +178,7 @@ const MainTabNavigator: React.FC = () => {
 };
 
 export const RootNavigator: React.FC = () => {
+  const [sessionVersion, setSessionVersion] = useState(0);
   const [
     initialRouteName,
     setInitialRouteName,
@@ -183,6 +186,11 @@ export const RootNavigator: React.FC = () => {
     useState<
       keyof RootStackParamList | null
     >(null);
+
+  useEffect(() => onSessionEnded(() => {
+    setInitialRouteName("Login");
+    setSessionVersion((version) => version + 1);
+  }), []);
 
   useEffect(() => {
     const verificarSessao =
@@ -221,6 +229,7 @@ export const RootNavigator: React.FC = () => {
 
   return (
     <Stack.Navigator
+      key={sessionVersion}
       initialRouteName={
         initialRouteName
       }

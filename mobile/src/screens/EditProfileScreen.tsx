@@ -19,6 +19,8 @@ import { RootStackParamList } from "../types";
 import {
   obterUsuarioSessao,
   salvarUsuarioSessao,
+  loginUsuario,
+  verificarEmail,
 } from "../services/authService";
 
 import { MobileHeader } from "../components/MobileHeader";
@@ -31,6 +33,8 @@ export const EditProfileScreen: React.FC = () => {
     useNavigation<NativeStackNavigationProp<RootStackParamList>>();
 
   const [isLoading, setIsLoading] = useState(false);
+  const [emailPendente, setEmailPendente] = useState(false);
+  const [confirmacao, setConfirmacao] = useState({ email: "", codigo: "", senha: "" });
 
   const [form, setForm] = useState({
     nome: "",
@@ -58,6 +62,7 @@ export const EditProfileScreen: React.FC = () => {
         return;
       }
 
+      setEmailPendente(Boolean(usuario.emailAlteracaoPendente));
       setForm({
         nome: usuario.nome || "",
         email: usuario.email || "",
@@ -101,8 +106,16 @@ export const EditProfileScreen: React.FC = () => {
 
       await salvarUsuarioSessao(atualizado);
 
-      showAlert("Sucesso", "Perfil atualizado com sucesso!");
-      navigation.goBack();
+      if (atualizado.emailAlteracaoPendente) {
+        setEmailPendente(true);
+        setConfirmacao({ email: form.email.trim().toLowerCase(), codigo: "", senha: "" });
+        setForm({ ...form, email: atualizado.email });
+        showAlert("Confirmação pendente", "As outras alterações foram salvas. O e-mail atual continua ativo. Confirme o novo e-mail com o código recebido e sua senha atual.");
+      } else {
+        setEmailPendente(false);
+        showAlert("Sucesso", "Perfil atualizado com sucesso!");
+        navigation.goBack();
+      }
     } catch (error) {
       showAlert(
         "Erro",
@@ -111,6 +124,25 @@ export const EditProfileScreen: React.FC = () => {
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const handleConfirmarEmail = async () => {
+    if (!confirmacao.email.trim()) {
+      showAlert("Atenção", "Informe o novo e-mail para atualizar a sessão após a confirmação.");
+      return;
+    }
+    setIsLoading(true);
+    try {
+      const resposta = await verificarEmail({ codigo: confirmacao.codigo, senha: confirmacao.senha }, true);
+      const usuario = await loginUsuario({ email: confirmacao.email, senha: confirmacao.senha });
+      await salvarUsuarioSessao(usuario);
+      setConfirmacao({ email: "", codigo: "", senha: "" });
+      setEmailPendente(false);
+      showAlert("Confirmação", resposta.mensagem);
+      navigation.goBack();
+    } catch (error) {
+      showAlert("Erro", error instanceof Error ? error.message : "Erro ao confirmar e-mail.");
+    } finally { setIsLoading(false); }
   };
 
   return (
@@ -144,6 +176,19 @@ export const EditProfileScreen: React.FC = () => {
           />
         </Card>
 
+        {!emailPendente ? (
+          <Button title="Já solicitei alteração de e-mail" variant="outline" onPress={() => setEmailPendente(true)} style={{ marginBottom: 16 }} />
+        ) : null}
+        {emailPendente ? (
+          <Card style={styles.formCard}>
+            <Text style={styles.sectionHeader}>Confirmar alteração de e-mail</Text>
+            <Text style={{ color: "#64748B", marginBottom: 16 }}>Seu e-mail atual continua ativo até a confirmação. Informe o novo endereço, o código recebido nele e sua senha atual.</Text>
+            <Input label="Novo e-mail solicitado" value={confirmacao.email} keyboardType="email-address" autoCapitalize="none" onChangeText={(email) => setConfirmacao({ ...confirmacao, email })} />
+            <Input label="Código de confirmação" value={confirmacao.codigo} maxLength={64} autoCapitalize="none" autoCorrect={false} onChangeText={(codigo) => setConfirmacao({ ...confirmacao, codigo })} />
+            <Input label="Senha atual" value={confirmacao.senha} secureTextEntry onChangeText={(senha) => setConfirmacao({ ...confirmacao, senha })} />
+            <Button title="Confirmar novo e-mail" onPress={handleConfirmarEmail} loading={isLoading} />
+          </Card>
+        ) : null}
         <Card style={styles.formCard}>
           <Text style={styles.sectionHeader}>Informações Pessoais</Text>
 

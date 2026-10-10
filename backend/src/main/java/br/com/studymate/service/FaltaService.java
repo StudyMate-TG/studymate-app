@@ -7,6 +7,7 @@ import br.com.studymate.repository.DisciplinaRepository;
 import br.com.studymate.repository.FaltaRepository;
 
 import org.springframework.stereotype.Service;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
@@ -26,6 +27,7 @@ public class FaltaService {
         this.disciplinaRepository = disciplinaRepository;
     }
 
+    @PreAuthorize("#idUsuario != null and #idUsuario.toString() == authentication.name")
     public List<FaltaResponse> listar(
             Integer idDisciplina,
             Integer idUsuario
@@ -40,6 +42,7 @@ public class FaltaService {
     }
 
     @Transactional
+    @PreAuthorize("#idUsuario != null and #idUsuario.toString() == authentication.name")
     public FaltaResponse cadastrar(
             Integer idUsuario,
             FaltaRequest request
@@ -63,6 +66,7 @@ public class FaltaService {
     }
 
     @Transactional
+    @PreAuthorize("#idUsuario != null and #idUsuario.toString() == authentication.name")
     public FaltaResponse alterar(
             Integer idFalta,
             Integer idUsuario,
@@ -98,6 +102,7 @@ public class FaltaService {
     }
 
     @Transactional
+    @PreAuthorize("#idUsuario != null and #idUsuario.toString() == authentication.name")
     public void excluir(
             Integer idFalta,
             Integer idUsuario
@@ -120,6 +125,7 @@ public class FaltaService {
         faltaRepository.flush();
     }
 
+    @PreAuthorize("#idUsuario != null and #idUsuario.toString() == authentication.name")
     public Long totalFaltas(
             Integer idDisciplina,
             Integer idUsuario

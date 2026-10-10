@@ -26,8 +26,8 @@ import {
 
 import { obterUsuarioSessao } from "../services/authService";
 
-import * as tarefaService from "../services/tarefaService.web";
-import type { TarefaResponse } from "../services/tarefaService.web";
+import * as tarefaService from "../services/tarefaService";
+import type { TarefaResponse } from "../services/tarefaService";
 
 import { MobileHeader } from "../components/MobileHeader";
 import { Card } from "../components/Card";
@@ -64,6 +64,9 @@ export const HomeScreen: React.FC = () => {
   );
 
   const [tarefas, setTarefas] = useState<TarefaResponse[]>([]);
+  const [limiteExibicao, setLimiteExibicao] = useState(50);
+  const [carregandoTarefas, setCarregandoTarefas] = useState(false);
+  const [erroTarefas, setErroTarefas] = useState("");
 
   const [
     tarefaAlterandoStatus,
@@ -80,53 +83,78 @@ export const HomeScreen: React.FC = () => {
   const [isActionModalVisible, setIsActionModalVisible] = useState(false);
 
 useEffect(() => {
+  let ativo = true;
+
   const carregarDados = async () => {
+    setCarregandoTarefas(true);
+    setErroTarefas("");
+    setTarefas([]);
+    setLimiteExibicao(50);
+
     try {
-      const usuario = await obterUsuarioSessao();
+      const usuario =
+        await obterUsuarioSessao();
+
+      if (!ativo) {
+        return;
+      }
 
       setUsuarioLogado(usuario);
 
       if (!usuario?.idUsuario) {
-        setTarefas([]);
+        setUltimaSincronizacao(null);
         return;
       }
 
-      console.log("ID do usuário na Home:", usuario.idUsuario);
-
-      console.log("Exports do tarefaService:", Object.keys(tarefaService));
-
-      const tarefasDoUsuario =
+      const dados =
         await tarefaService.listarTarefas(
           usuario.idUsuario
         );
 
-      console.log(
-        "Tarefas recebidas na Home:",
-        tarefasDoUsuario
-      );
+      if (!ativo) {
+        return;
+      }
 
-      setTarefas(
-        tarefasDoUsuario
-      );
+      setTarefas(dados);
 
       const ultimaSync =
         await tarefaService.obterUltimaSincronizacaoTarefas(
           usuario.idUsuario
         );
 
+      if (!ativo) {
+        return;
+      }
+
       setUltimaSincronizacao(
         ultimaSync
       );
+    } catch (error) {
+      if (!ativo) {
+        return;
+      }
 
-          } catch (error) {
-            console.error("Erro ao carregar dados da Home:", error);
-            setTarefas([]);
-          }
-        };
+      setErroTarefas(
+        error instanceof Error
+          ? error.message
+          : "Erro ao carregar tarefas."
+      );
+
+      setTarefas([]);
+    } finally {
+      if (ativo) {
+        setCarregandoTarefas(false);
+      }
+    }
+  };
 
   if (isFocused) {
-    carregarDados();
+    void carregarDados();
   }
+
+  return () => {
+    ativo = false;
+  };
 }, [isFocused]);
 
   const nomeExibicao = useMemo(() => {
@@ -290,143 +318,182 @@ const handleAlternarStatusTarefa = async (
         </View>
 
         {tarefas.length === 0 ? (
-  <Card style={styles.infoCard}>
-    <Text style={styles.infoCardText}>
-      Nenhuma entrega próxima cadastrada.
-    </Text>
-  </Card>
-) : (
-  tarefas.map((tarefa) => {
-    const concluida =
-      tarefa.status?.toUpperCase() ===
-      "CONCLUIDA";
+          <Card style={styles.infoCard}>
+            <Text style={styles.infoCardText}>
+              {carregandoTarefas ? "Carregando entregas..." : erroTarefas || "Nenhuma entrega próxima cadastrada."}
+            </Text>
+          </Card>
+        ) : (
+  tarefas
+    .slice(0, limiteExibicao)
+    .map((tarefa) => {
+      const concluida =
+        tarefa.status?.toUpperCase() ===
+        "CONCLUIDA";
 
-    const chave =
-      obterChaveTarefa(tarefa);
+      const chave =
+        obterChaveTarefa(tarefa);
 
-    const alterandoStatus =
-      tarefaAlterandoStatus === chave;
+      const alterandoStatus =
+        tarefaAlterandoStatus === chave;
 
-    return (
-      <Pressable
-        key={chave}
-        onPress={() =>
-          navigation.navigate(
-            "EditTask",
-            {
-              idTarefa:
-                tarefa.idTarefa,
-              localId:
-                tarefa.localId,
-            }
-          )
-        }
-      >
-        <Card
-          style={[
-            styles.taskCard,
-            concluida &&
-              styles.taskCardCompleted,
-          ]}
-        >
-          <View style={styles.taskHeader}>
-           <Pressable
-              style={styles.completeButton}
-              disabled={alterandoStatus}
-              onPress={(event) => {
-                event.stopPropagation();
-
-                void handleAlternarStatusTarefa(
-                  tarefa
-                );
-              }}
-              hitSlop={8}
-            >
-              {concluida ? (
-                <CheckCircle2
-                  size={25}
-                  color={
-                    alterandoStatus
-                      ? "#94A3B8"
-                      : "#16A34A"
-                  }
-                />
-              ) : (
-                <Circle
-                  size={25}
-                  color={
-                    alterandoStatus
-                      ? "#94A3B8"
-                      : "#64748B"
-                  }
-                />
-              )}
-            </Pressable>
-
-            <View
-              style={styles.taskContent}
-            >
-              <Text
-                style={[
-                  styles.taskTitle,
-                  concluida &&
-                    styles.taskTitleCompleted,
-                ]}
-              >
-                {tarefa.titulo}
-              </Text>
-
-              <Text
-                style={styles.taskSubject}
-              >
-                {tarefa.nomeDisciplina}
-              </Text>
-
-              {concluida && (
-                <Text
-                  style={
-                    styles.completedText
-                  }
-                >
-                  Tarefa concluída
-                </Text>
-              )}
-            </View>
-
-            <View
-              style={
-                styles.priorityBadge
+      return (
+        <Pressable
+          key={chave}
+          onPress={() =>
+            navigation.navigate(
+              "EditTask",
+              {
+                idTarefa:
+                  tarefa.idTarefa,
+                localId:
+                  tarefa.localId,
               }
+            )
+          }
+        >
+          <Card
+            style={[
+              styles.taskCard,
+              concluida &&
+                styles.taskCardCompleted,
+            ]}
+          >
+            <View
+              style={styles.taskHeader}
             >
-              <Text
+              <Pressable
                 style={
-                  styles.priorityText
+                  styles.completeButton
+                }
+                disabled={
+                  alterandoStatus
+                }
+                onPress={(event) => {
+                  event.stopPropagation();
+
+                  void handleAlternarStatusTarefa(
+                    tarefa
+                  );
+                }}
+                hitSlop={8}
+              >
+                {concluida ? (
+                  <CheckCircle2
+                    size={25}
+                    color={
+                      alterandoStatus
+                        ? "#94A3B8"
+                        : "#16A34A"
+                    }
+                  />
+                ) : (
+                  <Circle
+                    size={25}
+                    color={
+                      alterandoStatus
+                        ? "#94A3B8"
+                        : "#64748B"
+                    }
+                  />
+                )}
+              </Pressable>
+
+              <View
+                style={
+                  styles.taskContent
                 }
               >
-                {formatarPrioridade(
-                  tarefa.prioridade
-                )}
-              </Text>
-            </View>
-          </View>
+                <Text
+                  style={[
+                    styles.taskTitle,
+                    concluida &&
+                      styles.taskTitleCompleted,
+                  ]}
+                >
+                  {tarefa.titulo}
+                </Text>
 
-          <TaskDeadline
-            dataEntrega={
-              tarefa.dataEntrega
-            }
-          />
-        </Card>
-      </Pressable>
-    );
-  })
+                <Text
+                  style={
+                    styles.taskSubject
+                  }
+                >
+                  {tarefa.nomeDisciplina}
+                </Text>
+
+                {concluida && (
+                  <Text
+                    style={
+                      styles.completedText
+                    }
+                  >
+                    Tarefa concluída
+                  </Text>
+                )}
+              </View>
+
+              <View
+                style={
+                  styles.priorityBadge
+                }
+              >
+                <Text
+                  style={
+                    styles.priorityText
+                  }
+                >
+                  {formatarPrioridade(
+                    tarefa.prioridade
+                  )}
+                </Text>
+              </View>
+            </View>
+
+            <TaskDeadline
+              dataEntrega={
+                tarefa.dataEntrega
+              }
+            />
+          </Card>
+        </Pressable>
+      );
+    })
 )}
 
-      <View style={styles.syncStatusContainer}>
-        <LastSyncStatus
-          lastSyncAt={ultimaSincronizacao}
-        />
-      </View>
+{erroTarefas &&
+tarefas.length > 0 ? (
+  <Text
+    style={styles.infoCardText}
+  >
+    {erroTarefas}
+  </Text>
+) : null}
 
+{limiteExibicao <
+tarefas.length ? (
+  <Button
+    title="Carregar mais entregas"
+    variant="outline"
+    onPress={() =>
+      setLimiteExibicao(
+        (limite) => limite + 50
+      )
+    }
+  />
+) : null}
+
+<View
+  style={
+    styles.syncStatusContainer
+  }
+>
+  <LastSyncStatus
+    lastSyncAt={
+      ultimaSincronizacao
+    }
+  />
+</View>
       </ScrollView>
 
       <Pressable

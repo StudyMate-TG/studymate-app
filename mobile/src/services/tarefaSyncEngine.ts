@@ -1,3 +1,4 @@
+import { apiFetch, handleResponse, requireSessionUser } from "./apiClient";
 import { API_BASE_URL } from "./apiConfig";
 
 import { getDatabase } from "../database/database";
@@ -28,8 +29,8 @@ type SyncTarefaResponse = {
   alreadyProcessed: boolean;
 };
 
-async function recuperarOperacoesInterrompidas(): Promise<void> {
-  const db = await getDatabase();
+async function recuperarOperacoesInterrompidas(idUsuario: number): Promise<void> {
+  const db = await getDatabase(idUsuario);
 
   await db.runAsync(
     `
@@ -41,9 +42,10 @@ async function recuperarOperacoesInterrompidas(): Promise<void> {
 }
 
 async function marcarTarefaComErro(
-  localId: string
+  localId: string,
+  idUsuario: number
 ): Promise<void> {
-  const db = await getDatabase();
+  const db = await getDatabase(idUsuario);
 
   await db.runAsync(
     `
@@ -57,9 +59,10 @@ async function marcarTarefaComErro(
 
 async function finalizarOperacaoSincronizada(
   operacao: SyncOutboxItem,
-  resposta: SyncTarefaResponse
+  resposta: SyncTarefaResponse,
+  idUsuario: number
 ): Promise<void> {
-  const db = await getDatabase();
+  const db = await getDatabase(idUsuario);
 
   await db.withExclusiveTransactionAsync(
     async (txn) => {
@@ -153,7 +156,7 @@ async function enviarOperacao(
   operacao: SyncOutboxItem,
   idUsuario: number
 ): Promise<void> {
-  const db = await getDatabase();
+  const db = await getDatabase(idUsuario);
 
   const tarefaLocal =
     await db.getFirstAsync<{
@@ -226,7 +229,7 @@ async function enviarOperacao(
     tarefa,
   };
 
-  const response = await fetch(
+  const response = await apiFetch(
     `${API_BASE_URL}/sync/tarefas`,
     {
       method: "POST",
@@ -236,49 +239,28 @@ async function enviarOperacao(
       },
       body:
         JSON.stringify(body),
-    }
+    },
+    true,
+    idUsuario
   );
 
-  const texto =
-    await response.text();
-
-  let dados: any = {};
-
-  try {
-    dados =
-      texto
-        ? JSON.parse(texto)
-        : {};
-  } catch {
-    dados = {};
-  }
-
-  if (!response.ok) {
-    throw new Error(
-      dados.mensagem ||
-        dados.message ||
-        dados.error ||
-        texto ||
-        "Erro ao sincronizar tarefa."
-    );
-  }
-
-  const resposta =
-    dados as SyncTarefaResponse;
+  const resposta = await handleResponse<SyncTarefaResponse>(response);
+  requireSessionUser(idUsuario);
 
   await finalizarOperacaoSincronizada(
     operacao,
-    resposta
+    resposta,
+    idUsuario
   );
 }
 
 async function executarPushTarefas(
   idUsuario: number
 ): Promise<void> {
-  await recuperarOperacoesInterrompidas();
+  await recuperarOperacoesInterrompidas(idUsuario);
 
   const operacoes =
-    await listarOperacoesPendentes();
+    await listarOperacoesPendentes(idUsuario);
 
   for (const operacao of operacoes) {
 
@@ -290,7 +272,8 @@ async function executarPushTarefas(
 
     try {
       await marcarOperacaoComoProcessando(
-        operacao.id
+        operacao.id,
+        idUsuario
       );
 
       await enviarOperacao(
@@ -305,11 +288,13 @@ async function executarPushTarefas(
 
       await marcarOperacaoComErro(
         operacao.id,
-        mensagem
+        mensagem,
+        idUsuario
       );
 
       await marcarTarefaComErro(
-        operacao.entityLocalId
+        operacao.entityLocalId,
+        idUsuario
       );
 
       throw error;
@@ -317,19 +302,48 @@ async function executarPushTarefas(
   }
 }
 
-export async function sincronizarTarefas(
+const sincronizacoes =
+  new Map<number, Promise<void>>();
+
+export function sincronizarTarefas(
   idUsuario: number
 ): Promise<void> {
-  await executarPushTarefas(
-    idUsuario
+  requireSessionUser(idUsuario);
+
+  const existente =
+    sincronizacoes.get(idUsuario);
+
+  if (existente) {
+    return existente;
+  }
+
+  const execucao = (async () => {
+    await executarPushTarefas(
+      idUsuario
+    );
+
+    await executarPullTarefas(
+      idUsuario
+    );
+
+    await salvarMetadata(
+      `tarefas_last_sync_at_${idUsuario}`,
+      new Date().toISOString()
+    );
+  })();
+
+  sincronizacoes.set(
+    idUsuario,
+    execucao
   );
 
-  await executarPullTarefas(
-    idUsuario
-  );
+  void execucao
+    .finally(() => {
+      sincronizacoes.delete(
+        idUsuario
+      );
+    })
+    .catch(() => {});
 
-  await salvarMetadata(
-    `tarefas_last_sync_at_${idUsuario}`,
-    new Date().toISOString()
-  );
+  return execucao;
 }

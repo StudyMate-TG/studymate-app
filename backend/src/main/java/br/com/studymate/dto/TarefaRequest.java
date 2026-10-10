@@ -12,6 +12,7 @@ public class TarefaRequest {
 
     @NotNull
     @Positive
+    @com.fasterxml.jackson.annotation.JsonIgnore
     private Integer idUsuario;
 
     @NotNull
@@ -26,6 +27,7 @@ public class TarefaRequest {
     @Size(max = 20)
     private String tipo;
 
+    @Size(max = 4096)
     private String descricao;
 
     private LocalDateTime dataHoraInicio;

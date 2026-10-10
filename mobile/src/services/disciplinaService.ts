@@ -1,60 +1,144 @@
+import { apiFetch, handleResponse } from "./apiClient";
 import { API_BASE_URL } from "./apiConfig";
 
 import type { DisciplinaRequest, DisciplinaResponse } from "../types";
+
+import {
+  listarDisciplinasLocais,
+  salvarCacheDisciplinas,
+} from "../database/repositories/disciplinaLocalRepository";
 
 type MensagemResponse = {
   mensagem: string;
 };
 
-const handleResponse = async <T>(response: Response): Promise<T> => {
-  const text = await response.text();
+const buscarDisciplinasRemotas = async (
+  idUsuario: number,
+  termo?: string
+): Promise<DisciplinaResponse[]> => {
+  const params = new URLSearchParams();
 
-  let data: any = {};
+  params.append(
+    "idUsuario",
+    String(idUsuario)
+  );
 
-  try {
-    data = text ? JSON.parse(text) : {};
-  } catch {
-    data = {};
-  }
+  const termoTratado =
+    termo?.trim();
 
-  if (!response.ok) {
-    throw new Error(
-      data.mensagem ||
-        data.message ||
-        data.error ||
-        text ||
-        "Erro ao processar a requisição."
+  if (termoTratado) {
+    params.append(
+      "termo",
+      termoTratado
     );
   }
 
-  return data as T;
+  const response = await apiFetch(
+    `${API_BASE_URL}/disciplinas?${params.toString()}`
+  );
+
+  return handleResponse<
+    DisciplinaResponse[]
+  >(response);
 };
 
 export const listarDisciplinas = async (
   idUsuario: number,
   termo?: string
 ): Promise<DisciplinaResponse[]> => {
-  const params = new URLSearchParams();
+  const termoTratado =
+    termo?.trim();
 
-  params.append("idUsuario", String(idUsuario));
+  const disciplinasLocais =
+    await listarDisciplinasLocais(
+      idUsuario
+    );
 
-  const termoTratado = termo?.trim();
+  const filtrarLocais = (
+    disciplinas: DisciplinaResponse[]
+  ) => {
+    if (!termoTratado) {
+      return disciplinas;
+    }
 
-  if (termoTratado) {
-    params.append("termo", termoTratado);
+    const busca =
+      termoTratado.toLocaleLowerCase(
+        "pt-BR"
+      );
+
+    return disciplinas.filter(
+      (disciplina) =>
+        disciplina.nome
+          .toLocaleLowerCase("pt-BR")
+          .includes(busca) ||
+        disciplina.professor
+          .toLocaleLowerCase("pt-BR")
+          .includes(busca)
+    );
+  };
+
+  /*
+   * Já existe cache:
+   * devolvemos imediatamente e
+   * atualizamos pela API em background.
+   */
+  if (disciplinasLocais.length > 0) {
+    void buscarDisciplinasRemotas(
+      idUsuario,
+      termoTratado
+    )
+      .then(async (remotas) => {
+        await salvarCacheDisciplinas(
+          idUsuario,
+          remotas,
+          !termoTratado
+        );
+      })
+      .catch((error) => {
+        console.warn(
+          "Não foi possível atualizar o cache de disciplinas.",
+          error
+        );
+      });
+
+    return filtrarLocais(
+      disciplinasLocais
+    );
   }
 
-  const response = await fetch(
-    `${API_BASE_URL}/disciplinas?${params.toString()}`
-  );
+  /*
+   * Primeiro carregamento:
+   * ainda não há cache, então tentamos
+   * buscar a lista no servidor uma vez.
+   */
+  try {
+    const remotas =
+      await buscarDisciplinasRemotas(
+        idUsuario,
+        termoTratado
+      );
 
-  return handleResponse<DisciplinaResponse[]>(response);
+    await salvarCacheDisciplinas(
+      idUsuario,
+      remotas,
+      !termoTratado
+    );
+
+    return remotas;
+  } catch (error) {
+    console.warn(
+      "Backend indisponível e não há disciplinas em cache.",
+      error
+    );
+
+    return [];
+  }
 };
 
 export const cadastrarDisciplina = async (
   payload: DisciplinaRequest
 ): Promise<DisciplinaResponse> => {
-  console.log("Payload recebido no service:", payload);
+
 
   const body = {
     idUsuario: payload.idUsuario,
@@ -65,9 +149,8 @@ export const cadastrarDisciplina = async (
     limiteFaltas: payload.limiteFaltas,
   };
 
-  console.log("Body enviado para API:", body);
 
-  const response = await fetch(`${API_BASE_URL}/disciplinas`, {
+  const response = await apiFetch(`${API_BASE_URL}/disciplinas`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -82,7 +165,7 @@ export const buscarDisciplinaPorId = async (
   idDisciplina: number,
   idUsuario: number
 ): Promise<DisciplinaResponse> => {
-  const response = await fetch(
+  const response = await apiFetch(
     `${API_BASE_URL}/disciplinas/${idDisciplina}?idUsuario=${idUsuario}`
   );
 
@@ -94,7 +177,7 @@ export const atualizarDisciplina = async (
   idUsuario: number,
   payload: DisciplinaRequest
 ): Promise<DisciplinaResponse> => {
-  const response = await fetch(
+  const response = await apiFetch(
     `${API_BASE_URL}/disciplinas/${idDisciplina}?idUsuario=${idUsuario}`,
     {
       method: "PUT",
@@ -119,7 +202,7 @@ export const excluirDisciplina = async (
   idDisciplina: number,
   idUsuario: number
 ): Promise<MensagemResponse> => {
-  const response = await fetch(
+  const response = await apiFetch(
     `${API_BASE_URL}/disciplinas/${idDisciplina}?idUsuario=${idUsuario}`,
     {
       method: "DELETE",

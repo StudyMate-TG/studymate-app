@@ -47,6 +47,20 @@ CREATE TABLE IF NOT EXISTS sync_metadata (
     value TEXT
 );
 
+CREATE TABLE IF NOT EXISTS local_disciplina (
+    id_disciplina INTEGER PRIMARY KEY NOT NULL,
+    id_periodo INTEGER NOT NULL,
+    nome_periodo TEXT NOT NULL DEFAULT '',
+    nome TEXT NOT NULL,
+    professor TEXT NOT NULL DEFAULT '',
+    media_aprovacao REAL NOT NULL,
+    limite_faltas INTEGER NOT NULL,
+    updated_at_local TEXT NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS ix_local_disciplina_nome
+    ON local_disciplina (nome);
+
 CREATE INDEX IF NOT EXISTS ix_local_tarefa_sync_status
     ON local_tarefa (sync_status);
 

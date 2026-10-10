@@ -33,33 +33,37 @@ export async function criarOperacaoOutbox(
   );
 }
 
-export async function listarOperacoesPendentes(): Promise<
+export async function listarOperacoesPendentes(_idUsuario?: number): Promise<
   SyncOutboxItem[]
 > {
   return [];
 }
 
 export async function marcarOperacaoComoProcessando(
-  _id: number
+  _id: number,
+  _idUsuario?: number
 ): Promise<void> {
   return;
 }
 
 export async function marcarOperacaoComoSincronizada(
-  _id: number
+  _id: number,
+  _idUsuario?: number
 ): Promise<void> {
   return;
 }
 
 export async function marcarOperacaoComErro(
   _id: number,
-  _erro: string
+  _erro: string,
+  _idUsuario?: number
 ): Promise<void> {
   return;
 }
 
 export async function removerOperacaoOutbox(
-  _id: number
+  _id: number,
+  _idUsuario?: number
 ): Promise<void> {
   return;
 }

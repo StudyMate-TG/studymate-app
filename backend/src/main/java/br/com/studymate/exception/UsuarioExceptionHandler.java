@@ -19,6 +19,14 @@ import java.util.Map;
 public class UsuarioExceptionHandler {
     private static final Logger log = LoggerFactory.getLogger(UsuarioExceptionHandler.class);
 
+    @ExceptionHandler(org.springframework.security.access.AccessDeniedException.class)
+    public ResponseEntity<Map<String,String>> acessoNegado(Exception erro) {
+        return ResponseEntity.status(403).body(Map.of("mensagem", "Acesso não permitido."));
+    }
+    @ExceptionHandler(org.springframework.security.authentication.BadCredentialsException.class)
+    public ResponseEntity<Map<String,String>> credenciaisInvalidas(Exception erro) {
+        return ResponseEntity.status(401).body(Map.of("mensagem", "E-mail ou senha inválidos."));
+    }
     @ExceptionHandler(UsuarioNotFoundException.class)
     public ResponseEntity<Map<String, String>> naoEncontrado(UsuarioNotFoundException erro) {
         return resposta(404, erro.getMessage());
@@ -52,6 +60,15 @@ public class UsuarioExceptionHandler {
         return resposta(409, "Os dados conflitam com um registro existente ou com uma restrição do banco.");
     }
 
+    @ExceptionHandler(TooManyAuthAttemptsException.class)
+    public ResponseEntity<Map<String,String>> excesso(TooManyAuthAttemptsException erro) {
+        return ResponseEntity.status(429).header("Retry-After",Long.toString(erro.getRetryAfterSeconds()))
+                .body(Map.of("mensagem","Muitas tentativas. Aguarde antes de tentar novamente."));
+    }
+    @ExceptionHandler({AuthProtectionUnavailableException.class,EmailVerificationUnavailableException.class})
+    public ResponseEntity<Map<String,String>> indisponivel(Exception erro) {
+        return resposta(503,"Autenticação ou confirmação de e-mail temporariamente indisponível.");
+    }
     @ExceptionHandler(Exception.class)
     public ResponseEntity<Map<String, String>> interno(Exception erro) {
         log.error("Falha no fluxo de usuários", erro);

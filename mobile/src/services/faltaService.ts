@@ -1,3 +1,4 @@
+import { apiFetch, handleResponse } from "./apiClient";
 import { API_BASE_URL } from "./apiConfig";
 
 export type FaltaRequest = {
@@ -21,30 +22,6 @@ type TotalFaltasResponse = {
   total: number;
 };
 
-const handleResponse = async <T>(response: Response): Promise<T> => {
-  const text = await response.text();
-
-  let data: any = {};
-
-  try {
-    data = text ? JSON.parse(text) : {};
-  } catch {
-    data = {};
-  }
-
-  if (!response.ok) {
-    throw new Error(
-      data.mensagem ||
-        data.message ||
-        data.error ||
-        text ||
-        "Erro ao processar a requisição."
-    );
-  }
-
-  return data as T;
-};
-
 export const listarFaltas = async (
   idDisciplina: number,
   idUsuario: number
@@ -54,7 +31,7 @@ export const listarFaltas = async (
   params.append("idDisciplina", String(idDisciplina));
   params.append("idUsuario", String(idUsuario));
 
-  const response = await fetch(
+  const response = await apiFetch(
     `${API_BASE_URL}/faltas?${params.toString()}`
   );
 
@@ -65,7 +42,7 @@ export const cadastrarFalta = async (
   idUsuario: number,
   payload: FaltaRequest
 ): Promise<FaltaResponse> => {
-  const response = await fetch(
+  const response = await apiFetch(
     `${API_BASE_URL}/faltas?idUsuario=${idUsuario}`,
     {
       method: "POST",
@@ -88,7 +65,7 @@ export const atualizarFalta = async (
   idUsuario: number,
   payload: FaltaRequest
 ): Promise<FaltaResponse> => {
-  const response = await fetch(
+  const response = await apiFetch(
     `${API_BASE_URL}/faltas/${idFalta}?idUsuario=${idUsuario}`,
     {
       method: "PUT",
@@ -110,7 +87,7 @@ export const excluirFalta = async (
   idFalta: number,
   idUsuario: number
 ): Promise<MensagemResponse> => {
-  const response = await fetch(
+  const response = await apiFetch(
     `${API_BASE_URL}/faltas/${idFalta}?idUsuario=${idUsuario}`,
     {
       method: "DELETE",
@@ -129,7 +106,7 @@ export const buscarTotalFaltas = async (
   params.append("idDisciplina", String(idDisciplina));
   params.append("idUsuario", String(idUsuario));
 
-  const response = await fetch(
+  const response = await apiFetch(
     `${API_BASE_URL}/faltas/total?${params.toString()}`
   );
 

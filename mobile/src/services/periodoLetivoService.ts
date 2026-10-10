@@ -1,3 +1,4 @@
+import { apiFetch, handleResponse } from "./apiClient";
 import { API_BASE_URL } from "./apiConfig";
 
 import type {
@@ -9,34 +10,10 @@ type MensagemResponse = {
   mensagem: string;
 };
 
-const handleResponse = async <T>(response: Response): Promise<T> => {
-  const text = await response.text();
-
-  let data: any = {};
-
-  try {
-    data = text ? JSON.parse(text) : {};
-  } catch {
-    data = {};
-  }
-
-  if (!response.ok) {
-    throw new Error(
-      data.mensagem ||
-        data.message ||
-        data.error ||
-        text ||
-        "Erro ao processar a requisição."
-    );
-  }
-
-  return data as T;
-};
-
 export const listarPeriodosLetivos = async (
   idUsuario: number
 ): Promise<PeriodoLetivoResponse[]> => {
-  const response = await fetch(
+  const response = await apiFetch(
     `${API_BASE_URL}/periodos?idUsuario=${idUsuario}`
   );
 
@@ -46,7 +23,7 @@ export const listarPeriodosLetivos = async (
 export const consultarPeriodoLetivoAtivo = async (
   idUsuario: number
 ): Promise<PeriodoLetivoResponse> => {
-  const response = await fetch(
+  const response = await apiFetch(
     `${API_BASE_URL}/periodos/ativo?idUsuario=${idUsuario}`
   );
 
@@ -56,7 +33,7 @@ export const consultarPeriodoLetivoAtivo = async (
 export const cadastrarPeriodoLetivo = async (
   payload: PeriodoLetivoRequest
 ): Promise<PeriodoLetivoResponse> => {
-  const response = await fetch(`${API_BASE_URL}/periodos`, {
+  const response = await apiFetch(`${API_BASE_URL}/periodos`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -77,7 +54,7 @@ export const ativarPeriodoLetivo = async (
   idPeriodo: number,
   idUsuario: number
 ): Promise<PeriodoLetivoResponse> => {
-  const response = await fetch(
+  const response = await apiFetch(
     `${API_BASE_URL}/periodos/${idPeriodo}/ativar?idUsuario=${idUsuario}`,
     {
       method: "PUT",
@@ -91,7 +68,7 @@ export const excluirPeriodoLetivo = async (
   idPeriodo: number,
   idUsuario: number
 ): Promise<MensagemResponse> => {
-  const response = await fetch(
+  const response = await apiFetch(
     `${API_BASE_URL}/periodos/${idPeriodo}?idUsuario=${idUsuario}`,
     {
       method: "DELETE",
