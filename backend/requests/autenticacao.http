@@ -1,0 +1,44 @@
+@baseUrl = http://localhost:8081/api
+@email = seu-email@example.com
+@senha = sua-senha
+@codigo = substitua-pelo-codigo-recebido
+
+### 1. Solicitar cadastro (202 genérico, sem login automático)
+POST {{baseUrl}}/auth/register
+Content-Type: application/json
+
+{"nome":"Seu nome","email":"{{email}}","senha":"{{senha}}"}
+
+### 2. Confirmar o cadastro (código + senha original)
+POST {{baseUrl}}/auth/verify-email
+Content-Type: application/json
+
+{"codigo":"{{codigo}}","senha":"{{senha}}"}
+
+### 3. Login de conta confirmada
+POST {{baseUrl}}/auth/login
+Content-Type: application/json
+
+{"email":"{{email}}","senha":"{{senha}}"}
+
+> {%
+    client.test("Login", function () { client.assert(response.status === 200); });
+    if (response.status === 200) {
+        client.global.set("accessToken", response.body.token);
+        client.global.set("userId", response.body.idUsuario);
+    }
+%}
+
+### 4. Página de tarefas (máximo 50 resumos)
+GET {{baseUrl}}/tarefas?page=0&size=50
+Authorization: Bearer {{accessToken}}
+
+### 5. Confirmar alteração de e-mail solicitada no perfil
+POST {{baseUrl}}/auth/verify-email
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+
+{"codigo":"{{codigo}}","senha":"{{senha}}"}
+
+### 6. Sem token (401)
+GET {{baseUrl}}/disciplinas

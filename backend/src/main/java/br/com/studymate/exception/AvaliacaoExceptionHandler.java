@@ -16,6 +16,14 @@ import java.util.Map;
 @RestControllerAdvice(assignableTypes = AvaliacaoController.class)
 public class AvaliacaoExceptionHandler {
     private static final Logger log = LoggerFactory.getLogger(AvaliacaoExceptionHandler.class);
+    @ExceptionHandler(org.springframework.security.access.AccessDeniedException.class)
+    public ResponseEntity<Map<String,String>> acessoNegado(Exception erro) {
+        return ResponseEntity.status(403).body(Map.of("mensagem", "Acesso não permitido."));
+    }
+    @ExceptionHandler(org.springframework.security.authentication.BadCredentialsException.class)
+    public ResponseEntity<Map<String,String>> credenciaisInvalidas(Exception erro) {
+        return ResponseEntity.status(401).body(Map.of("mensagem", "E-mail ou senha inválidos."));
+    }
     @ExceptionHandler(AvaliacaoNaoEncontradaException.class)
     public ResponseEntity<Map<String,String>> ausente(AvaliacaoNaoEncontradaException erro) {
         return ResponseEntity.status(404).body(Map.of("mensagem", erro.getMessage()));

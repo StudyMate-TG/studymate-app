@@ -4,6 +4,7 @@ import java.time.LocalDate;
 
 public class PeriodoLetivoRequest {
 
+    @com.fasterxml.jackson.annotation.JsonIgnore
     private Integer idUsuario;
 
     private String nome;

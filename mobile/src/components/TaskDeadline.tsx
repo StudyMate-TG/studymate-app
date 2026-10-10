@@ -55,41 +55,42 @@ export const TaskDeadline: React.FC<
   const { data, hora } =
     formatarDataHora(dataEntrega);
 
-  return (
-    <View
-  style={[
-    styles.container,
-    compact && styles.containerCompact,
-  ]}
->      <View style={styles.iconContainer}>
-        <CalendarClock
-          size={18}
-          color="#2563EB"
-        />
-      </View>
+    return (
+      <View
+        style={[
+          styles.container,
+          compact && styles.containerCompact,
+        ]}
+      >
+        <View style={styles.iconContainer}>
+          <CalendarClock
+            size={18}
+            color="#2563EB"
+          />
+        </View>
 
-      <View style={styles.content}>
-        <Text style={styles.label}>
-          Entrega
-        </Text>
-
-        <View style={styles.valueRow}>
-          <Text style={styles.date}>
-            {data}
+        <View style={styles.content}>
+          <Text style={styles.label}>
+            Entrega
           </Text>
 
-          <View style={styles.timeBadge}>
-            <Text style={styles.time}>
-              {hora}
+          <View style={styles.valueRow}>
+            <Text style={styles.date}>
+              {data}
             </Text>
+
+            <View style={styles.timeBadge}>
+              <Text style={styles.time}>
+                {hora}
+              </Text>
+            </View>
           </View>
         </View>
       </View>
-    </View>
-  );
-};
+    );
+  };
 
-const styles = StyleSheet.create({
+  const styles = StyleSheet.create ({
     container: {
     marginTop: 14,
     flexDirection: "row",
@@ -100,7 +101,7 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     paddingHorizontal: 12,
     paddingVertical: 10,
-    },
+  },
 
   iconContainer: {
     width: 36,
@@ -150,6 +151,6 @@ const styles = StyleSheet.create({
   },
 
   containerCompact: {
-    marginTop: 0,
+    marginTop: 6,
   },
 });

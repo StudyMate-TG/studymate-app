@@ -9,7 +9,7 @@ export async function aplicarPullTarefas(
   idUsuario: number,
   novoCursor: string
 ): Promise<void> {
-  const db = await getDatabase();
+  const db = await getDatabase(idUsuario);
 
   await db.withExclusiveTransactionAsync(
     async (txn) => {
@@ -32,14 +32,6 @@ export async function aplicarPullTarefas(
             tarefa.idTarefa
           );
 
-        /*
-         * Se o servidor informou deletedAt,
-         * a tarefa é um tombstone.
-         *
-         * Como neste momento ainda não ligamos
-         * alterações offline das telas, podemos
-         * remover a cópia local.
-         */
         if (tarefa.deletedAt) {
           if (existente) {
             await txn.runAsync(

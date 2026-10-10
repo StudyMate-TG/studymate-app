@@ -1,68 +1,30 @@
 import { API_BASE_URL } from "./apiConfig";
-
+import { apiFetch, handleResponse, requireSessionUser } from "./apiClient";
 import type { TarefaResponse } from "./tarefaTypes";
-
-import {
-  buscarMetadata,
-} from "../database/repositories/syncMetadataRepository";
-
-import {
-  aplicarPullTarefas,
-} from "../database/repositories/tarefaSyncRepository";
+import { buscarMetadata } from "../database/repositories/syncMetadataRepository";
+import { aplicarPullTarefas } from "../database/repositories/tarefaSyncRepository";
 
 type SyncTarefaPullResponse = {
   tarefas: TarefaResponse[];
   cursor: string;
+  hasMore: boolean;
 };
 
-export async function executarPullTarefas(
-  idUsuario: number
-): Promise<void> {
-  const chaveCursor =
-    `tarefas_cursor_${idUsuario}`;
-
-  const cursor =
-    await buscarMetadata(chaveCursor);
-
-  const parametros =
-    new URLSearchParams();
-
-  parametros.append(
-    "idUsuario",
-    String(idUsuario)
-  );
-
-  if (cursor) {
-    parametros.append(
-      "cursor",
-      cursor
-    );
-  }
-
-  const response = await fetch(
-    `${API_BASE_URL}/sync/tarefas?${parametros.toString()}`
-  );
-
-  if (!response.ok) {
-    const texto =
-      await response.text();
-
-    throw new Error(
-      texto ||
-        "Não foi possível sincronizar as tarefas."
-    );
-  }
-
-  const dados =
-    (await response.json()) as SyncTarefaPullResponse;
-
-  await aplicarPullTarefas(
-    dados.tarefas,
-    idUsuario,
-    dados.cursor
-  );
-
-  console.log(
-    `Pull concluído: ${dados.tarefas.length} alteração(ões).`
-  );
+export async function executarPullTarefas(idUsuario: number): Promise<void> {
+  requireSessionUser(idUsuario);
+  let cursor = await buscarMetadata(`tarefas_cursor_${idUsuario}`, idUsuario);
+  let hasMore: boolean;
+  do {
+    const parametros = new URLSearchParams();
+    if (cursor) parametros.set("cursor", cursor);
+    const response = await apiFetch(`${API_BASE_URL}/sync/tarefas?${parametros.toString()}`, {}, true, idUsuario);
+    const dados = await handleResponse<SyncTarefaPullResponse>(response);
+    requireSessionUser(idUsuario);
+    if (dados.hasMore && (!dados.cursor || dados.cursor === cursor)) {
+      throw new Error("O cursor de sincronização não avançou.");
+    }
+    await aplicarPullTarefas(dados.tarefas, idUsuario, dados.cursor);
+    cursor = dados.cursor;
+    hasMore = dados.hasMore === true;
+  } while (hasMore);
 }

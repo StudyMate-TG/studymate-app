@@ -9,6 +9,9 @@ import {
   useLocation,
 } from "react-router-dom";
 
+import { useEffect } from "react";
+import { useNavigate } from "react-router-dom";
+import { hasSession, onSessionEnded } from "./services/apiClient";
 import Index from "./pages/Index";
 import Home from "./pages/Home";
 import Subjects from "./pages/Subjects";
@@ -28,6 +31,11 @@ const queryClient = new QueryClient();
 
 const AppContent = () => {
   const location = useLocation();
+  const navigate = useNavigate();
+  useEffect(() => onSessionEnded(() => navigate("/", { replace: true })), [navigate]);
+  useEffect(() => {
+    if (!["/", "/desktop"].includes(location.pathname) && !hasSession()) navigate("/", { replace: true });
+  }, [location.pathname, navigate]);
 
   const routesWithoutNav = ["/login", "/desktop"];
 

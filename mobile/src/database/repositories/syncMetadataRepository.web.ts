@@ -1,5 +1,6 @@
 export async function buscarMetadata(
-  _key: string
+  _key: string,
+  _idUsuario?: number
 ): Promise<string | null> {
   return null;
 }

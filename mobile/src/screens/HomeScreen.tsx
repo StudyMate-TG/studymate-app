@@ -26,13 +26,17 @@ import {
 
 import { obterUsuarioSessao } from "../services/authService";
 
-import * as tarefaService from "../services/tarefaService.web";
-import type { TarefaResponse } from "../services/tarefaService.web";
+import * as tarefaService from "../services/tarefaService";
+import type { TarefaResponse } from "../services/tarefaService";
 
 import { MobileHeader } from "../components/MobileHeader";
 import { Card } from "../components/Card";
 import { Button } from "../components/Button";
 import { formatarPrioridade } from "../utils/tarefaUtils";
+
+import {
+  LastSyncStatus,
+} from "../components/LastSyncStatus";
 
 import {
   TaskDeadline,
@@ -43,6 +47,7 @@ import {
   Plus,
   ClipboardList,
   CheckCircle2,
+  Circle,
 } from "lucide-react-native";
 
 type HomeScreenNavigationProp = CompositeNavigationProp<
@@ -59,40 +64,97 @@ export const HomeScreen: React.FC = () => {
   );
 
   const [tarefas, setTarefas] = useState<TarefaResponse[]>([]);
+  const [limiteExibicao, setLimiteExibicao] = useState(50);
+  const [carregandoTarefas, setCarregandoTarefas] = useState(false);
+  const [erroTarefas, setErroTarefas] = useState("");
+
+  const [
+    tarefaAlterandoStatus,
+    setTarefaAlterandoStatus,
+  ] = useState<string | null>(null);
+
+  const [
+    ultimaSincronizacao,
+    setUltimaSincronizacao,
+  ] = useState<string | null>(
+    null
+  );
 
   const [isActionModalVisible, setIsActionModalVisible] = useState(false);
 
 useEffect(() => {
+  let ativo = true;
+
   const carregarDados = async () => {
+    setCarregandoTarefas(true);
+    setErroTarefas("");
+    setTarefas([]);
+    setLimiteExibicao(50);
+
     try {
-      const usuario = await obterUsuarioSessao();
+      const usuario =
+        await obterUsuarioSessao();
+
+      if (!ativo) {
+        return;
+      }
 
       setUsuarioLogado(usuario);
 
       if (!usuario?.idUsuario) {
-        setTarefas([]);
+        setUltimaSincronizacao(null);
         return;
       }
 
-      console.log("ID do usuário na Home:", usuario.idUsuario);
+      const dados =
+        await tarefaService.listarTarefas(
+          usuario.idUsuario
+        );
 
-console.log("Exports do tarefaService:", Object.keys(tarefaService));
+      if (!ativo) {
+        return;
+      }
 
-const tarefasDoUsuario = await tarefaService.listarTarefas(
-  usuario.idUsuario
-);
-console.log("Tarefas recebidas na Home:", tarefasDoUsuario);
+      setTarefas(dados);
 
-setTarefas(tarefasDoUsuario);
+      const ultimaSync =
+        await tarefaService.obterUltimaSincronizacaoTarefas(
+          usuario.idUsuario
+        );
+
+      if (!ativo) {
+        return;
+      }
+
+      setUltimaSincronizacao(
+        ultimaSync
+      );
     } catch (error) {
-      console.error("Erro ao carregar dados da Home:", error);
+      if (!ativo) {
+        return;
+      }
+
+      setErroTarefas(
+        error instanceof Error
+          ? error.message
+          : "Erro ao carregar tarefas."
+      );
+
       setTarefas([]);
+    } finally {
+      if (ativo) {
+        setCarregandoTarefas(false);
+      }
     }
   };
 
   if (isFocused) {
-    carregarDados();
+    void carregarDados();
   }
+
+  return () => {
+    ativo = false;
+  };
 }, [isFocused]);
 
   const nomeExibicao = useMemo(() => {
@@ -132,6 +194,69 @@ setTarefas(tarefasDoUsuario);
   const hora = horaParte.substring(0, 5);
 
   return `${dia}/${mes}/${ano} ${hora}`;
+};
+
+  const obterChaveTarefa = (
+    tarefa: TarefaResponse
+  ) =>
+    tarefa.localId ??
+    String(tarefa.idTarefa);
+
+const handleAlternarStatusTarefa = async (
+  tarefa: TarefaResponse
+) => {
+  if (!usuarioLogado?.idUsuario) {
+    return;
+  }
+
+  const chave =
+    obterChaveTarefa(tarefa);
+
+  const concluida =
+    tarefa.status?.toUpperCase() ===
+    "CONCLUIDA";
+
+  try {
+    setTarefaAlterandoStatus(chave);
+
+    const tarefaAtualizada =
+      concluida
+        ? await tarefaService.reabrirTarefa(
+            {
+              idTarefa:
+                tarefa.idTarefa,
+              localId:
+                tarefa.localId,
+            },
+            usuarioLogado.idUsuario
+          )
+        : await tarefaService.concluirTarefa(
+            {
+              idTarefa:
+                tarefa.idTarefa,
+              localId:
+                tarefa.localId,
+            },
+            usuarioLogado.idUsuario
+          );
+
+    setTarefas((tarefasAtuais) =>
+      tarefasAtuais.map((item) =>
+        obterChaveTarefa(item) === chave
+          ? tarefaAtualizada
+          : item
+      )
+    );
+  } catch (error) {
+    console.error(
+      concluida
+        ? "Erro ao reabrir tarefa:"
+        : "Erro ao concluir tarefa:",
+      error
+    );
+  } finally {
+    setTarefaAlterandoStatus(null);
+  }
 };
 
   return (
@@ -193,47 +318,182 @@ setTarefas(tarefasDoUsuario);
         </View>
 
         {tarefas.length === 0 ? (
-  <Card style={styles.infoCard}>
-    <Text style={styles.infoCardText}>
-      Nenhuma entrega próxima cadastrada.
-    </Text>
-  </Card>
-) : (
-  tarefas.map((tarefa) => (
-    <Pressable
-      key={
-        tarefa.localId ??
-        String(tarefa.idTarefa)
-      }
-      onPress={() =>
-        navigation.navigate("EditTask", {
-          idTarefa: tarefa.idTarefa,
-          localId: tarefa.localId,
-        })
-      }
-    >
-    <Card style={styles.taskCard}>
-      <View style={styles.taskHeader}>
-        <View style={styles.taskContent}>
-          <Text style={styles.taskTitle}>
-            {tarefa.titulo}
-          </Text>
-        </View>
+          <Card style={styles.infoCard}>
+            <Text style={styles.infoCardText}>
+              {carregandoTarefas ? "Carregando entregas..." : erroTarefas || "Nenhuma entrega próxima cadastrada."}
+            </Text>
+          </Card>
+        ) : (
+  tarefas
+    .slice(0, limiteExibicao)
+    .map((tarefa) => {
+      const concluida =
+        tarefa.status?.toUpperCase() ===
+        "CONCLUIDA";
 
-        <View style={styles.priorityBadge}>
-          <Text style={styles.priorityText}>
-            {formatarPrioridade(tarefa.prioridade)}
-          </Text>
-        </View>
-      </View>
-      <TaskDeadline
-        dataEntrega={tarefa.dataEntrega}
-      />
-    </Card>
-  </Pressable>
-))
+      const chave =
+        obterChaveTarefa(tarefa);
+
+      const alterandoStatus =
+        tarefaAlterandoStatus === chave;
+
+      return (
+        <Pressable
+          key={chave}
+          onPress={() =>
+            navigation.navigate(
+              "EditTask",
+              {
+                idTarefa:
+                  tarefa.idTarefa,
+                localId:
+                  tarefa.localId,
+              }
+            )
+          }
+        >
+          <Card
+            style={[
+              styles.taskCard,
+              concluida &&
+                styles.taskCardCompleted,
+            ]}
+          >
+            <View
+              style={styles.taskHeader}
+            >
+              <Pressable
+                style={
+                  styles.completeButton
+                }
+                disabled={
+                  alterandoStatus
+                }
+                onPress={(event) => {
+                  event.stopPropagation();
+
+                  void handleAlternarStatusTarefa(
+                    tarefa
+                  );
+                }}
+                hitSlop={8}
+              >
+                {concluida ? (
+                  <CheckCircle2
+                    size={25}
+                    color={
+                      alterandoStatus
+                        ? "#94A3B8"
+                        : "#16A34A"
+                    }
+                  />
+                ) : (
+                  <Circle
+                    size={25}
+                    color={
+                      alterandoStatus
+                        ? "#94A3B8"
+                        : "#64748B"
+                    }
+                  />
+                )}
+              </Pressable>
+
+              <View
+                style={
+                  styles.taskContent
+                }
+              >
+                <Text
+                  style={[
+                    styles.taskTitle,
+                    concluida &&
+                      styles.taskTitleCompleted,
+                  ]}
+                >
+                  {tarefa.titulo}
+                </Text>
+
+                <Text
+                  style={
+                    styles.taskSubject
+                  }
+                >
+                  {tarefa.nomeDisciplina}
+                </Text>
+
+                {concluida && (
+                  <Text
+                    style={
+                      styles.completedText
+                    }
+                  >
+                    Tarefa concluída
+                  </Text>
+                )}
+              </View>
+
+              <View
+                style={
+                  styles.priorityBadge
+                }
+              >
+                <Text
+                  style={
+                    styles.priorityText
+                  }
+                >
+                  {formatarPrioridade(
+                    tarefa.prioridade
+                  )}
+                </Text>
+              </View>
+            </View>
+
+            <TaskDeadline
+              dataEntrega={
+                tarefa.dataEntrega
+              }
+            />
+          </Card>
+        </Pressable>
+      );
+    })
 )}
 
+{erroTarefas &&
+tarefas.length > 0 ? (
+  <Text
+    style={styles.infoCardText}
+  >
+    {erroTarefas}
+  </Text>
+) : null}
+
+{limiteExibicao <
+tarefas.length ? (
+  <Button
+    title="Carregar mais entregas"
+    variant="outline"
+    onPress={() =>
+      setLimiteExibicao(
+        (limite) => limite + 50
+      )
+    }
+  />
+) : null}
+
+<View
+  style={
+    styles.syncStatusContainer
+  }
+>
+  <LastSyncStatus
+    lastSyncAt={
+      ultimaSincronizacao
+    }
+  />
+</View>
       </ScrollView>
 
       <Pressable
@@ -480,7 +740,6 @@ const styles = StyleSheet.create({
 
 taskHeader: {
   flexDirection: "row",
-  justifyContent: "space-between",
   alignItems: "flex-start",
 },
 
@@ -512,6 +771,36 @@ priorityText: {
   fontSize: 11,
   fontWeight: "700",
   color: "#2563EB",
+},
+
+completeButton: {
+  marginRight: 10,
+  marginTop: 1,
+  alignItems: "center",
+  justifyContent: "center",
+},
+
+taskCardCompleted: {
+  backgroundColor: "#F8FAFC",
+  borderColor: "#DCFCE7",
+},
+
+taskTitleCompleted: {
+  color: "#64748B",
+  textDecorationLine: "line-through",
+},
+
+completedText: {
+  marginTop: 4,
+  fontSize: 12,
+  fontWeight: "600",
+  color: "#16A34A",
+},
+
+syncStatusContainer: {
+  marginTop: 8,
+  marginBottom: 12,
+  alignItems: "center",
 },
 
 });

@@ -14,6 +14,8 @@ import {
   ChevronLeft,
   ChevronRight,
   Calendar as CalendarIcon,
+  CheckCircle2,
+  Circle,
 } from "lucide-react-native";
 
 import { useIsFocused, useNavigation } from "@react-navigation/native";
@@ -21,10 +23,13 @@ import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 
 import { RootStackParamList } from "../types";
 import { obterUsuarioSessao } from "../services/authService";
-import * as tarefaService from "../services/tarefaService.web";
-import type { TarefaResponse } from "../services/tarefaService.web";
+import * as tarefaService from "../services/tarefaService";
+import type { TarefaResponse } from "../services/tarefaService";
 import { formatarPrioridade } from "../utils/tarefaUtils";
 import { TaskDeadline } from "../components/TaskDeadline";
+import {
+  LastSyncStatus,
+} from "../components/LastSyncStatus";
 
 
 export const CalendarScreen: React.FC = () => {
@@ -36,32 +41,67 @@ export const CalendarScreen: React.FC = () => {
 const isFocused = useIsFocused();
 
 const [tarefas, setTarefas] = useState<TarefaResponse[]>([]);
+
+const [
+  ultimaSincronizacao,
+  setUltimaSincronizacao,
+] = useState<string | null>(
+  null
+);
+
+const [
+  tarefaAlterandoStatus,
+  setTarefaAlterandoStatus,
+] = useState<string | null>(null);
+
 useEffect(() => {
+  let ativo = true;
   const carregarTarefas = async () => {
     try {
       const usuario = await obterUsuarioSessao();
-
+      if (!ativo) return;
       if (!usuario?.idUsuario) {
         setTarefas([]);
         return;
       }
-      
-     const dados = await tarefaService.listarTarefas(
-  usuario.idUsuario
-);
+      const dados =
+        await tarefaService.listarTarefas(
+          usuario.idUsuario
+        );
 
-console.log("TAREFAS RECEBIDAS NA AGENDA:", dados);
+      if (!ativo) {
+        return;
+      }
 
-setTarefas(dados);
+      setTarefas(dados);
+
+      const ultimaSync =
+        await tarefaService.obterUltimaSincronizacaoTarefas(
+          usuario.idUsuario
+        );
+
+      if (!ativo) {
+        return;
+      }
+
+      setUltimaSincronizacao(
+        ultimaSync
+      );
     } catch (error) {
-      console.error("Erro ao carregar tarefas da agenda:", error);
+      if (!ativo) {
+        return;
+      }
+
+      console.error(
+        "Erro ao carregar tarefas da agenda:",
+        error
+      );
+
       setTarefas([]);
     }
   };
-
-  if (isFocused) {
-    carregarTarefas();
-  }
+  if (isFocused) void carregarTarefas();
+  return () => { ativo = false; };
 }, [isFocused]);
 
 const tarefasDoDia = useMemo(() => {
@@ -173,6 +213,79 @@ const goToNextMonth = () => {
   });
 };
 
+const obterChaveTarefa = (
+  tarefa: TarefaResponse
+) =>
+  tarefa.localId ??
+  String(tarefa.idTarefa);
+
+const handleAlternarStatusTarefa =
+  async (
+    tarefa: TarefaResponse
+  ) => {
+    const usuario =
+      await obterUsuarioSessao();
+
+    if (!usuario?.idUsuario) {
+      return;
+    }
+
+    const chave =
+      obterChaveTarefa(tarefa);
+
+    const concluida =
+      tarefa.status?.toUpperCase() ===
+      "CONCLUIDA";
+
+    try {
+      setTarefaAlterandoStatus(
+        chave
+      );
+
+      const tarefaAtualizada =
+        concluida
+          ? await tarefaService.reabrirTarefa(
+              {
+                idTarefa:
+                  tarefa.idTarefa,
+                localId:
+                  tarefa.localId,
+              },
+              usuario.idUsuario
+            )
+          : await tarefaService.concluirTarefa(
+              {
+                idTarefa:
+                  tarefa.idTarefa,
+                localId:
+                  tarefa.localId,
+              },
+              usuario.idUsuario
+            );
+
+      setTarefas(
+        (tarefasAtuais) =>
+          tarefasAtuais.map(
+            (item) =>
+              obterChaveTarefa(
+                item
+              ) === chave
+                ? tarefaAtualizada
+                : item
+          )
+      );
+    } catch (error) {
+      console.error(
+        "Erro ao alterar status da tarefa:",
+        error
+      );
+    } finally {
+      setTarefaAlterandoStatus(
+        null
+      );
+    }
+  };
+  
   return (
     <View style={styles.container}>
       <MobileHeader title="Agenda" />
@@ -285,43 +398,150 @@ const goToNextMonth = () => {
     </Text>
   </Card>
 ) : (
-  tarefasDoDia.map((tarefa) => (
-    <Pressable
-      key={
-        tarefa.localId ??
-        String(tarefa.idTarefa)
-      }
-      onPress={() =>
-        navigation.navigate("EditTask", {
-          idTarefa: tarefa.idTarefa,
-          localId: tarefa.localId,
-        })
-      }
-    >
-      <Card style={styles.taskCard}>
-        <View style={styles.taskHeader}>
-          <View style={styles.taskContent}>
-            <Text style={styles.taskTitle}>
-              {tarefa.titulo}
-            </Text>
+  tarefasDoDia.map((tarefa) => {
+    const concluida =
+      tarefa.status?.toUpperCase() ===
+      "CONCLUIDA";
 
-            <Text style={styles.taskSubject}>
-              {tarefa.nomeDisciplina}
+    const chave =
+      obterChaveTarefa(tarefa);
+
+    const alterandoStatus =
+      tarefaAlterandoStatus === chave;
+
+    return (
+      <Pressable
+        key={chave}
+        onPress={() =>
+          navigation.navigate(
+            "EditTask",
+            {
+              idTarefa:
+                tarefa.idTarefa,
+              localId:
+                tarefa.localId,
+            }
+          )
+        }
+      >
+        <Card
+          style={[
+            styles.taskCard,
+            concluida &&
+              styles.taskCardCompleted,
+          ]}
+        >
+          <View
+            style={styles.taskHeader}
+          >
+            <Pressable
+              style={
+                styles.completeButton
+              }
+              disabled={
+                alterandoStatus
+              }
+              onPress={(event) => {
+                event.stopPropagation();
+
+                void handleAlternarStatusTarefa(
+                  tarefa
+                );
+              }}
+              hitSlop={8}
+            >
+              {concluida ? (
+                <CheckCircle2
+                  size={25}
+                  color={
+                    alterandoStatus
+                      ? "#94A3B8"
+                      : "#16A34A"
+                  }
+                />
+              ) : (
+                <Circle
+                  size={25}
+                  color={
+                    alterandoStatus
+                      ? "#94A3B8"
+                      : "#64748B"
+                  }
+                />
+              )}
+            </Pressable>
+
+            <View
+              style={
+                styles.taskContent
+              }
+            >
+              <Text
+                style={[
+                  styles.taskTitle,
+                  concluida &&
+                    styles.taskTitleCompleted,
+                ]}
+              >
+                {tarefa.titulo}
+              </Text>
+
+              <Text
+                style={
+                  styles.taskSubject
+                }
+              >
+                {
+                  tarefa.nomeDisciplina
+                }
+              </Text>
+
+              {concluida && (
+                <Text
+                  style={
+                    styles.completedText
+                  }
+                >
+                  Tarefa concluída
+                </Text>
+              )}
+            </View>
+
+            <Text
+              style={
+                styles.taskPriority
+              }
+            >
+              {formatarPrioridade(
+                tarefa.prioridade
+              )}
             </Text>
           </View>
 
-          <Text style={styles.taskPriority}>
-            {formatarPrioridade(tarefa.prioridade)}
-          </Text>
-        </View>
-        <TaskDeadline
-          dataEntrega={tarefa.dataEntrega}
-          compact
-        />
-      </Card>
-    </Pressable>
-  ))
+          <TaskDeadline
+            dataEntrega={
+              tarefa.dataEntrega
+            }
+            compact
+          />
+        </Card>
+      </Pressable>
+    );
+  })
 )}
+
+        <View
+          style={
+            styles.syncStatusContainer
+          }
+        >
+          <LastSyncStatus
+            lastSyncAt={
+              ultimaSincronizacao
+            }
+          />
+        </View>
+
       </ScrollView>
     </View>
   );
@@ -519,4 +739,36 @@ taskPriority: {
   fontWeight: "700",
   color: "#2563EB",
 },
+
+completeButton: {
+  marginRight: 10,
+  marginTop: 1,
+  alignItems: "center",
+  justifyContent: "center",
+},
+
+taskCardCompleted: {
+  backgroundColor: "#F8FAFC",
+  borderColor: "#DCFCE7",
+},
+
+taskTitleCompleted: {
+  color: "#64748B",
+  textDecorationLine:
+    "line-through",
+},
+
+completedText: {
+  marginTop: 4,
+  fontSize: 12,
+  fontWeight: "600",
+  color: "#16A34A",
+},
+
+syncStatusContainer: {
+  marginTop: 8,
+  marginBottom: 12,
+  alignItems: "center",
+},
+
 });

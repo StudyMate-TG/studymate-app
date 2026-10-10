@@ -54,3 +54,40 @@ CREATE TABLE avaliacao (
  data_avaliacao DATE NOT NULL
 );
 CREATE SEQUENCE seq_avaliacao START WITH 1 INCREMENT BY 1;
+CREATE SEQUENCE seq_falta START WITH 1 INCREMENT BY 1;
+CREATE TABLE tarefa (
+ id_tarefa INTEGER PRIMARY KEY,
+ id_disciplina INTEGER NOT NULL REFERENCES disciplina(id_disciplina),
+ titulo VARCHAR(100) NOT NULL, tipo VARCHAR(20) NOT NULL, descricao CLOB,
+ data_hora_inicio TIMESTAMP, data_entrega TIMESTAMP NOT NULL, data_conclusao TIMESTAMP,
+ status VARCHAR(20) NOT NULL, prioridade VARCHAR(20) NOT NULL, xp_gerado INTEGER NOT NULL,
+ version BIGINT DEFAULT 0 NOT NULL CHECK (version >= 0),
+ updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP NOT NULL,
+ deleted_at TIMESTAMP WITH TIME ZONE
+);
+CREATE SEQUENCE seq_tarefa START WITH 1 INCREMENT BY 1;
+CREATE TABLE auth_rate_limit_bucket (
+ bucket_key VARCHAR(100) PRIMARY KEY, operation VARCHAR(16) NOT NULL,
+ attempts INTEGER NOT NULL, window_end TIMESTAMP WITH TIME ZONE NOT NULL
+);
+INSERT INTO auth_rate_limit_bucket VALUES ('LOGIN:GLOBAL','LOGIN',0,TIMESTAMP WITH TIME ZONE '1970-01-01 00:00:00+00:00');
+INSERT INTO auth_rate_limit_bucket VALUES ('REGISTER:GLOBAL','REGISTER',0,TIMESTAMP WITH TIME ZONE '1970-01-01 00:00:00+00:00');
+INSERT INTO auth_rate_limit_bucket VALUES ('VERIFY:GLOBAL','VERIFY',0,TIMESTAMP WITH TIME ZONE '1970-01-01 00:00:00+00:00');
+INSERT INTO auth_rate_limit_bucket VALUES ('EMAIL_CHANGE:GLOBAL','EMAIL_CHANGE',0,TIMESTAMP WITH TIME ZONE '1970-01-01 00:00:00+00:00');
+CREATE TABLE email_verification (
+ token_hash VARCHAR(64) PRIMARY KEY, purpose VARCHAR(20) NOT NULL,
+ id_usuario INTEGER REFERENCES usuario(id_usuario), email VARCHAR(100) NOT NULL,
+ nome VARCHAR(100), senha_hash VARCHAR(255), expires_at TIMESTAMP WITH TIME ZONE NOT NULL,
+ used_at TIMESTAMP WITH TIME ZONE
+);
+
+CREATE TABLE sync_request (
+ client_tx_id VARCHAR(36) PRIMARY KEY,
+ id_usuario INTEGER NOT NULL REFERENCES usuario(id_usuario),
+ entity_type VARCHAR(30) NOT NULL,
+ operation VARCHAR(10) NOT NULL CHECK (operation IN ('CREATE','UPDATE','DELETE')),
+ response_resource_id INTEGER,
+ processed_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP NOT NULL
+);
+CREATE INDEX ix_sync_request_usuario ON sync_request(id_usuario);
+CREATE INDEX ix_tarefa_delta ON tarefa(id_disciplina, updated_at, id_tarefa);

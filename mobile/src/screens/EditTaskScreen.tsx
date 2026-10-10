@@ -244,63 +244,73 @@ export const EditTaskScreen: React.FC = () => {
           return;
         }
 
-        const [
-          tarefa,
-          disciplinasUsuario,
-        ] = await Promise.all([
-          buscarTarefaPorId(
-            referencia,
-            usuario.idUsuario
-          ),
-
-          listarDisciplinas(
-            usuario.idUsuario
-          ),
-        ]);
-
-        setDisciplinas(
-          disciplinasUsuario
+      const tarefa =
+        await buscarTarefaPorId(
+          referencia,
+          usuario.idUsuario
         );
 
-        setIdDisciplinaSelecionada(
-          tarefa.idDisciplina
-        );
-
-        const prioridade =
-          tarefa.prioridade
-            ?.toLowerCase();
-
-        const prioridadeFormulario: Priority =
-          prioridade === "low" ||
-          prioridade === "medium" ||
-          prioridade === "high"
-            ? prioridade
-            : "medium";
-
-    const disciplina =
-      disciplinasUsuario.find(
-        (item: DisciplinaResponse) =>
-          item.idDisciplina ===
-          tarefa.idDisciplina
+      setIdDisciplinaSelecionada(
+        tarefa.idDisciplina
       );
 
-        setForm({
-          title:
-            tarefa.titulo || "",
+      const prioridade =
+        tarefa.prioridade
+          ?.toLowerCase();
 
-          subject:
-            disciplina?.nome || "",
+      const prioridadeFormulario: Priority =
+        prioridade === "low" ||
+        prioridade === "medium" ||
+        prioridade === "high"
+          ? prioridade
+          : "medium";
 
-          dueDate:
-            formatarDataParaFormulario(
-              tarefa.dataEntrega
-            ),
+      setForm({
+        title:
+          tarefa.titulo || "",
 
-          priority:
-            prioridadeFormulario,
+        subject:
+          tarefa.nomeDisciplina || "",
 
-          description:
-            tarefa.descricao || "",
+        dueDate:
+          formatarDataParaFormulario(
+            tarefa.dataEntrega
+          ),
+
+        priority:
+          prioridadeFormulario,
+
+        description:
+          tarefa.descricao || "",
+      });
+
+      void listarDisciplinas(
+        usuario.idUsuario
+      )
+        .then((disciplinasUsuario) => {
+          setDisciplinas(
+            disciplinasUsuario
+          );
+
+          const disciplina =
+            disciplinasUsuario.find(
+              (item: DisciplinaResponse) =>
+                item.idDisciplina ===
+                tarefa.idDisciplina
+            );
+
+          if (disciplina) {
+            setForm((formAtual) => ({
+              ...formAtual,
+              subject: disciplina.nome,
+            }));
+          }
+        })
+        .catch((error) => {
+          console.warn(
+            "Não foi possível atualizar as disciplinas:",
+            error
+          );
         });
       } catch (error) {
         console.error(
@@ -916,7 +926,7 @@ dropdownEmptyText: {
   fontSize: 14,
   color: "#94A3B8",
 },
-  
+
   priorityRow: {
     flexDirection: "row",
     gap: 8,

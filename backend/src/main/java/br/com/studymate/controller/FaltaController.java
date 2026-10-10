@@ -1,10 +1,14 @@
 package br.com.studymate.controller;
 
+import br.com.studymate.exception.RespostaErroInterno;
+
 import br.com.studymate.dto.FaltaRequest;
 import br.com.studymate.service.FaltaService;
 
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.oauth2.jwt.Jwt;
 
 import java.util.Map;
 
@@ -21,94 +25,77 @@ public class FaltaController {
     @GetMapping
     public ResponseEntity<?> listar(
             @RequestParam Integer idDisciplina,
-            @RequestParam Integer idUsuario
+            @AuthenticationPrincipal Jwt principal
     ) {
         try {
             return ResponseEntity.ok(
-                    faltaService.listar(idDisciplina, idUsuario)
+                    faltaService.listar(idDisciplina, Integer.valueOf(principal.getSubject()))
             );
         } catch (IllegalArgumentException erro) {
             return ResponseEntity.badRequest().body(
                     Map.of("mensagem", erro.getMessage())
             );
+        } catch (org.springframework.security.access.AccessDeniedException erro) {
+            throw erro;
         } catch (Exception erro) {
-            erro.printStackTrace();
-
-            return ResponseEntity.internalServerError().body(
-                    Map.of(
-                            "mensagem",
-                            "Erro interno ao listar faltas: " + erro.getMessage()
-                    )
-            );
+            return RespostaErroInterno.responder(erro);
         }
     }
 
     @GetMapping("/total")
     public ResponseEntity<?> total(
             @RequestParam Integer idDisciplina,
-            @RequestParam Integer idUsuario
+            @AuthenticationPrincipal Jwt principal
     ) {
         try {
             return ResponseEntity.ok(
                     Map.of(
                             "total",
-                            faltaService.totalFaltas(idDisciplina, idUsuario)
+                            faltaService.totalFaltas(idDisciplina, Integer.valueOf(principal.getSubject()))
                     )
             );
         } catch (IllegalArgumentException erro) {
             return ResponseEntity.badRequest().body(
                     Map.of("mensagem", erro.getMessage())
             );
+        } catch (org.springframework.security.access.AccessDeniedException erro) {
+            throw erro;
         } catch (Exception erro) {
-            erro.printStackTrace();
-
-            return ResponseEntity.internalServerError().body(
-                    Map.of(
-                            "mensagem",
-                            "Erro interno ao consultar total de faltas: "
-                                    + erro.getMessage()
-                    )
-            );
+            return RespostaErroInterno.responder(erro);
         }
     }
 
     @PostMapping
     public ResponseEntity<?> cadastrar(
-            @RequestParam Integer idUsuario,
+            @AuthenticationPrincipal Jwt principal,
             @RequestBody FaltaRequest request
     ) {
         try {
             return ResponseEntity.ok(
-                    faltaService.cadastrar(idUsuario, request)
+                    faltaService.cadastrar(Integer.valueOf(principal.getSubject()), request)
             );
         } catch (IllegalArgumentException erro) {
             return ResponseEntity.badRequest().body(
                     Map.of("mensagem", erro.getMessage())
             );
+        } catch (org.springframework.security.access.AccessDeniedException erro) {
+            throw erro;
         } catch (Exception erro) {
-            erro.printStackTrace();
-
-            return ResponseEntity.internalServerError().body(
-                    Map.of(
-                            "mensagem",
-                            "Erro interno ao cadastrar falta: "
-                                    + erro.getMessage()
-                    )
-            );
+            return RespostaErroInterno.responder(erro);
         }
     }
 
     @PutMapping("/{idFalta}")
     public ResponseEntity<?> alterar(
             @PathVariable Integer idFalta,
-            @RequestParam Integer idUsuario,
+            @AuthenticationPrincipal Jwt principal,
             @RequestBody FaltaRequest request
     ) {
         try {
             return ResponseEntity.ok(
                     faltaService.alterar(
                             idFalta,
-                            idUsuario,
+                            Integer.valueOf(principal.getSubject()),
                             request
                     )
             );
@@ -116,26 +103,20 @@ public class FaltaController {
             return ResponseEntity.badRequest().body(
                     Map.of("mensagem", erro.getMessage())
             );
+        } catch (org.springframework.security.access.AccessDeniedException erro) {
+            throw erro;
         } catch (Exception erro) {
-            erro.printStackTrace();
-
-            return ResponseEntity.internalServerError().body(
-                    Map.of(
-                            "mensagem",
-                            "Erro interno ao alterar falta: "
-                                    + erro.getMessage()
-                    )
-            );
+            return RespostaErroInterno.responder(erro);
         }
     }
 
     @DeleteMapping("/{idFalta}")
     public ResponseEntity<?> excluir(
             @PathVariable Integer idFalta,
-            @RequestParam Integer idUsuario
+            @AuthenticationPrincipal Jwt principal
     ) {
         try {
-            faltaService.excluir(idFalta, idUsuario);
+            faltaService.excluir(idFalta, Integer.valueOf(principal.getSubject()));
 
             return ResponseEntity.ok(
                     Map.of(
@@ -147,16 +128,10 @@ public class FaltaController {
             return ResponseEntity.badRequest().body(
                     Map.of("mensagem", erro.getMessage())
             );
+        } catch (org.springframework.security.access.AccessDeniedException erro) {
+            throw erro;
         } catch (Exception erro) {
-            erro.printStackTrace();
-
-            return ResponseEntity.internalServerError().body(
-                    Map.of(
-                            "mensagem",
-                            "Erro interno ao excluir falta: "
-                                    + erro.getMessage()
-                    )
-            );
+            return RespostaErroInterno.responder(erro);
         }
     }
 }

@@ -69,8 +69,6 @@ export const ProfileScreen: React.FC = () => {
   const handleLogout = () => {
     const logout = async () => {
       await encerrarSessao();
-
-      navigation.replace("Login");
     };
 
     if (Platform.OS === "web" && typeof window !== "undefined") {
@@ -157,6 +155,9 @@ export const ProfileScreen: React.FC = () => {
             {usuario?.email || "email@estudante.com"}
           </Text>
 
+          {usuario?.emailAlteracaoPendente ? (
+            <Text style={styles.userEmail}>Há uma alteração de e-mail pendente. Abra Editar Perfil para confirmar o código com sua senha atual.</Text>
+          ) : null}
           <Button
             title="Editar Perfil"
             onPress={() => navigation.navigate("EditProfile")}

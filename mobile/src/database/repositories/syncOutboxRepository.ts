@@ -5,7 +5,9 @@ import { getDatabase } from "../database";
 export type OutboxOperation =
   | "CREATE"
   | "UPDATE"
-  | "DELETE";
+  | "DELETE"
+  | "COMPLETE"
+  | "REOPEN";
 
 export type OutboxStatus =
   | "PENDING"
@@ -106,10 +108,10 @@ export async function criarOperacaoOutbox(
   return mapRow(item);
 }
 
-export async function listarOperacoesPendentes(): Promise<
+export async function listarOperacoesPendentes(idUsuario?: number): Promise<
   SyncOutboxItem[]
 > {
-  const db = await getDatabase();
+  const db = await getDatabase(idUsuario);
 
   const rows = await db.getAllAsync<SyncOutboxRow>(
     `
@@ -124,9 +126,10 @@ export async function listarOperacoesPendentes(): Promise<
 }
 
 export async function marcarOperacaoComoProcessando(
-  id: number
+  id: number,
+  idUsuario?: number
 ): Promise<void> {
-  const db = await getDatabase();
+  const db = await getDatabase(idUsuario);
 
   await db.runAsync(
     `
@@ -142,9 +145,10 @@ export async function marcarOperacaoComoProcessando(
 }
 
 export async function marcarOperacaoComoSincronizada(
-  id: number
+  id: number,
+  idUsuario?: number
 ): Promise<void> {
-  const db = await getDatabase();
+  const db = await getDatabase(idUsuario);
 
   await db.runAsync(
     `
@@ -160,9 +164,10 @@ export async function marcarOperacaoComoSincronizada(
 
 export async function marcarOperacaoComErro(
   id: number,
-  erro: string
+  erro: string,
+  idUsuario?: number
 ): Promise<void> {
-  const db = await getDatabase();
+  const db = await getDatabase(idUsuario);
 
   await db.runAsync(
     `
@@ -178,9 +183,10 @@ export async function marcarOperacaoComErro(
 }
 
 export async function removerOperacaoOutbox(
-  id: number
+  id: number,
+  idUsuario?: number
 ): Promise<void> {
-  const db = await getDatabase();
+  const db = await getDatabase(idUsuario);
 
   await db.runAsync(
     `

@@ -1,7 +1,10 @@
+import { apiFetch, handleResponse } from "./apiClient";
+import { obterUsuarioSessao } from "./authService";
+
 const obterIdUsuario = (): number => {
   let usuario: { idUsuario?: number } | null = null;
   try {
-    usuario = JSON.parse(localStorage.getItem("studymate_current_user") || "null");
+    usuario = obterUsuarioSessao();
   } catch {
     throw new Error("Entre novamente na sua conta para acessar as disciplinas.");
   }
@@ -29,16 +32,6 @@ export type DisciplinaRequest = {
   limiteFaltas: number;
 };
 
-const handleResponse = async (response: Response) => {
-  const data = await response.json();
-
-  if (!response.ok) {
-    throw new Error(data.mensagem || "Erro ao processar a requisição.");
-  }
-
-  return data;
-};
-
 export const listarDisciplinas = async (
   termo?: string
 ): Promise<DisciplinaResponse[]> => {
@@ -52,7 +45,7 @@ export const listarDisciplinas = async (
     ? `${API_BASE_URL}/disciplinas?${params.toString()}`
     : `${API_BASE_URL}/disciplinas`;
 
-  const response = await fetch(url);
+  const response = await apiFetch(url);
 
   return handleResponse(response);
 };
@@ -60,7 +53,7 @@ export const listarDisciplinas = async (
 export const cadastrarDisciplina = async (
   payload: DisciplinaRequest
 ): Promise<DisciplinaResponse> => {
-  const response = await fetch(`${API_BASE_URL}/disciplinas`, {
+  const response = await apiFetch(`${API_BASE_URL}/disciplinas`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -72,7 +65,7 @@ export const cadastrarDisciplina = async (
 };
 
 export const excluirDisciplina = async (idDisciplina: number) => {
-  const response = await fetch(`${API_BASE_URL}/disciplinas/${idDisciplina}?idUsuario=${obterIdUsuario()}`, {
+  const response = await apiFetch(`${API_BASE_URL}/disciplinas/${idDisciplina}?idUsuario=${obterIdUsuario()}`, {
     method: "DELETE",
   });
 
@@ -82,7 +75,7 @@ export const excluirDisciplina = async (idDisciplina: number) => {
 export const buscarDisciplinaPorId = async (
   idDisciplina: number
 ): Promise<DisciplinaResponse> => {
-  const response = await fetch(`${API_BASE_URL}/disciplinas/${idDisciplina}?idUsuario=${obterIdUsuario()}`);
+  const response = await apiFetch(`${API_BASE_URL}/disciplinas/${idDisciplina}?idUsuario=${obterIdUsuario()}`);
 
   return handleResponse(response);
 };
@@ -91,7 +84,7 @@ export const atualizarDisciplina = async (
   idDisciplina: number,
   payload: DisciplinaRequest
 ): Promise<DisciplinaResponse> => {
-  const response = await fetch(`${API_BASE_URL}/disciplinas/${idDisciplina}?idUsuario=${obterIdUsuario()}`, {
+  const response = await apiFetch(`${API_BASE_URL}/disciplinas/${idDisciplina}?idUsuario=${obterIdUsuario()}`, {
     method: "PUT",
     headers: {
       "Content-Type": "application/json",

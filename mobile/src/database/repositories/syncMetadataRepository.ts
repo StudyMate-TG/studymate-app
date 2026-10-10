@@ -1,9 +1,10 @@
 import { getDatabase } from "../database";
 
 export async function buscarMetadata(
-  key: string
+  key: string,
+  idUsuario?: number
 ): Promise<string | null> {
-  const db = await getDatabase();
+  const db = await getDatabase(idUsuario);
 
   const resultado =
     await db.getFirstAsync<{
