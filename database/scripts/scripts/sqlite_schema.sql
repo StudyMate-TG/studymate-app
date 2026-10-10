@@ -2,6 +2,7 @@ CREATE TABLE IF NOT EXISTS local_tarefa (
     local_id TEXT PRIMARY KEY NOT NULL,
     server_id INTEGER UNIQUE,
     id_disciplina INTEGER NOT NULL,
+    nome_disciplina TEXT NOT NULL DEFAULT '',
     titulo TEXT NOT NULL,
     tipo TEXT NOT NULL,
     descricao TEXT,
@@ -15,11 +16,17 @@ CREATE TABLE IF NOT EXISTS local_tarefa (
     sync_status TEXT NOT NULL DEFAULT 'PENDING',
     updated_at_local TEXT NOT NULL,
     CONSTRAINT ck_local_tarefa_sync_status
-        CHECK (sync_status IN ('PENDING', 'SYNCED', 'ERROR'))
+        CHECK (
+            sync_status IN (
+                'PENDING',
+                'SYNCED',
+                'ERROR'
+            )
+        )
 );
 
 CREATE TABLE IF NOT EXISTS sync_outbox (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    id INTEGER PRIMARY KEY,
     client_tx_id TEXT NOT NULL UNIQUE,
     entity_local_id TEXT NOT NULL,
     entity_type TEXT NOT NULL,
@@ -30,9 +37,24 @@ CREATE TABLE IF NOT EXISTS sync_outbox (
     last_error TEXT,
     created_at TEXT NOT NULL,
     CONSTRAINT ck_sync_outbox_operation
-        CHECK (operation IN ('CREATE', 'UPDATE', 'DELETE')),
+        CHECK (
+            operation IN (
+                'CREATE',
+                'UPDATE',
+                'DELETE',
+                'COMPLETE',
+                'REOPEN'
+            )
+        ),
     CONSTRAINT ck_sync_outbox_status
-        CHECK (status IN ('PENDING', 'PROCESSING', 'SYNCED', 'ERROR')),
+        CHECK (
+            status IN (
+                'PENDING',
+                'PROCESSING',
+                'SYNCED',
+                'ERROR'
+            )
+        ),
     CONSTRAINT ck_sync_outbox_attempts
         CHECK (attempts >= 0)
 );
@@ -42,14 +64,28 @@ CREATE TABLE IF NOT EXISTS sync_metadata (
     value TEXT
 );
 
-CREATE INDEX ix_local_tarefa_sync_status
+CREATE TABLE IF NOT EXISTS local_disciplina (
+    id_disciplina INTEGER PRIMARY KEY NOT NULL,
+    id_periodo INTEGER NOT NULL,
+    nome_periodo TEXT NOT NULL DEFAULT '',
+    nome TEXT NOT NULL,
+    professor TEXT NOT NULL DEFAULT '',
+    media_aprovacao REAL NOT NULL,
+    limite_faltas INTEGER NOT NULL,
+    updated_at_local TEXT NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS ix_local_disciplina_nome
+    ON local_disciplina (nome);
+
+CREATE INDEX IF NOT EXISTS ix_local_tarefa_sync_status
     ON local_tarefa (sync_status);
 
-CREATE INDEX ix_local_tarefa_updated_at
+CREATE INDEX IF NOT EXISTS ix_local_tarefa_updated_at
     ON local_tarefa (updated_at_local);
 
-CREATE INDEX ix_sync_outbox_status_created
+CREATE INDEX IF NOT EXISTS ix_sync_outbox_status_created
     ON sync_outbox (status, created_at);
 
-CREATE INDEX ix_sync_outbox_entity
+CREATE INDEX IF NOT EXISTS ix_sync_outbox_entity
     ON sync_outbox (entity_type, entity_local_id);
