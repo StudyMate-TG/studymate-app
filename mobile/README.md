@@ -22,6 +22,10 @@ configura o endereço de rede do computador e abre o Expo na porta 8082.
 Use Node.js 22.13 ou superior e Expo Go compatível com o SDK 57.
 No iPhone, use o Expo Go já instalado com suporte ao SDK 57. React, React Native
 e módulos nativos seguem as versões compatíveis com esse SDK.
+Entre no Expo Go com sua **conta Expo gratuita** e, no computador, execute
+`entrar-expo.cmd` na raiz para entrar pelo navegador com **a mesma conta**.
+Depois toque em **Try Again** no iPhone, se a tela de aviso estiver aberta.
+O login do Expo é separado do login do StudyMate, feito dentro do aplicativo.
 Siga o [tutorial completo de instalação e teste da gamificação](TESTE-NO-CELULAR.md).
 Se o computador tiver várias placas de rede, use
 `iniciar-mobile.cmd -IpComputador 192.168.0.105`, trocando pelo IPv4 do `ipconfig`.

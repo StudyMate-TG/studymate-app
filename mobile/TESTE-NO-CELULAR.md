@@ -14,6 +14,10 @@ A interface web (`frontend/`) permanece na versão anterior.
   Isso permite usar as permissões de rede privada de Java e Node para este teste.
 - **iPhone:** use o **Expo Go já instalado com suporte ao SDK 57**.
   O projeto usa **SDK 57**, correspondente à versão confirmada no aparelho.
+  Entre no Expo Go com sua **conta Expo gratuita**. No computador, dê dois
+  cliques em **`entrar-expo.cmd`**, na raiz do projeto, e faça login no navegador
+  com **a mesma conta**. Se necessário, [crie uma conta Expo](https://expo.dev/signup).
+  Esse é o login do Expo; a conta do StudyMate será usada depois, dentro do aplicativo.
 - **Android:** instale Expo Go compatível com **SDK 57** pelo
   [site oficial do Expo](https://expo.dev/go), caso a versão da Play Store use outro SDK.
 
@@ -47,6 +51,12 @@ No Android, abra Expo Go e use o leitor de QR Code. No iPhone, leia o QR Code
 pela câmera e confirme a abertura no Expo Go. Se solicitada, permita ao Expo Go
 acessar a rede local. O app deve abrir a tela de login do StudyMate.
 
+Se aparecer o aviso de login no Expo, confira que computador e Expo Go usam
+**a mesma conta Expo** e toque em **Try Again**. Se o servidor estava sem login,
+é suficiente entrar nas duas pontas e tentar novamente, mantendo a janela aberta.
+Se você trocou uma conta Expo por outra no computador, encerre o Expo com Ctrl+C
+e execute `iniciar-mobile.cmd` novamente. Veja a [orientação oficial sobre login no Expo Go](https://docs.expo.dev/troubleshooting/expo-go-sign-in-required/).
+
 Para conferir a conexão com a API, abra no navegador do celular:
 
 ```text
@@ -62,6 +72,7 @@ ou conexão recusada indica problema de rede, IP, porta ou firewall.
 A conta padrão `teste@studymate.local` / `StudyMate123!` está disponível,
 mas pode ter atividade de testes anteriores. Para testar a primeira comemoração,
 use a conta nova fornecida na conversa ou cadastre outra em **Cadastrar**.
+Na tela do StudyMate, use essas credenciais do StudyMate, não as da conta Expo.
 
 No perfil local, os códigos de confirmação ficam no computador em
 `backend/.local/emails/`. Abra o arquivo mais recente, copie o código para a

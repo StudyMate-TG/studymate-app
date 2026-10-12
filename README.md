@@ -30,6 +30,10 @@ Para testar o aplicativo nativo, execute `iniciar-mobile.cmd` e siga o
 na rede local e o Expo na porta 8082. O mobile requer Node.js 22.13 ou superior.
 O mobile usa SDK 57, correspondente ao Expo Go instalado no iPhone.
 React, React Native e os módulos nativos seguem as versões compatíveis com esse SDK.
+No iPhone, entre no Expo Go com sua **conta Expo gratuita**. No computador,
+execute **`entrar-expo.cmd`** na raiz e faça login pelo navegador com **a mesma conta**.
+Depois toque em **Try Again** no iPhone, caso apareça o aviso de login.
+A conta Expo abre o projeto; o login do StudyMate é feito dentro do aplicativo.
 
 ## Gamificação no aplicativo mobile
 
