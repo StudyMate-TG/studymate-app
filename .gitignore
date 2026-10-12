@@ -1,4 +1,6 @@
 # Logs
+.local/
+backend/target/
 logs
 *.log
 npm-debug.log*

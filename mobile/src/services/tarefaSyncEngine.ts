@@ -1,5 +1,6 @@
 import { apiFetch, handleResponse, requireSessionUser } from "./apiClient";
 import { API_BASE_URL } from "./apiConfig";
+import { capturarProgressoAntesAtividade, notificarProgressoAtualizado } from "./gamificacaoService";
 
 import { getDatabase } from "../database/database";
 
@@ -302,8 +303,7 @@ async function executarPushTarefas(
   }
 }
 
-const sincronizacoes =
-  new Map<number, Promise<void>>();
+const sincronizacoes = new Map<number, { promise: Promise<void>; repetir: boolean }>();
 
 export function sincronizarTarefas(
   idUsuario: number
@@ -314,28 +314,34 @@ export function sincronizarTarefas(
     sincronizacoes.get(idUsuario);
 
   if (existente) {
-    return existente;
+    existente.repetir = true;
+    return existente.promise;
   }
 
+  const estado = { promise: null as unknown as Promise<void>, repetir: false };
   const execucao = (async () => {
-    await executarPushTarefas(
-      idUsuario
-    );
+    do {
+      estado.repetir = false;
+      requireSessionUser(idUsuario);
+      const antes = await capturarProgressoAntesAtividade(idUsuario);
+      await executarPushTarefas(idUsuario);
 
-    await executarPullTarefas(
-      idUsuario
-    );
+      await executarPullTarefas(idUsuario);
 
-    await salvarMetadata(
-      `tarefas_last_sync_at_${idUsuario}`,
-      new Date().toISOString()
-    );
+      requireSessionUser(idUsuario);
+      await salvarMetadata(
+        `tarefas_last_sync_at_${idUsuario}`,
+        new Date().toISOString(),
+        idUsuario
+      );
+
+      requireSessionUser(idUsuario);
+      notificarProgressoAtualizado(idUsuario, antes);
+    } while (estado.repetir);
   })();
 
-  sincronizacoes.set(
-    idUsuario,
-    execucao
-  );
+  estado.promise = execucao;
+  sincronizacoes.set(idUsuario, estado);
 
   void execucao
     .finally(() => {

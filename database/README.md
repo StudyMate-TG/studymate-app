@@ -38,3 +38,17 @@ O fluxo atual de idempotencia usa sync_request e sua chave client_tx_id. O regis
 Reexecute o script com a API parada antes de iniciar o backend integrado para garantir sync_request, seus indices e os metadados da entidade Tarefa. As migrations de autenticacao e confirmacao de e-mail tambem sao incluidas pelo script.
 
 Tarefas excluidas logicamente e registros de idempotencia precisam de uma politica futura de retencao. Este merge nao apaga esses metadados automaticamente nem aplica o DDL a um banco remoto.
+
+## Gamificacao e presencas
+
+O script inclui a migration aditiva `005_gamificacao.sql`: cria o historico `atividade_gamificacao`, as medalhas permanentes `medalha_estudante` e `presenca_aula`, com uma presenca por disciplina/dia/usuario. Nao atribui pontos retroativos nem altera faltas, notas, tarefas ou dados academicos existentes.
+
+Cada primeira conclusao de tarefa gera 30 XP; reabrir, reconcluir, excluir e repetir sincronizacao preserva o premio sem duplicar pontos. Cada presenca gera 20 XP e so pode ser registrada para hoje, no fuso `America/Sao_Paulo`. Datas passadas e futuras sao rejeitadas sem presenca, XP ou medalha. Conclusao, credito, medalhas e operacoes de sincronizacao sao atomicos e usam o bloqueio da conta existente.
+
+Uma atividade remunerada por dia mantem a ofensiva. A data da atividade nova vem do relogio do servidor no fuso `America/Sao_Paulo`, inclusive para presencas, e nao do calendario enviado pelo cliente. A validacao ocorre no cadastro e novamente na premiacao; se o dia virar entre essas etapas, a transacao inteira e revertida. A sequencia de ontem permanece ativa durante o dia atual, mas presencas nao podem preencher dias perdidos. Medalhas e recordes permanecem apos quebra da ofensiva. Nivel inicial 1, com um novo nivel a cada 100 XP; meta diaria de 30 XP.
+
+O historico legado, seus pontos, medalhas e recordes nao sao apagados nem reescritos por esta regra. Presencas retroativas aceitas por uma versao anterior continuam visiveis e podem explicar recordes e medalhas ja conquistados. As novas gravacoes nao permitem ampliar a ofensiva com datas retroativas. Recalcular historicos e revogar conquistas antigas exigiria uma politica de migracao explicita, fora desta alteracao.
+
+O historico guarda os identificadores de origem e nomes de disciplinas como snapshots, sem FK para tarefa/disciplina, preservando conquistas apos exclusoes permitidas pelo fluxo academico. Todas as gravacoes conferem o proprietario da disciplina; nao existe endpoint de credito de XP arbitrario.
+
+Endpoints autenticados: `GET /api/gamificacao`, `GET /api/presencas?idDisciplina=...`, `POST /api/presencas` com `idDisciplina` e `dataPresenca` (`YYYY-MM-DD`). O perfil local e os testes usam o mesmo modelo no H2. No Oracle, reexecute o script antes de iniciar esta versao da API.

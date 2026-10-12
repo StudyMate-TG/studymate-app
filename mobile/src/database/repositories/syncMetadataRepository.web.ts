@@ -7,7 +7,8 @@ export async function buscarMetadata(
 
 export async function salvarMetadata(
   _key: string,
-  _value: string
+  _value: string,
+  _idUsuario?: number
 ): Promise<void> {
   return;
 }

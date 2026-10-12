@@ -23,7 +23,9 @@ export async function executarPullTarefas(idUsuario: number): Promise<void> {
     if (dados.hasMore && (!dados.cursor || dados.cursor === cursor)) {
       throw new Error("O cursor de sincronização não avançou.");
     }
-    await aplicarPullTarefas(dados.tarefas, idUsuario, dados.cursor);
+    const cursorAvancou = await aplicarPullTarefas(dados.tarefas, idUsuario, dados.cursor);
+    // Stop here: subsequent pages must not bypass a page protected by local work.
+    if (!cursorAvancou) return;
     cursor = dados.cursor;
     hasMore = dados.hasMore === true;
   } while (hasMore);

@@ -1,0 +1,123 @@
+CREATE TABLE IF NOT EXISTS usuario (
+ id_usuario INTEGER PRIMARY KEY,
+ nome VARCHAR(100) NOT NULL,
+ email VARCHAR(100) NOT NULL UNIQUE,
+ senha_hash VARCHAR(255) NOT NULL,
+ data_criacao TIMESTAMP NOT NULL,
+ curso VARCHAR(100),
+ matricula VARCHAR(50),
+ instituicao VARCHAR(100)
+);
+CREATE SEQUENCE IF NOT EXISTS seq_usuario START WITH 1 INCREMENT BY 1;
+CREATE TABLE IF NOT EXISTS progresso_estudante (
+ id_usuario INTEGER PRIMARY KEY REFERENCES usuario(id_usuario),
+ xp_total INTEGER NOT NULL,
+ nivel INTEGER NOT NULL,
+ sequencia_atual INTEGER NOT NULL,
+ maior_sequencia INTEGER NOT NULL,
+ data_ultimo_dia_sequencia DATE
+);
+CREATE TABLE IF NOT EXISTS periodo_letivo (
+ id_periodo INTEGER PRIMARY KEY,
+ id_usuario INTEGER NOT NULL REFERENCES usuario(id_usuario),
+ nome VARCHAR(50) NOT NULL,
+ data_inicio DATE NOT NULL,
+ data_fim DATE NOT NULL,
+ status VARCHAR(20) NOT NULL,
+ CHECK (data_fim >= data_inicio)
+);
+CREATE SEQUENCE IF NOT EXISTS seq_periodo_letivo START WITH 1 INCREMENT BY 1;
+CREATE TABLE IF NOT EXISTS disciplina (
+ id_disciplina INTEGER PRIMARY KEY,
+ id_periodo INTEGER NOT NULL REFERENCES periodo_letivo(id_periodo),
+ nome VARCHAR(100) NOT NULL,
+ professor VARCHAR(100) NOT NULL,
+ media_aprovacao DECIMAL(4,2) NOT NULL,
+ limite_faltas INTEGER NOT NULL,
+ CHECK (media_aprovacao BETWEEN 0 AND 10),
+ CHECK (limite_faltas >= 0)
+);
+CREATE SEQUENCE IF NOT EXISTS seq_disciplina START WITH 1 INCREMENT BY 1;
+CREATE TABLE IF NOT EXISTS falta (
+ id_falta INTEGER PRIMARY KEY,
+ id_disciplina INTEGER NOT NULL REFERENCES disciplina(id_disciplina),
+ data_falta DATE NOT NULL,
+ quantidade_aulas INTEGER NOT NULL
+);
+CREATE TABLE IF NOT EXISTS avaliacao (
+ id_avaliacao BIGINT PRIMARY KEY,
+ id_disciplina INTEGER NOT NULL REFERENCES disciplina(id_disciplina),
+ nome VARCHAR(100) NOT NULL,
+ tipo VARCHAR(20) NOT NULL,
+ nota DECIMAL(4,2) CHECK (nota BETWEEN 0 AND 10),
+ peso DECIMAL(4,2) NOT NULL CHECK (peso > 0),
+ data_avaliacao DATE NOT NULL
+);
+CREATE SEQUENCE IF NOT EXISTS seq_avaliacao START WITH 1 INCREMENT BY 1;
+CREATE SEQUENCE IF NOT EXISTS seq_falta START WITH 1 INCREMENT BY 1;
+CREATE TABLE IF NOT EXISTS tarefa (
+ id_tarefa INTEGER PRIMARY KEY,
+ id_disciplina INTEGER NOT NULL REFERENCES disciplina(id_disciplina),
+ titulo VARCHAR(100) NOT NULL, tipo VARCHAR(20) NOT NULL, descricao CLOB,
+ data_hora_inicio TIMESTAMP, data_entrega TIMESTAMP NOT NULL, data_conclusao TIMESTAMP,
+ status VARCHAR(20) NOT NULL, prioridade VARCHAR(20) NOT NULL, xp_gerado INTEGER NOT NULL,
+ version BIGINT DEFAULT 0 NOT NULL CHECK (version >= 0),
+ updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP NOT NULL,
+ deleted_at TIMESTAMP WITH TIME ZONE
+);
+CREATE SEQUENCE IF NOT EXISTS seq_tarefa START WITH 1 INCREMENT BY 1;
+CREATE TABLE IF NOT EXISTS auth_rate_limit_bucket (
+ bucket_key VARCHAR(100) PRIMARY KEY, operation VARCHAR(16) NOT NULL,
+ attempts INTEGER NOT NULL, window_end TIMESTAMP WITH TIME ZONE NOT NULL
+);
+INSERT INTO auth_rate_limit_bucket SELECT 'LOGIN:GLOBAL','LOGIN',0,TIMESTAMP WITH TIME ZONE '1970-01-01 00:00:00+00:00' WHERE NOT EXISTS (SELECT 1 FROM auth_rate_limit_bucket WHERE bucket_key='LOGIN:GLOBAL');
+INSERT INTO auth_rate_limit_bucket SELECT 'REGISTER:GLOBAL','REGISTER',0,TIMESTAMP WITH TIME ZONE '1970-01-01 00:00:00+00:00' WHERE NOT EXISTS (SELECT 1 FROM auth_rate_limit_bucket WHERE bucket_key='REGISTER:GLOBAL');
+INSERT INTO auth_rate_limit_bucket SELECT 'VERIFY:GLOBAL','VERIFY',0,TIMESTAMP WITH TIME ZONE '1970-01-01 00:00:00+00:00' WHERE NOT EXISTS (SELECT 1 FROM auth_rate_limit_bucket WHERE bucket_key='VERIFY:GLOBAL');
+INSERT INTO auth_rate_limit_bucket SELECT 'EMAIL_CHANGE:GLOBAL','EMAIL_CHANGE',0,TIMESTAMP WITH TIME ZONE '1970-01-01 00:00:00+00:00' WHERE NOT EXISTS (SELECT 1 FROM auth_rate_limit_bucket WHERE bucket_key='EMAIL_CHANGE:GLOBAL');
+CREATE TABLE IF NOT EXISTS email_verification (
+ token_hash VARCHAR(64) PRIMARY KEY, purpose VARCHAR(20) NOT NULL,
+ id_usuario INTEGER REFERENCES usuario(id_usuario), email VARCHAR(100) NOT NULL,
+ nome VARCHAR(100), senha_hash VARCHAR(255), expires_at TIMESTAMP WITH TIME ZONE NOT NULL,
+ used_at TIMESTAMP WITH TIME ZONE
+);
+
+CREATE TABLE IF NOT EXISTS sync_request (
+ client_tx_id VARCHAR(36) PRIMARY KEY,
+ id_usuario INTEGER NOT NULL REFERENCES usuario(id_usuario),
+ entity_type VARCHAR(30) NOT NULL,
+ operation VARCHAR(10) NOT NULL CHECK (operation IN ('CREATE','UPDATE','DELETE','COMPLETE','REOPEN')),
+ response_resource_id INTEGER,
+ processed_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP NOT NULL
+);
+CREATE INDEX IF NOT EXISTS ix_sync_request_usuario ON sync_request(id_usuario);
+CREATE INDEX IF NOT EXISTS ix_tarefa_delta ON tarefa(id_disciplina, updated_at, id_tarefa);
+
+CREATE TABLE IF NOT EXISTS atividade_gamificacao (
+ id_atividade VARCHAR(36) PRIMARY KEY,
+ id_usuario INTEGER NOT NULL REFERENCES usuario(id_usuario) ON DELETE CASCADE,
+ tipo VARCHAR(10) NOT NULL CHECK (tipo IN ('TAREFA','PRESENCA')),
+ origem_id INTEGER NOT NULL,
+ descricao VARCHAR(240) NOT NULL,
+ xp INTEGER NOT NULL CHECK (xp > 0),
+ data_atividade DATE NOT NULL,
+ registrada_em TIMESTAMP WITH TIME ZONE NOT NULL,
+ CONSTRAINT uk_atividade_origem UNIQUE (id_usuario,tipo,origem_id)
+);
+CREATE INDEX IF NOT EXISTS ix_atividade_usuario_dia ON atividade_gamificacao(id_usuario,data_atividade);
+CREATE TABLE IF NOT EXISTS medalha_estudante (
+ id_usuario INTEGER NOT NULL REFERENCES usuario(id_usuario) ON DELETE CASCADE,
+ codigo VARCHAR(32) NOT NULL,
+ desbloqueada_em TIMESTAMP WITH TIME ZONE NOT NULL,
+ PRIMARY KEY (id_usuario,codigo)
+);
+-- Subject id and name are historical snapshots, so deleting a subject preserves earned XP.
+CREATE TABLE IF NOT EXISTS presenca_aula (
+ id_presenca INTEGER PRIMARY KEY,
+ id_usuario INTEGER NOT NULL REFERENCES usuario(id_usuario) ON DELETE CASCADE,
+ id_disciplina INTEGER NOT NULL,
+ nome_disciplina VARCHAR(100) NOT NULL,
+ data_presenca DATE NOT NULL,
+ xp_gerado INTEGER NOT NULL CHECK (xp_gerado > 0),
+ CONSTRAINT uk_presenca_dia UNIQUE (id_usuario,id_disciplina,data_presenca)
+);
+CREATE SEQUENCE IF NOT EXISTS seq_presenca_aula START WITH 1 INCREMENT BY 1;

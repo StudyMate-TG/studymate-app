@@ -16,12 +16,16 @@ npm run web
 O Metro bundler compilará a versão web e abrirá automaticamente em `http://localhost:8081`.
 
 ### Opção 2: No Celular Físico (Expo Go)
-1. Instale o aplicativo **Expo Go** no seu smartphone (Google Play Store ou Apple App Store).
-2. No computador, execute:
-   ```bash
-   npm start
-   ```
-3. Aponte a câmera do seu celular para o QR Code gerado no terminal.
+
+Na raiz do repositório, execute `iniciar-mobile.cmd`. O iniciador prepara a API,
+configura o endereço de rede do computador e abre o Expo na porta 8082.
+Use Node.js 22.13 ou superior e Expo Go compatível com o SDK 54.
+O mobile foi alinhado ao SDK 54 para permitir testes no iPhone com o Expo Go
+da App Store, sem conta Apple Developer paga. React, React Native e módulos
+nativos seguem as versões compatíveis com esse SDK.
+Siga o [tutorial completo de instalação e teste da gamificação](TESTE-NO-CELULAR.md).
+Se o computador tiver várias placas de rede, use
+`iniciar-mobile.cmd -IpComputador 192.168.0.105`, trocando pelo IPv4 do `ipconfig`.
 
 ### Opção 3: No Docker
 Na raiz do repositório (`Study Mate/`):

@@ -33,6 +33,9 @@ import { MobileHeader } from "../components/MobileHeader";
 import { Card } from "../components/Card";
 import { Button } from "../components/Button";
 import { formatarPrioridade } from "../utils/tarefaUtils";
+import { GamificationOverview } from "../components/GamificationOverview";
+import { useGamificacao } from "../hooks/useGamificacao";
+import { onProgressoAtualizado } from "../services/gamificacaoService";
 
 import {
   LastSyncStatus,
@@ -58,6 +61,7 @@ type HomeScreenNavigationProp = CompositeNavigationProp<
 export const HomeScreen: React.FC = () => {
   const navigation = useNavigation<HomeScreenNavigationProp>();
   const isFocused = useIsFocused();
+  const { progresso, carregando: carregandoProgresso, erro: erroProgresso, xpConfirmado, atualizar: atualizarProgresso } = useGamificacao();
 
   const [usuarioLogado, setUsuarioLogado] = useState<UsuarioResponse | null>(
     null
@@ -157,6 +161,23 @@ useEffect(() => {
   };
 }, [isFocused]);
 
+  useEffect(() => {
+    if (!isFocused || !usuarioLogado?.idUsuario) return;
+    let ativo = true;
+    const unsubscribe = onProgressoAtualizado((idUsuario) => {
+      if (idUsuario !== usuarioLogado.idUsuario) return;
+      void Promise.all([
+        tarefaService.listarTarefasConfirmadas(idUsuario),
+        tarefaService.obterUltimaSincronizacaoTarefas(idUsuario),
+      ]).then(([dados, ultimaSync]) => {
+        if (!ativo) return;
+        setTarefas(dados);
+        setUltimaSincronizacao(ultimaSync);
+      }).catch(() => { /* Keep local tasks available while offline. */ });
+    });
+    return () => { ativo = false; unsubscribe(); };
+  }, [isFocused, usuarioLogado?.idUsuario]);
+
   const nomeExibicao = useMemo(() => {
     if (!usuarioLogado?.nome) {
       return "estudante";
@@ -218,6 +239,7 @@ const handleAlternarStatusTarefa = async (
 
   try {
     setTarefaAlterandoStatus(chave);
+    setErroTarefas("");
 
     const tarefaAtualizada =
       concluida
@@ -248,6 +270,7 @@ const handleAlternarStatusTarefa = async (
       )
     );
   } catch (error) {
+    setErroTarefas(error instanceof Error ? error.message : "Não foi possível atualizar a tarefa.");
     console.error(
       concluida
         ? "Erro ao reabrir tarefa:"
@@ -285,25 +308,10 @@ const handleAlternarStatusTarefa = async (
           </View>
         </Card>
 
-        <Card style={styles.infoCard}>
-          <Text style={styles.infoCardText}>
-            O resumo acadêmico será exibido após sincronização completa com o backend.
-          </Text>
-        </Card>
-
-        <Card style={styles.streakCard}>
-          <View style={styles.streakRow}>
-            <Text style={styles.streakEmoji}>🔥</Text>
-
-            <View style={styles.streakTextContainer}>
-              <Text style={styles.streakTitle}>Sequência de estudos</Text>
-
-              <Text style={styles.streakSubtitle}>
-                Sua sequência de estudos será exibida após o registro de atividades.
-              </Text>
-            </View>
-          </View>
-        </Card>
+        {xpConfirmado > 0 && <View style={styles.rewardBanner} accessibilityLiveRegion="polite"><Text style={styles.rewardText}>✨ +{xpConfirmado} XP confirmados! Continue assim.</Text></View>}
+        {progresso && <GamificationOverview progresso={progresso} onConquistas={() => navigation.navigate("AchievementsTab")} />}
+        {!progresso && <Card style={styles.infoCard}><Text style={styles.infoCardText}>{carregandoProgresso ? "Carregando sua ofensiva e conquistas..." : "Seu progresso será atualizado quando houver conexão."}</Text></Card>}
+        {erroProgresso ? <View style={styles.progressError}><Text style={styles.infoCardText}>Não foi possível atualizar seu progresso. {erroProgresso}</Text><Button title="Tentar novamente" variant="ghost" onPress={() => { void atualizarProgresso(); }} /></View> : null}
 
         <View style={styles.sectionHeader}>
           <Text style={styles.sectionTitle}>Próximas Entregas</Text>
@@ -428,7 +436,9 @@ const handleAlternarStatusTarefa = async (
                       styles.completedText
                     }
                   >
-                    Tarefa concluída
+                    {tarefa.syncStatus === "PENDING" || tarefa.syncStatus === "ERROR"
+                      ? "Concluída • XP aguardando sincronização"
+                      : tarefa.xpGerado > 0 ? `Concluída • ${tarefa.xpGerado} XP registrados` : "Tarefa concluída"}
                   </Text>
                 )}
               </View>
@@ -528,7 +538,7 @@ tarefas.length ? (
             />
 
             <Button
-              title="Registrar frequência"
+              title="Registrar presença ou falta"
               variant="outline"
               icon={<CheckCircle2 size={18} color="#334155" />}
               onPress={abrirNovaFrequencia}
@@ -550,6 +560,9 @@ tarefas.length ? (
 
 
 const styles = StyleSheet.create({
+  rewardBanner: { backgroundColor: "#DCFCE7", borderRadius: 12, padding: 14, marginBottom: 14, borderWidth: 1, borderColor: "#86EFAC" },
+  rewardText: { color: "#166534", fontSize: 13, fontWeight: "700", textAlign: "center" },
+  progressError: { marginBottom: 16 },
   container: {
     flex: 1,
     backgroundColor: "#F8FAFC",
