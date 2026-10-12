@@ -9,6 +9,9 @@ A interface web (`frontend/`) permanece na versão anterior.
   Internet é necessária na primeira instalação das dependências.
 - Conecte computador e celular à mesma rede do roteador. O computador pode usar
   cabo Ethernet e o celular Wi-Fi, desde que se comuniquem na mesma rede.
+- No Windows, se esta for sua rede de confiança, abra **Configurações → Rede e
+  Internet → Ethernet/Wi-Fi → rede conectada** e escolha o perfil **Privado**.
+  Isso permite usar as permissões de rede privada de Java e Node para este teste.
 - **iPhone:** instale **Expo Go pela App Store**. O projeto foi alinhado ao
   **SDK 54**, suportado por essa versão, para permitir o teste sem assinatura
   Apple Developer. Não é necessário TestFlight ou compilar um IPA.
@@ -117,6 +120,8 @@ registrada somente hoje; não há fila de presença retroativa.
 
 - Confirme o IP exibido na janela, a mesma rede e as portas 8081/8082 livres.
 - Se o Windows perguntar, permita **Java** e **Node.js** na rede **Privada**.
+  Uma conexão marcada como Pública pode continuar bloqueada mesmo que você
+  tenha permitido esses aplicativos apenas em redes privadas; confira o perfil.
   Se houver bloqueio, permita TCP 8081 e 8082 apenas na rede privada/local;
   o iniciador não modifica regras do firewall automaticamente.
 - Redes de convidados podem impedir comunicação entre aparelhos. Use a rede
