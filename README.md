@@ -28,8 +28,8 @@ A configuração padrão da API continua destinada ao Oracle e SMTP.
 Para testar o aplicativo nativo, execute `iniciar-mobile.cmd` e siga o
 [tutorial para o celular](mobile/TESTE-NO-CELULAR.md). O iniciador configura a API
 na rede local e o Expo na porta 8082. O mobile requer Node.js 22.13 ou superior.
-O SDK 54 permite abrir o app no Expo Go da App Store pelo iPhone, sem conta
-Apple Developer paga; os módulos nativos foram alinhados a essa versão.
+O mobile usa SDK 57, correspondente ao Expo Go instalado no iPhone.
+React, React Native e os módulos nativos seguem as versões compatíveis com esse SDK.
 
 ## Gamificação no aplicativo mobile
 

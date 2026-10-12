@@ -33,8 +33,8 @@ $installedExpo = 'mobile/node_modules/expo/package.json'
 $installRequired = !(Test-Path $installedExpo)
 if (!$installRequired) {
     $installedVersion = (Get-Content $installedExpo -Raw | ConvertFrom-Json).version
-    $installRequired = $installedVersion -notmatch '^54\.'
-    foreach ($dependency in @(@{ Name = 'react'; Version = '19.1.0' }, @{ Name = 'react-native'; Version = '0.81.5' })) {
+    $installRequired = $installedVersion -notmatch '^57\.'
+    foreach ($dependency in @(@{ Name = 'react'; Version = '19.2.3' }, @{ Name = 'react-native'; Version = '0.86.3' })) {
         $dependencyFile = "mobile/node_modules/$($dependency.Name)/package.json"
         if (!(Test-Path $dependencyFile) -or (Get-Content $dependencyFile -Raw | ConvertFrom-Json).version -ne $dependency.Version) {
             $installRequired = $true
@@ -58,7 +58,7 @@ try {
     $env:EXPO_PUBLIC_API_URL = "http://${IpComputador}:8081/api"
     $env:REACT_NATIVE_PACKAGER_HOSTNAME = $IpComputador
     Write-Host "API para o celular: $env:EXPO_PUBLIC_API_URL"
-    Write-Host 'Conecte o celular a mesma rede do computador e abra o QR Code no Expo Go da App Store (SDK 54).'
+    Write-Host 'Conecte o celular a mesma rede do computador e abra o QR Code no Expo Go compativel com SDK 57.'
     Write-Host 'Mantenha esta janela aberta. Se precisar, permita Java e Node nas redes privadas do firewall.'
     Write-Host 'Tutorial: mobile/TESTE-NO-CELULAR.md'
     Set-Location "$PSScriptRoot/mobile"

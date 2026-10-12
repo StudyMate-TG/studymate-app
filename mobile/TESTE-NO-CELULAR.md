@@ -12,11 +12,9 @@ A interface web (`frontend/`) permanece na versão anterior.
 - No Windows, se esta for sua rede de confiança, abra **Configurações → Rede e
   Internet → Ethernet/Wi-Fi → rede conectada** e escolha o perfil **Privado**.
   Isso permite usar as permissões de rede privada de Java e Node para este teste.
-- **iPhone:** instale **Expo Go pela App Store**. O projeto foi alinhado ao
-  **SDK 54**, suportado por essa versão, para permitir o teste sem assinatura
-  Apple Developer. Não é necessário TestFlight ou compilar um IPA.
-  Veja a [compatibilidade oficial](https://docs.expo.dev/troubleshooting/expo-go-version-mismatch/).
-- **Android:** instale Expo Go compatível com **SDK 54** pelo
+- **iPhone:** use o **Expo Go já instalado com suporte ao SDK 57**.
+  O projeto usa **SDK 57**, correspondente à versão confirmada no aparelho.
+- **Android:** instale Expo Go compatível com **SDK 57** pelo
   [site oficial do Expo](https://expo.dev/go), caso a versão da Play Store use outro SDK.
 
 ## 2. Iniciar a API e o aplicativo
@@ -32,7 +30,7 @@ O iniciador faz o seguinte:
 3. Configura `EXPO_PUBLIC_API_URL` com o IPv4 do computador.
 4. Inicia o Expo/Metro na porta **8082**, usando Expo Go e conexão LAN.
 
-O cache do Metro é limpo ao iniciar para que os módulos do SDK 54 sejam usados.
+O cache do Metro é limpo ao iniciar para que os módulos do SDK 57 sejam usados.
 
 Se o IP escolhido for de uma VPN ou outra rede, abra PowerShell na raiz e use:
 
@@ -130,9 +128,9 @@ registrada somente hoje; não há fila de presença retroativa.
   tutorial, use LAN e confirme primeiro o endereço `/api/health` no celular.
 - Se trocar o IP do computador, encerre o Expo com Ctrl+C e execute novamente
   `iniciar-mobile.cmd` com o IP correto, depois releia o QR Code.
-- Erro de SDK: confira se as dependências mobile estão atualizadas com `npm ci`
-  dentro de `mobile/` e se o Expo Go suporta **SDK 54**. No iPhone, use o Expo Go
-  da App Store; no Android, escolha SDK 54 no site oficial.
+- Erro de SDK: confirme que o Expo Go instalado suporta **SDK 57** e que o
+  projeto usa a mesma versão. Atualize as dependências com `npm ci` dentro de
+  `mobile/`, reinicie `iniciar-mobile.cmd` e leia novamente o QR Code.
 
 ## Encerrar
 

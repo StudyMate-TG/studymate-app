@@ -19,10 +19,9 @@ O Metro bundler compilará a versão web e abrirá automaticamente em `http://lo
 
 Na raiz do repositório, execute `iniciar-mobile.cmd`. O iniciador prepara a API,
 configura o endereço de rede do computador e abre o Expo na porta 8082.
-Use Node.js 22.13 ou superior e Expo Go compatível com o SDK 54.
-O mobile foi alinhado ao SDK 54 para permitir testes no iPhone com o Expo Go
-da App Store, sem conta Apple Developer paga. React, React Native e módulos
-nativos seguem as versões compatíveis com esse SDK.
+Use Node.js 22.13 ou superior e Expo Go compatível com o SDK 57.
+No iPhone, use o Expo Go já instalado com suporte ao SDK 57. React, React Native
+e módulos nativos seguem as versões compatíveis com esse SDK.
 Siga o [tutorial completo de instalação e teste da gamificação](TESTE-NO-CELULAR.md).
 Se o computador tiver várias placas de rede, use
 `iniciar-mobile.cmd -IpComputador 192.168.0.105`, trocando pelo IPv4 do `ipconfig`.
