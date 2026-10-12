@@ -308,6 +308,16 @@ const handleAlternarStatusTarefa = async (
           </View>
         </Card>
 
+        <View style={styles.attendanceShortcut}>
+          <Button
+            title="Registrar presença"
+            icon={<CheckCircle2 size={20} color="#FFFFFF" />}
+            onPress={abrirNovaFrequencia}
+            size="lg"
+          />
+          <Text style={styles.attendanceShortcutCaption}>Presença na aula de hoje · +20 XP</Text>
+        </View>
+
         {xpConfirmado > 0 && <View style={styles.rewardBanner} accessibilityLiveRegion="polite"><Text style={styles.rewardText}>✨ +{xpConfirmado} XP confirmados! Continue assim.</Text></View>}
         {progresso && <GamificationOverview progresso={progresso} onConquistas={() => navigation.navigate("AchievementsTab")} />}
         {!progresso && <Card style={styles.infoCard}><Text style={styles.infoCardText}>{carregandoProgresso ? "Carregando sua ofensiva e conquistas..." : "Seu progresso será atualizado quando houver conexão."}</Text></Card>}
@@ -560,6 +570,8 @@ tarefas.length ? (
 
 
 const styles = StyleSheet.create({
+  attendanceShortcut: { marginBottom: 18 },
+  attendanceShortcutCaption: { marginTop: 7, color: "#64748B", fontSize: 12, textAlign: "center" },
   rewardBanner: { backgroundColor: "#DCFCE7", borderRadius: 12, padding: 14, marginBottom: 14, borderWidth: 1, borderColor: "#86EFAC" },
   rewardText: { color: "#166534", fontSize: 13, fontWeight: "700", textAlign: "center" },
   progressError: { marginBottom: 16 },

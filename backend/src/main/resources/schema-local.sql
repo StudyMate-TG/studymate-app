@@ -85,9 +85,10 @@ CREATE TABLE IF NOT EXISTS sync_request (
  client_tx_id VARCHAR(36) PRIMARY KEY,
  id_usuario INTEGER NOT NULL REFERENCES usuario(id_usuario),
  entity_type VARCHAR(30) NOT NULL,
- operation VARCHAR(10) NOT NULL CHECK (operation IN ('CREATE','UPDATE','DELETE','COMPLETE','REOPEN')),
+ operation VARCHAR(10) NOT NULL,
  response_resource_id INTEGER,
- processed_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP NOT NULL
+ processed_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP NOT NULL,
+ CONSTRAINT ck_sync_request_operation CHECK (CASE WHEN operation='CREATE' THEN 1 WHEN operation='UPDATE' THEN 1 WHEN operation='DELETE' THEN 1 WHEN operation='COMPLETE' THEN 1 WHEN operation='REOPEN' THEN 1 ELSE 0 END=1)
 );
 CREATE INDEX IF NOT EXISTS ix_sync_request_usuario ON sync_request(id_usuario);
 CREATE INDEX IF NOT EXISTS ix_tarefa_delta ON tarefa(id_disciplina, updated_at, id_tarefa);
@@ -95,13 +96,14 @@ CREATE INDEX IF NOT EXISTS ix_tarefa_delta ON tarefa(id_disciplina, updated_at, 
 CREATE TABLE IF NOT EXISTS atividade_gamificacao (
  id_atividade VARCHAR(36) PRIMARY KEY,
  id_usuario INTEGER NOT NULL REFERENCES usuario(id_usuario) ON DELETE CASCADE,
- tipo VARCHAR(10) NOT NULL CHECK (tipo IN ('TAREFA','PRESENCA')),
+ tipo VARCHAR(10) NOT NULL,
  origem_id INTEGER NOT NULL,
  descricao VARCHAR(240) NOT NULL,
  xp INTEGER NOT NULL CHECK (xp > 0),
  data_atividade DATE NOT NULL,
  registrada_em TIMESTAMP WITH TIME ZONE NOT NULL,
- CONSTRAINT uk_atividade_origem UNIQUE (id_usuario,tipo,origem_id)
+ CONSTRAINT uk_atividade_origem UNIQUE (id_usuario,tipo,origem_id),
+ CONSTRAINT ck_atividade_tipo CHECK (CASE WHEN tipo='TAREFA' THEN 1 WHEN tipo='PRESENCA' THEN 1 ELSE 0 END=1)
 );
 CREATE INDEX IF NOT EXISTS ix_atividade_usuario_dia ON atividade_gamificacao(id_usuario,data_atividade);
 CREATE TABLE IF NOT EXISTS medalha_estudante (

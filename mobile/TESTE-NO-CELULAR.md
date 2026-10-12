@@ -91,7 +91,7 @@ Faça os testes nesta ordem, com a conexão ativa:
 
 | Ação | Resultado esperado |
 | --- | --- |
-| Em Início, toque em `+` e `Registrar presença ou falta`; escolha a disciplina e registre presença | +20 XP, 1 dia de ofensiva e medalha `Presente!` |
+| No topo do Início, toque em `Registrar presença`; escolha a disciplina e registre presença | +20 XP, 1 dia de ofensiva e medalha `Presente!` |
 | Observe a primeira atividade do dia | Mascote com olhos fechados, sorriso sem dentes e três pequenos fogos estáticos; botão `Continuar estudando` fecha a tela |
 | Confira a data da presença | Data de hoje fixa, pelo horário de São Paulo; campo não aceita editar para ontem ou amanhã |
 | Registre novamente presença na mesma disciplina hoje | API recusa duplicidade; continua com 20 XP |
