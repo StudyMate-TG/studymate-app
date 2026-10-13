@@ -31,6 +31,7 @@
     "typescript": "~6.0.3"
   },
   "scripts": {
+    "test": "node --experimental-strip-types --test tests/*.test.mjs",
     "start": "expo start",
     "android": "expo run:android",
     "ios": "expo run:ios",

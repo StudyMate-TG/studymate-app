@@ -343,4 +343,5 @@ END;
 /
 @@../../migrations/003_auth_protection.sql
 @@../../migrations/004_email_verification.sql
+@@../../migrations/005_gamificacao.sql
 PROMPT StudyMate: DDL concluido.

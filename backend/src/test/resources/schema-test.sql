@@ -85,9 +85,38 @@ CREATE TABLE sync_request (
  client_tx_id VARCHAR(36) PRIMARY KEY,
  id_usuario INTEGER NOT NULL REFERENCES usuario(id_usuario),
  entity_type VARCHAR(30) NOT NULL,
- operation VARCHAR(10) NOT NULL CHECK (operation IN ('CREATE','UPDATE','DELETE')),
+ operation VARCHAR(10) NOT NULL CHECK (operation IN ('CREATE','UPDATE','DELETE','COMPLETE','REOPEN')),
  response_resource_id INTEGER,
  processed_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP NOT NULL
 );
 CREATE INDEX ix_sync_request_usuario ON sync_request(id_usuario);
 CREATE INDEX ix_tarefa_delta ON tarefa(id_disciplina, updated_at, id_tarefa);
+
+CREATE TABLE atividade_gamificacao (
+ id_atividade VARCHAR(36) PRIMARY KEY,
+ id_usuario INTEGER NOT NULL REFERENCES usuario(id_usuario) ON DELETE CASCADE,
+ tipo VARCHAR(10) NOT NULL CHECK (tipo IN ('TAREFA','PRESENCA')),
+ origem_id INTEGER NOT NULL,
+ descricao VARCHAR(240) NOT NULL,
+ xp INTEGER NOT NULL CHECK (xp > 0),
+ data_atividade DATE NOT NULL,
+ registrada_em TIMESTAMP WITH TIME ZONE NOT NULL,
+ CONSTRAINT uk_atividade_origem UNIQUE (id_usuario,tipo,origem_id)
+);
+CREATE INDEX ix_atividade_usuario_dia ON atividade_gamificacao(id_usuario,data_atividade);
+CREATE TABLE medalha_estudante (
+ id_usuario INTEGER NOT NULL REFERENCES usuario(id_usuario) ON DELETE CASCADE,
+ codigo VARCHAR(32) NOT NULL,
+ desbloqueada_em TIMESTAMP WITH TIME ZONE NOT NULL,
+ PRIMARY KEY (id_usuario,codigo)
+);
+CREATE TABLE presenca_aula (
+ id_presenca INTEGER PRIMARY KEY,
+ id_usuario INTEGER NOT NULL REFERENCES usuario(id_usuario) ON DELETE CASCADE,
+ id_disciplina INTEGER NOT NULL,
+ nome_disciplina VARCHAR(100) NOT NULL,
+ data_presenca DATE NOT NULL,
+ xp_gerado INTEGER NOT NULL CHECK (xp_gerado > 0),
+ CONSTRAINT uk_presenca_dia UNIQUE (id_usuario,id_disciplina,data_presenca)
+);
+CREATE SEQUENCE seq_presenca_aula START WITH 1 INCREMENT BY 1;

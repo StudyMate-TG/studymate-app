@@ -10,6 +10,7 @@ import {
   Platform,
   KeyboardAvoidingView,
   ActivityIndicator,
+  AppState,
 } from "react-native";
 
 import { useNavigation } from "@react-navigation/native";
@@ -32,12 +33,17 @@ import {
 import { obterUsuarioSessao } from "../services/authService";
 import { listarDisciplinas } from "../services/disciplinaService";
 import { cadastrarFalta } from "../services/faltaService";
+import { cadastrarPresenca } from "../services/presencaService";
+import { formatarDataEstudo, obterDataHojeSaoPaulo } from "../utils/dataEstudoUtils";
 
 export const NewAttendanceScreen: React.FC = () => {
   const navigation =
     useNavigation<NativeStackNavigationProp<RootStackParamList>>();
 
   const [idUsuario, setIdUsuario] = useState<number | null>(null);
+  const [tipoRegistro, setTipoRegistro] = useState<"PRESENCA" | "FALTA">("PRESENCA");
+  const [xpRecebido, setXpRecebido] = useState(0);
+  const [dataPresencaHoje, setDataPresencaHoje] = useState(obterDataHojeSaoPaulo);
 
   const [disciplinas, setDisciplinas] = useState<DisciplinaResponse[]>([]);
   const [idDisciplina, setIdDisciplina] = useState<number | null>(null);
@@ -45,7 +51,7 @@ export const NewAttendanceScreen: React.FC = () => {
   const [mostrarDisciplinas, setMostrarDisciplinas] = useState(false);
 
   const [dataFalta, setDataFalta] = useState(
-    new Date().toLocaleDateString("pt-BR")
+    new Date().toLocaleDateString("pt-BR", { timeZone: "America/Sao_Paulo" })
   );
 
   const [quantidadeAulas, setQuantidadeAulas] = useState("1");
@@ -54,6 +60,15 @@ export const NewAttendanceScreen: React.FC = () => {
   const [salvando, setSalvando] = useState(false);
 
   const [showSuccess, setShowSuccess] = useState(false);
+
+  useEffect(() => {
+    const atualizarDataHoje = () => setDataPresencaHoje(obterDataHojeSaoPaulo());
+    const timer = setInterval(atualizarDataHoje, 60_000);
+    const subscription = AppState.addEventListener("change", (estado) => {
+      if (estado === "active") atualizarDataHoje();
+    });
+    return () => { clearInterval(timer); subscription.remove(); };
+  }, []);
 
   const showAlert = (title: string, message: string) => {
     if (Platform.OS === "web" && typeof window !== "undefined") {
@@ -151,6 +166,9 @@ export const NewAttendanceScreen: React.FC = () => {
   };
 
   const handleSubmit = async () => {
+    const dataRegistro = tipoRegistro === "PRESENCA"
+      ? formatarDataEstudo(obterDataHojeSaoPaulo())
+      : dataFalta.trim();
     if (!idUsuario) {
       showAlert(
         "Atenção",
@@ -169,16 +187,16 @@ export const NewAttendanceScreen: React.FC = () => {
       return;
     }
 
-    if (!dataFalta.trim()) {
+    if (!dataRegistro) {
       showAlert(
         "Atenção",
-        "Informe a data da falta."
+        "Informe a data da aula."
       );
 
       return;
     }
 
-    if (!isValidBrazilianDate(dataFalta.trim())) {
+    if (!isValidBrazilianDate(dataRegistro)) {
       showAlert(
         "Atenção",
         "Informe a data no formato DD/MM/AAAA."
@@ -190,9 +208,10 @@ export const NewAttendanceScreen: React.FC = () => {
     const quantidade = Number(quantidadeAulas);
 
     if (
+      tipoRegistro === "FALTA" && (
       Number.isNaN(quantidade) ||
       !Number.isInteger(quantidade) ||
-      quantidade <= 0
+      quantidade <= 0)
     ) {
       showAlert(
         "Atenção",
@@ -206,14 +225,19 @@ export const NewAttendanceScreen: React.FC = () => {
       setSalvando(true);
 
       const dataApi = converterDataParaApi(
-        dataFalta.trim()
+        dataRegistro
       );
 
-      await cadastrarFalta(idUsuario, {
-        idDisciplina,
-        dataFalta: dataApi,
-        quantidadeAulas: quantidade,
-      });
+      if (tipoRegistro === "PRESENCA") {
+        const presenca = await cadastrarPresenca(idUsuario, { idDisciplina, dataPresenca: dataApi });
+        setXpRecebido(presenca.xpGerado);
+      } else {
+        await cadastrarFalta(idUsuario, {
+          idDisciplina,
+          dataFalta: dataApi,
+          quantidadeAulas: quantidade,
+        });
+      }
 
       setShowSuccess(true);
     } catch (erro) {
@@ -221,7 +245,7 @@ export const NewAttendanceScreen: React.FC = () => {
         "Erro",
         erro instanceof Error
           ? erro.message
-          : "Não foi possível registrar a falta."
+          : "Não foi possível registrar a frequência."
       );
     } finally {
       setSalvando(false);
@@ -237,7 +261,7 @@ export const NewAttendanceScreen: React.FC = () => {
     return (
       <View style={styles.container}>
         <MobileHeader
-          title="Registrar Falta"
+          title="Registrar frequência"
           showBack
           onBack={() => navigation.goBack()}
         />
@@ -251,14 +275,16 @@ export const NewAttendanceScreen: React.FC = () => {
           </View>
 
           <Text style={styles.successTitle}>
-            Falta registrada com sucesso!
+            {tipoRegistro === "PRESENCA" ? "Presença registrada!" : "Falta registrada com sucesso!"}
           </Text>
 
           <Text style={styles.successSubtitle}>
-            A falta foi registrada em{" "}
+            {tipoRegistro === "PRESENCA" ? "Sua presença foi registrada em " : "A falta foi registrada em "}
             {disciplinaSelecionada?.nome ??
               "disciplina selecionada"}.
           </Text>
+
+          {tipoRegistro === "PRESENCA" && xpRecebido > 0 && <View style={styles.xpReward}><Text style={styles.xpRewardText}>✨ +{xpRecebido} XP conquistados</Text><Text style={styles.xpRewardCaption}>Mais um passo na sua jornada de estudos.</Text></View>}
 
           <Button
             title="Voltar ao Início"
@@ -282,7 +308,7 @@ export const NewAttendanceScreen: React.FC = () => {
       style={styles.container}
     >
       <MobileHeader
-        title="Registrar Falta"
+        title="Registrar frequência"
         showBack
         onBack={() => navigation.goBack()}
       />
@@ -294,6 +320,11 @@ export const NewAttendanceScreen: React.FC = () => {
         keyboardShouldPersistTaps="handled"
       >
         <Card style={styles.formCard}>
+          <Text style={styles.formTitle}>Cada aula conta</Text>
+          <Text style={styles.formSubtitle}>Registre sua presença, ganhe XP e mantenha sua ofensiva.</Text>
+          <View style={styles.typeRow}>
+            {(["PRESENCA", "FALTA"] as const).map((tipo) => <Pressable key={tipo} disabled={salvando} accessibilityRole="button" accessibilityState={{ selected: tipoRegistro === tipo }} onPress={() => setTipoRegistro(tipo)} style={[styles.typeButton, tipoRegistro === tipo && styles.typeButtonSelected]}><Text style={[styles.typeText, tipoRegistro === tipo && styles.typeTextSelected]}>{tipo === "PRESENCA" ? "✓ Estive presente" : "Registrar falta"}</Text></Pressable>)}
+          </View>
           <Text style={styles.sectionLabel}>
             Disciplina
           </Text>
@@ -409,14 +440,15 @@ export const NewAttendanceScreen: React.FC = () => {
 
           <View style={styles.fieldSpacing}>
             <Input
-              label="Data da Falta"
+              label={tipoRegistro === "PRESENCA" ? "Data da presença" : "Data da Falta"}
               placeholder="DD/MM/AAAA"
-              value={dataFalta}
+              value={tipoRegistro === "PRESENCA" ? formatarDataEstudo(dataPresencaHoje) : dataFalta}
+              editable={tipoRegistro === "FALTA"}
               onChangeText={setDataFalta}
             />
           </View>
 
-          <View style={styles.fieldSpacing}>
+          {tipoRegistro === "FALTA" && <View style={styles.fieldSpacing}>
             <Input
               label="Quantidade de aulas perdidas"
               placeholder="Ex: 2"
@@ -426,18 +458,17 @@ export const NewAttendanceScreen: React.FC = () => {
               }
               keyboardType="numeric"
             />
-          </View>
+          </View>}
 
           <Text style={styles.helpText}>
-            Informe quantas aulas foram perdidas
-            nessa data.
+            {tipoRegistro === "PRESENCA" ? "Presenças somente hoje, no horário de Brasília: +20 XP uma vez por disciplina. A atividade de hoje mantém sua ofensiva." : "Informe quantas aulas foram perdidas nessa data."}
           </Text>
 
           <Button
             title={
               salvando
                 ? "Registrando..."
-                : "Registrar Falta"
+                : tipoRegistro === "PRESENCA" ? "Registrar presença • +20 XP" : "Registrar Falta"
             }
             onPress={handleSubmit}
             disabled={
@@ -454,6 +485,16 @@ export const NewAttendanceScreen: React.FC = () => {
 };
 
 const styles = StyleSheet.create({
+  formTitle: { fontSize: 21, fontWeight: "800", color: "#0F172A", marginBottom: 5 },
+  formSubtitle: { fontSize: 13, color: "#64748B", lineHeight: 20, marginBottom: 18 },
+  typeRow: { flexDirection: "row", gap: 8, marginBottom: 24 },
+  typeButton: { flex: 1, borderRadius: 10, paddingVertical: 12, alignItems: "center", borderWidth: 1, borderColor: "#E2E8F0", backgroundColor: "#F8FAFC" },
+  typeButtonSelected: { backgroundColor: "#EFF6FF", borderColor: "#2563EB" },
+  typeText: { fontSize: 12, fontWeight: "600", color: "#64748B" },
+  typeTextSelected: { color: "#2563EB" },
+  xpReward: { backgroundColor: "#EFF6FF", borderRadius: 16, padding: 20, marginBottom: 24, width: "100%", maxWidth: 350, alignItems: "center", borderWidth: 1, borderColor: "#BFDBFE" },
+  xpRewardText: { color: "#2563EB", fontWeight: "800", fontSize: 20 },
+  xpRewardCaption: { color: "#64748B", fontSize: 12, marginTop: 6 },
   container: {
     flex: 1,
     backgroundColor: "#F8FAFC",

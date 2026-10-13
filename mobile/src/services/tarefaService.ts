@@ -148,6 +148,14 @@ export async function listarTarefas(
   );
 }
 
+// Refresh the UI after Push/Pull without starting another sync cycle.
+export async function listarTarefasConfirmadas(idUsuario: number): Promise<TarefaResponse[]> {
+  requireSessionUser(idUsuario);
+  const tarefas = await listarTarefasLocais();
+  requireSessionUser(idUsuario);
+  return tarefas.map(mapearLocalParaResponse);
+}
+
 export async function buscarTarefaPorId(
   referencia: TarefaReferencia,
   idUsuario: number

@@ -14,6 +14,7 @@ import {
 
 import { RootNavigator } from "./src/navigation/RootNavigator";
 import { initializeDatabase } from "./src/database/database";
+import { GamificationCelebrationProvider } from "./src/components/GamificationCelebrationProvider";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -101,7 +102,9 @@ export default function App() {
       <QueryClientProvider client={queryClient}>
         <NavigationContainer>
           <StatusBar style="dark" />
-          <RootNavigator />
+          <GamificationCelebrationProvider>
+            <RootNavigator />
+          </GamificationCelebrationProvider>
         </NavigationContainer>
       </QueryClientProvider>
     </SafeAreaProvider>

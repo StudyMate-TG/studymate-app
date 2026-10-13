@@ -13,6 +13,7 @@ import type {
   TarefaRequest,
   TarefaResponse,
 } from "./tarefaTypes";
+import { capturarProgressoAntesAtividade, notificarProgressoAtualizado } from "./gamificacaoService";
 
 export type {
   TarefaReferencia,
@@ -160,6 +161,8 @@ export async function buscarTarefaPorId(
   );
 }
 
+export const listarTarefasConfirmadas = listarTarefas;
+
 export async function atualizarTarefa(
   referencia: TarefaReferencia,
   idUsuario: number,
@@ -203,6 +206,7 @@ export async function concluirTarefa(
   idUsuario: number
 ): Promise<TarefaResponse> {
   requireSessionUser(idUsuario);
+  const antes = await capturarProgressoAntesAtividade(idUsuario);
 
   const response = await apiFetch(
     `${API_BASE_URL}/tarefas/${idNoServidor(
@@ -215,9 +219,10 @@ export async function concluirTarefa(
     idUsuario
   );
 
-  return handleResponse<TarefaResponse>(
-    response
-  );
+  const tarefa = await handleResponse<TarefaResponse>(response);
+  requireSessionUser(idUsuario);
+  notificarProgressoAtualizado(idUsuario, antes);
+  return tarefa;
 }
 
 export async function reabrirTarefa(
