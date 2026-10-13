@@ -12,7 +12,10 @@ import {
 } from "react-native";
 
 import { useNavigation } from "@react-navigation/native";
-import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
+
+import type {
+  NativeStackNavigationProp,
+} from "@react-navigation/native-stack";
 
 import {
   RootStackParamList,
@@ -29,20 +32,36 @@ import {
   ChevronDown,
 } from "lucide-react-native";
 
-import { cadastrarTarefa } from "../services/tarefaService";
+import {
+  cadastrarTarefa,
+} from "../services/tarefaService";
 
-import { obterUsuarioSessao } from "../services/authService";
-import { listarDisciplinas } from "../services/disciplinaService";
+import {
+  obterUsuarioSessao,
+} from "../services/authService";
 
-type Priority = "BAIXA" | "MEDIA" | "ALTA";
+import {
+  listarDisciplinas,
+} from "../services/disciplinaService";
 
-const priorityLabels: Record<Priority, string> = {
+type Priority =
+  | "BAIXA"
+  | "MEDIA"
+  | "ALTA";
+
+const priorityLabels: Record<
+  Priority,
+  string
+> = {
   BAIXA: "Baixa",
   MEDIA: "Média",
   ALTA: "Alta",
 };
 
-const priorityColors: Record<Priority, string> = {
+const priorityColors: Record<
+  Priority,
+  string
+> = {
   BAIXA: "#22C55E",
   MEDIA: "#EAB308",
   ALTA: "#EF4444",
@@ -51,32 +70,44 @@ const priorityColors: Record<Priority, string> = {
 export const NewTaskScreen: React.FC = () => {
   const navigation =
     useNavigation<
-      NativeStackNavigationProp<RootStackParamList>
+      NativeStackNavigationProp<
+        RootStackParamList
+      >
     >();
 
-  const [showSuccess, setShowSuccess] =
-    useState(false);
+  const [
+    showSuccess,
+    setShowSuccess,
+  ] = useState(false);
 
-  const [disciplinas, setDisciplinas] =
-    useState<DisciplinaResponse[]>([]);
+  const [
+    disciplinas,
+    setDisciplinas,
+  ] = useState<
+    DisciplinaResponse[]
+  >([]);
 
   const [
     idDisciplinaSelecionada,
     setIdDisciplinaSelecionada,
-  ] = useState<number | null>(null);
+  ] = useState<number | null>(
+    null
+  );
 
   const [
     disciplinasAberta,
     setDisciplinasAberta,
   ] = useState(false);
 
-  const [form, setForm] = useState({
-    title: "",
-    subject: "",
-    dueDate: "",
-    priority: "MEDIA" as Priority,
-    description: "",
-  });
+  const [form, setForm] =
+    useState({
+      title: "",
+      subject: "",
+      dueDate: "",
+      priority:
+        "MEDIA" as Priority,
+      description: "",
+    });
 
   const showAlert = (
     title: string,
@@ -84,11 +115,17 @@ export const NewTaskScreen: React.FC = () => {
   ) => {
     if (
       Platform.OS === "web" &&
-      typeof window !== "undefined"
+      typeof window !==
+        "undefined"
     ) {
-      window.alert(`${title}: ${message}`);
+      window.alert(
+        `${title}: ${message}`
+      );
     } else {
-      Alert.alert(title, message);
+      Alert.alert(
+        title,
+        message
+      );
     }
   };
 
@@ -99,7 +136,9 @@ export const NewTaskScreen: React.FC = () => {
           const usuario =
             await obterUsuarioSessao();
 
-          if (!usuario?.idUsuario) {
+          if (
+            !usuario?.idUsuario
+          ) {
             throw new Error(
               "Usuário não encontrado. Faça login novamente."
             );
@@ -110,7 +149,9 @@ export const NewTaskScreen: React.FC = () => {
               usuario.idUsuario
             );
 
-          setDisciplinas(dados);
+          setDisciplinas(
+            dados
+          );
         } catch (error) {
           showAlert(
             "Erro",
@@ -169,20 +210,26 @@ export const NewTaskScreen: React.FC = () => {
       return false;
     }
 
-    const date = new Date(
-      year,
-      month - 1,
-      day,
-      hour,
-      minute
-    );
+    const date =
+      new Date(
+        year,
+        month - 1,
+        day,
+        hour,
+        minute
+      );
 
     return (
-      date.getFullYear() === year &&
-      date.getMonth() === month - 1 &&
-      date.getDate() === day &&
-      date.getHours() === hour &&
-      date.getMinutes() === minute
+      date.getFullYear() ===
+        year &&
+      date.getMonth() ===
+        month - 1 &&
+      date.getDate() ===
+        day &&
+      date.getHours() ===
+        hour &&
+      date.getMinutes() ===
+        minute
     );
   };
 
@@ -197,110 +244,14 @@ export const NewTaskScreen: React.FC = () => {
       horaParte = "23:59",
     ] = valor.split(" ");
 
-    const [dia, mes, ano] =
+    const [
+      dia,
+      mes,
+      ano,
+    ] =
       dataParte.split("/");
 
     return `${ano}-${mes}-${dia}T${horaParte}:00`;
-  };
-
-  const handleSubmit = async () => {
-    if (!form.title.trim()) {
-      showAlert(
-        "Atenção",
-        "Informe o título da tarefa."
-      );
-
-      return;
-    }
-
-    if (
-      idDisciplinaSelecionada === null
-    ) {
-      showAlert(
-        "Atenção",
-        "Selecione uma disciplina."
-      );
-
-      return;
-    }
-
-    if (!form.dueDate.trim()) {
-      showAlert(
-        "Atenção",
-        "Informe a data de entrega."
-      );
-
-      return;
-    }
-
-    if (
-      !isValidDateTime(
-        form.dueDate.trim()
-      )
-    ) {
-      showAlert(
-        "Atenção",
-        "Informe a data no formato DD/MM/AAAA ou DD/MM/AAAA HH:mm."
-      );
-
-      return;
-    }
-
-    try {
-      const usuario =
-        await obterUsuarioSessao();
-
-      if (!usuario?.idUsuario) {
-        showAlert(
-          "Erro",
-          "Usuário não encontrado. Faça login novamente."
-        );
-
-        return;
-      }
-
-      await cadastrarTarefa({
-        idUsuario:
-          usuario.idUsuario,
-
-        idDisciplina:
-          idDisciplinaSelecionada,
-
-        titulo:
-          form.title,
-
-        tipo:
-          "TAREFA",
-
-        descricao:
-          form.description,
-
-        dataHoraInicio:
-          null,
-
-        dataEntrega:
-          converterDataParaBackend(
-            form.dueDate
-          ),
-
-        prioridade:
-          form.priority,
-      });
-
-      setShowSuccess(true);
-    } catch (error) {
-      console.error(
-        "Erro ao cadastrar tarefa:",
-        error
-      );
-
-      showAlert(
-        "Erro",
-        error instanceof Error
-          ? error.message
-          : "Não foi possível cadastrar a tarefa."
-      );
-    }
   };
 
   const disciplinaSelecionada =
@@ -310,9 +261,132 @@ export const NewTaskScreen: React.FC = () => {
         idDisciplinaSelecionada
     );
 
+  const handleSubmit =
+    async () => {
+      if (
+        !form.title.trim()
+      ) {
+        showAlert(
+          "Atenção",
+          "Informe o título da tarefa."
+        );
+
+        return;
+      }
+
+      if (
+        idDisciplinaSelecionada ===
+        null
+      ) {
+        showAlert(
+          "Atenção",
+          "Selecione uma disciplina."
+        );
+
+        return;
+      }
+
+      if (
+        !form.dueDate.trim()
+      ) {
+        showAlert(
+          "Atenção",
+          "Informe a data de entrega."
+        );
+
+        return;
+      }
+
+      if (
+        !isValidDateTime(
+          form.dueDate.trim()
+        )
+      ) {
+        showAlert(
+          "Atenção",
+          "Informe a data no formato DD/MM/AAAA ou DD/MM/AAAA HH:mm."
+        );
+
+        return;
+      }
+
+      try {
+        const usuario =
+          await obterUsuarioSessao();
+
+        if (
+          !usuario?.idUsuario
+        ) {
+          showAlert(
+            "Erro",
+            "Usuário não encontrado. Faça login novamente."
+          );
+
+          return;
+        }
+
+        const dataEntrega =
+          converterDataParaBackend(
+            form.dueDate
+          );
+
+        /*
+         * A notificação NÃO é mais
+         * criada nesta tela.
+         *
+         * O tarefaService é responsável
+         * por agendar o lembrete.
+         */
+        await cadastrarTarefa({
+          idUsuario:
+            usuario.idUsuario,
+
+          idDisciplina:
+            idDisciplinaSelecionada,
+
+          titulo:
+            form.title.trim(),
+
+          tipo:
+            "TAREFA",
+
+          descricao:
+            form.description.trim(),
+
+          dataHoraInicio:
+            null,
+
+          dataEntrega,
+
+          prioridade:
+            form.priority,
+        });
+
+        setShowSuccess(
+          true
+        );
+      } catch (error) {
+        console.error(
+          "Erro ao cadastrar tarefa:",
+          error
+        );
+
+        showAlert(
+          "Erro",
+          error instanceof Error
+            ? error.message
+            : "Não foi possível cadastrar a tarefa."
+        );
+      }
+    };
+
   if (showSuccess) {
     return (
-      <View style={styles.container}>
+      <View
+        style={
+          styles.container
+        }
+      >
         <MobileHeader
           title="Nova Tarefa"
           showBack
@@ -327,7 +401,9 @@ export const NewTaskScreen: React.FC = () => {
           }
         >
           <View
-            style={styles.iconCircle}
+            style={
+              styles.iconCircle
+            }
           >
             <CheckCircle2
               size={64}
@@ -340,7 +416,8 @@ export const NewTaskScreen: React.FC = () => {
               styles.successTitle
             }
           >
-            Tarefa registrada com sucesso!
+            Tarefa registrada com
+            sucesso!
           </Text>
 
           <Text
@@ -348,7 +425,8 @@ export const NewTaskScreen: React.FC = () => {
               styles.successSubtitle
             }
           >
-            A tarefa foi registrada com sucesso.
+            A tarefa foi registrada
+            com sucesso.
           </Text>
 
           <Button
@@ -356,7 +434,9 @@ export const NewTaskScreen: React.FC = () => {
             onPress={() =>
               navigation.goBack()
             }
-            style={styles.backButton}
+            style={
+              styles.backButton
+            }
           />
         </View>
       </View>
@@ -370,7 +450,9 @@ export const NewTaskScreen: React.FC = () => {
           ? "padding"
           : undefined
       }
-      style={styles.container}
+      style={
+        styles.container
+      }
     >
       <MobileHeader
         title="Nova Tarefa"
@@ -386,12 +468,20 @@ export const NewTaskScreen: React.FC = () => {
         }
         keyboardShouldPersistTaps="handled"
       >
-        <Card style={styles.formCard}>
+        <Card
+          style={
+            styles.formCard
+          }
+        >
           <Input
             label="Título da Tarefa"
             placeholder="Ex: Entrega do trabalho"
-            value={form.title}
-            onChangeText={(text) =>
+            value={
+              form.title
+            }
+            onChangeText={(
+              text
+            ) =>
               setForm({
                 ...form,
                 title: text,
@@ -400,7 +490,9 @@ export const NewTaskScreen: React.FC = () => {
           />
 
           <Text
-            style={styles.sectionLabel}
+            style={
+              styles.sectionLabel
+            }
           >
             Disciplina
           </Text>
@@ -423,6 +515,7 @@ export const NewTaskScreen: React.FC = () => {
               <Text
                 style={[
                   styles.dropdownButtonText,
+
                   !disciplinaSelecionada &&
                     styles.dropdownPlaceholder,
                 ]}
@@ -469,7 +562,9 @@ export const NewTaskScreen: React.FC = () => {
                   </View>
                 ) : (
                   disciplinas.map(
-                    (disciplina) => {
+                    (
+                      disciplina
+                    ) => {
                       const selecionada =
                         idDisciplinaSelecionada ===
                         disciplina.idDisciplina;
@@ -481,6 +576,7 @@ export const NewTaskScreen: React.FC = () => {
                           }
                           style={[
                             styles.dropdownOption,
+
                             selecionada &&
                               styles.dropdownOptionSelected,
                           ]}
@@ -491,6 +587,7 @@ export const NewTaskScreen: React.FC = () => {
 
                             setForm({
                               ...form,
+
                               subject:
                                 disciplina.nome,
                             });
@@ -503,6 +600,7 @@ export const NewTaskScreen: React.FC = () => {
                           <Text
                             style={[
                               styles.dropdownOptionText,
+
                               selecionada &&
                                 styles.dropdownOptionTextSelected,
                             ]}
@@ -523,23 +621,33 @@ export const NewTaskScreen: React.FC = () => {
           <Input
             label="Data e Hora de Entrega"
             placeholder="Ex: 25/11/2026 23:59"
-            value={form.dueDate}
-            onChangeText={(text) =>
+            value={
+              form.dueDate
+            }
+            onChangeText={(
+              text
+            ) =>
               setForm({
                 ...form,
-                dueDate: text,
+
+                dueDate:
+                  text,
               })
             }
           />
 
           <Text
-            style={styles.sectionLabel}
+            style={
+              styles.sectionLabel
+            }
           >
             Prioridade
           </Text>
 
           <View
-            style={styles.priorityRow}
+            style={
+              styles.priorityRow
+            }
           >
             {(
               [
@@ -547,60 +655,70 @@ export const NewTaskScreen: React.FC = () => {
                 "MEDIA",
                 "ALTA",
               ] as const
-            ).map((priority) => {
-              const isSelected =
-                form.priority ===
-                priority;
+            ).map(
+              (
+                priority
+              ) => {
+                const isSelected =
+                  form.priority ===
+                  priority;
 
-              return (
-                <Pressable
-                  key={priority}
-                  onPress={() =>
-                    setForm({
-                      ...form,
-                      priority,
-                    })
-                  }
-                  style={[
-                    styles.priorityButton,
-                    isSelected && {
-                      borderColor:
-                        priorityColors[
-                          priority
-                        ],
-                      backgroundColor:
-                        "#F8FAFC",
-                    },
-                  ]}
-                >
-                  <View
+                return (
+                  <Pressable
+                    key={
+                      priority
+                    }
+                    onPress={() =>
+                      setForm({
+                        ...form,
+                        priority,
+                      })
+                    }
                     style={[
-                      styles.priorityDot,
-                      {
-                        backgroundColor:
+                      styles.priorityButton,
+
+                      isSelected && {
+                        borderColor:
                           priorityColors[
                             priority
                           ],
+
+                        backgroundColor:
+                          "#F8FAFC",
                       },
                     ]}
-                  />
-
-                  <Text
-                    style={[
-                      styles.priorityText,
-                      isSelected &&
-                        styles.priorityTextSelected,
-                    ]}
                   >
-                    {
-                      priorityLabels[
-                        priority
-                      ]
-                    }
-                  </Text>
-                </Pressable>
-              );
-            })}
+                    <View
+                      style={[
+                        styles.priorityDot,
+
+                        {
+                          backgroundColor:
+                            priorityColors[
+                              priority
+                            ],
+                        },
+                      ]}
+                    />
+
+                    <Text
+                      style={[
+                        styles.priorityText,
+
+                        isSelected &&
+                          styles.priorityTextSelected,
+                      ]}
+                    >
+                      {
+                        priorityLabels[
+                          priority
+                        ]
+                      }
+                    </Text>
+                  </Pressable>
+                );
+              }
+            )}
           </View>
 
           <Input
@@ -608,14 +726,22 @@ export const NewTaskScreen: React.FC = () => {
             placeholder="Detalhes sobre a tarefa..."
             multiline
             numberOfLines={4}
-            value={form.description}
-            onChangeText={(text) =>
+            value={
+              form.description
+            }
+            onChangeText={(
+              text
+            ) =>
               setForm({
                 ...form,
-                description: text,
+
+                description:
+                  text,
               })
             }
-            style={styles.textArea}
+            style={
+              styles.textArea
+            }
           />
 
           <View
@@ -636,7 +762,9 @@ export const NewTaskScreen: React.FC = () => {
 
             <Button
               title="Cadastrar"
-              onPress={handleSubmit}
+              onPress={
+                handleSubmit
+              }
               style={
                 styles.submitButton
               }
@@ -648,192 +776,205 @@ export const NewTaskScreen: React.FC = () => {
   );
 };
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: "#F8FAFC",
-  },
+const styles =
+  StyleSheet.create({
+    container: {
+      flex: 1,
+      backgroundColor:
+        "#F8FAFC",
+    },
 
-  scrollContent: {
-    padding: 16,
-    paddingBottom: 40,
-    maxWidth: 600,
-    width: "100%",
-    alignSelf: "center",
-  },
+    scrollContent: {
+      padding: 16,
+      paddingBottom: 40,
+      maxWidth: 600,
+      width: "100%",
+      alignSelf: "center",
+    },
 
-  formCard: {
-    padding: 20,
-  },
+    formCard: {
+      padding: 20,
+    },
 
-  sectionLabel: {
-    fontSize: 14,
-    fontWeight: "500",
-    color: "#334155",
-    marginBottom: 8,
-  },
+    sectionLabel: {
+      fontSize: 14,
+      fontWeight: "500",
+      color: "#334155",
+      marginBottom: 8,
+    },
 
-  dropdownContainer: {
-    marginBottom: 16,
-  },
+    dropdownContainer: {
+      marginBottom: 16,
+    },
 
-  dropdownButton: {
-    minHeight: 48,
-    paddingHorizontal: 14,
-    borderWidth: 1,
-    borderColor: "#E2E8F0",
-    borderRadius: 10,
-    backgroundColor: "#FFFFFF",
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-  },
+    dropdownButton: {
+      minHeight: 48,
+      paddingHorizontal: 14,
+      borderWidth: 1,
+      borderColor: "#E2E8F0",
+      borderRadius: 10,
+      backgroundColor:
+        "#FFFFFF",
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent:
+        "space-between",
+    },
 
-  dropdownButtonText: {
-    flex: 1,
-    fontSize: 14,
-    color: "#0F172A",
-  },
+    dropdownButtonText: {
+      flex: 1,
+      fontSize: 14,
+      color: "#0F172A",
+    },
 
-  dropdownPlaceholder: {
-    color: "#94A3B8",
-  },
+    dropdownPlaceholder: {
+      color: "#94A3B8",
+    },
 
-  chevronOpen: {
-    transform: [
-      {
-        rotate: "180deg",
-      },
-    ],
-  },
+    chevronOpen: {
+      transform: [
+        {
+          rotate: "180deg",
+        },
+      ],
+    },
 
-  dropdownOptions: {
-    marginTop: 6,
-    borderWidth: 1,
-    borderColor: "#E2E8F0",
-    borderRadius: 10,
-    backgroundColor: "#FFFFFF",
-    overflow: "hidden",
-  },
+    dropdownOptions: {
+      marginTop: 6,
+      borderWidth: 1,
+      borderColor: "#E2E8F0",
+      borderRadius: 10,
+      backgroundColor:
+        "#FFFFFF",
+      overflow: "hidden",
+    },
 
-  dropdownOption: {
-    paddingHorizontal: 14,
-    paddingVertical: 13,
-    borderBottomWidth: 1,
-    borderBottomColor: "#F1F5F9",
-  },
+    dropdownOption: {
+      paddingHorizontal: 14,
+      paddingVertical: 13,
+      borderBottomWidth: 1,
+      borderBottomColor:
+        "#F1F5F9",
+    },
 
-  dropdownOptionSelected: {
-    backgroundColor: "#EFF6FF",
-  },
+    dropdownOptionSelected: {
+      backgroundColor:
+        "#EFF6FF",
+    },
 
-  dropdownOptionText: {
-    fontSize: 14,
-    color: "#334155",
-  },
+    dropdownOptionText: {
+      fontSize: 14,
+      color: "#334155",
+    },
 
-  dropdownOptionTextSelected: {
-    color: "#2563EB",
-    fontWeight: "600",
-  },
+    dropdownOptionTextSelected: {
+      color: "#2563EB",
+      fontWeight: "600",
+    },
 
-  dropdownEmpty: {
-    padding: 14,
-  },
+    dropdownEmpty: {
+      padding: 14,
+    },
 
-  dropdownEmptyText: {
-    fontSize: 14,
-    color: "#94A3B8",
-  },
+    dropdownEmptyText: {
+      fontSize: 14,
+      color: "#94A3B8",
+    },
 
-  priorityRow: {
-    flexDirection: "row",
-    gap: 8,
-    marginBottom: 16,
-  },
+    priorityRow: {
+      flexDirection: "row",
+      gap: 8,
+      marginBottom: 16,
+    },
 
-  priorityButton: {
-    flex: 1,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    paddingVertical: 10,
-    borderRadius: 10,
-    borderWidth: 1,
-    borderColor: "#E2E8F0",
-    backgroundColor: "#FFFFFF",
-  },
+    priorityButton: {
+      flex: 1,
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent:
+        "center",
+      paddingVertical: 10,
+      borderRadius: 10,
+      borderWidth: 1,
+      borderColor: "#E2E8F0",
+      backgroundColor:
+        "#FFFFFF",
+    },
 
-  priorityDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    marginRight: 6,
-  },
+    priorityDot: {
+      width: 8,
+      height: 8,
+      borderRadius: 4,
+      marginRight: 6,
+    },
 
-  priorityText: {
-    fontSize: 13,
-    color: "#64748B",
-  },
+    priorityText: {
+      fontSize: 13,
+      color: "#64748B",
+    },
 
-  priorityTextSelected: {
-    fontWeight: "700",
-    color: "#0F172A",
-  },
+    priorityTextSelected: {
+      fontWeight: "700",
+      color: "#0F172A",
+    },
 
-  textArea: {
-    minHeight: 90,
-    textAlignVertical: "top",
-  },
+    textArea: {
+      minHeight: 90,
+      textAlignVertical:
+        "top",
+    },
 
-  actionButtons: {
-    flexDirection: "row",
-    gap: 10,
-    marginTop: 12,
-  },
+    actionButtons: {
+      flexDirection: "row",
+      gap: 10,
+      marginTop: 12,
+    },
 
-  cancelButton: {
-    flex: 1,
-  },
+    cancelButton: {
+      flex: 1,
+    },
 
-  submitButton: {
-    flex: 1,
-  },
+    submitButton: {
+      flex: 1,
+    },
 
-  successContainer: {
-    flex: 1,
-    alignItems: "center",
-    justifyContent: "center",
-    padding: 24,
-  },
+    successContainer: {
+      flex: 1,
+      alignItems: "center",
+      justifyContent:
+        "center",
+      padding: 24,
+    },
 
-  iconCircle: {
-    width: 96,
-    height: 96,
-    borderRadius: 48,
-    backgroundColor: "#DCFCE7",
-    alignItems: "center",
-    justifyContent: "center",
-    marginBottom: 20,
-  },
+    iconCircle: {
+      width: 96,
+      height: 96,
+      borderRadius: 48,
+      backgroundColor:
+        "#DCFCE7",
+      alignItems: "center",
+      justifyContent:
+        "center",
+      marginBottom: 20,
+    },
 
-  successTitle: {
-    fontSize: 20,
-    fontWeight: "700",
-    color: "#0F172A",
-    textAlign: "center",
-  },
+    successTitle: {
+      fontSize: 20,
+      fontWeight: "700",
+      color: "#0F172A",
+      textAlign: "center",
+    },
 
-  successSubtitle: {
-    fontSize: 14,
-    color: "#64748B",
-    textAlign: "center",
-    marginTop: 6,
-    marginBottom: 24,
-  },
+    successSubtitle: {
+      fontSize: 14,
+      color: "#64748B",
+      textAlign: "center",
+      marginTop: 6,
+      marginBottom: 24,
+    },
 
-  backButton: {
-    width: "100%",
-    maxWidth: 240,
-  },
-});
+    backButton: {
+      width: "100%",
+      maxWidth: 240,
+    },
+  });

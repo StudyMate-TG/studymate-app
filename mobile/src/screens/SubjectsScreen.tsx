@@ -1,4 +1,7 @@
-import React, { useEffect, useState } from "react";
+import React, {
+  useEffect,
+  useState,
+} from "react";
 
 import {
   View,
@@ -16,7 +19,9 @@ import {
   useIsFocused,
 } from "@react-navigation/native";
 
-import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
+import type {
+  NativeStackNavigationProp,
+} from "@react-navigation/native-stack";
 
 import {
   RootStackParamList,
@@ -28,9 +33,17 @@ import {
   excluirDisciplina,
 } from "../services/disciplinaService";
 
-import { obterUsuarioSessao } from "../services/authService";
+import {
+  obterUsuarioSessao,
+} from "../services/authService";
 
-import { buscarTotalFaltas } from "../services/faltaService";
+import {
+  buscarTotalFaltas,
+} from "../services/faltaService";
+
+import {
+  verificarNotificacaoFaltas,
+} from "../services/notificacaoService";
 
 import { MobileHeader } from "../components/MobileHeader";
 import { Card } from "../components/Card";
@@ -50,24 +63,37 @@ import {
 export const SubjectsScreen: React.FC = () => {
   const navigation =
     useNavigation<
-      NativeStackNavigationProp<RootStackParamList>
+      NativeStackNavigationProp<
+        RootStackParamList
+      >
     >();
 
-  const isFocused = useIsFocused();
+  const isFocused =
+    useIsFocused();
 
-  const [disciplinas, setDisciplinas] =
-    useState<DisciplinaResponse[]>([]);
+  const [
+    disciplinas,
+    setDisciplinas,
+  ] = useState<
+    DisciplinaResponse[]
+  >([]);
 
   const [
     faltasPorDisciplina,
     setFaltasPorDisciplina,
-  ] = useState<Record<number, number>>({});
+  ] = useState<
+    Record<number, number>
+  >({});
 
-  const [termoBusca, setTermoBusca] =
-    useState("");
+  const [
+    termoBusca,
+    setTermoBusca,
+  ] = useState("");
 
-  const [isLoading, setIsLoading] =
-    useState(false);
+  const [
+    isLoading,
+    setIsLoading,
+  ] = useState(false);
 
   const showAlert = (
     title: string,
@@ -75,11 +101,17 @@ export const SubjectsScreen: React.FC = () => {
   ) => {
     if (
       Platform.OS === "web" &&
-      typeof window !== "undefined"
+      typeof window !==
+        "undefined"
     ) {
-      window.alert(`${title}: ${message}`);
+      window.alert(
+        `${title}: ${message}`
+      );
     } else {
-      Alert.alert(title, message);
+      Alert.alert(
+        title,
+        message
+      );
     }
   };
 
@@ -88,7 +120,9 @@ export const SubjectsScreen: React.FC = () => {
       const usuario =
         await obterUsuarioSessao();
 
-      if (!usuario?.idUsuario) {
+      if (
+        !usuario?.idUsuario
+      ) {
         throw new Error(
           "Usuário não encontrado. Faça login novamente."
         );
@@ -97,86 +131,133 @@ export const SubjectsScreen: React.FC = () => {
       return usuario.idUsuario;
     };
 
-  const carregarDisciplinas = async (
-    termo?: string
-  ) => {
-    setIsLoading(true);
+  const carregarDisciplinas =
+    async (
+      termo?: string
+    ) => {
+      setIsLoading(true);
 
-    try {
-      const idUsuario =
-        await obterIdUsuarioLogado();
+      try {
+        const idUsuario =
+          await obterIdUsuarioLogado();
 
-      const dados =
-        await listarDisciplinas(
-          idUsuario,
-          termo
+        const dados =
+          await listarDisciplinas(
+            idUsuario,
+            termo
+          );
+
+        setDisciplinas(
+          dados
         );
 
-      setDisciplinas(dados);
+        const totais =
+          await Promise.all(
+            dados.map(
+              async (
+                disciplina
+              ) => {
+                try {
+                  const total =
+                    await buscarTotalFaltas(
+                      disciplina.idDisciplina,
+                      idUsuario
+                    );
 
-      const totais =
-        await Promise.all(
-          dados.map(
-            async (disciplina) => {
-              try {
-                const total =
-                  await buscarTotalFaltas(
-                    disciplina.idDisciplina,
-                    idUsuario
+                  /*
+                   * Além de carregar o
+                   * total para a tela,
+                   * verificamos se 75%
+                   * ou 100% do limite
+                   * foi atingido.
+                   */
+                  try {
+                    await verificarNotificacaoFaltas({
+                      idUsuario,
+
+                      idDisciplina:
+                        disciplina.idDisciplina,
+
+                      nomeDisciplina:
+                        disciplina.nome,
+
+                      totalFaltas:
+                        total,
+
+                      limiteFaltas:
+                        disciplina.limiteFaltas ??
+                        0,
+                    });
+                  } catch (
+                    notificationError
+                  ) {
+                    console.warn(
+                      `Não foi possível verificar alerta de faltas da disciplina ${disciplina.idDisciplina}:`,
+                      notificationError
+                    );
+                  }
+
+                  return {
+                    idDisciplina:
+                      disciplina.idDisciplina,
+
+                    total,
+                  };
+                } catch (error) {
+                  console.error(
+                    `Erro ao carregar faltas da disciplina ${disciplina.idDisciplina}:`,
+                    error
                   );
 
-                return {
-                  idDisciplina:
-                    disciplina.idDisciplina,
-                  total,
-                };
-              } catch (error) {
-                console.error(
-                  `Erro ao carregar faltas da disciplina ${disciplina.idDisciplina}:`,
-                  error
-                );
+                  return {
+                    idDisciplina:
+                      disciplina.idDisciplina,
 
-                return {
-                  idDisciplina:
-                    disciplina.idDisciplina,
-                  total: 0,
-                };
+                    total: 0,
+                  };
+                }
               }
-            }
-          )
+            )
+          );
+
+        const mapaFaltas:
+          Record<
+            number,
+            number
+          > = {};
+
+        totais.forEach(
+          (item) => {
+            mapaFaltas[
+              item.idDisciplina
+            ] = item.total;
+          }
         );
 
-      const mapaFaltas: Record<
-        number,
-        number
-      > = {};
-
-      totais.forEach((item) => {
-        mapaFaltas[
-          item.idDisciplina
-        ] = item.total;
-      });
-
-      setFaltasPorDisciplina(
-        mapaFaltas
-      );
-    } catch (error) {
-      showAlert(
-        "Erro",
-        error instanceof Error
-          ? error.message
-          : "Erro ao carregar disciplinas."
-      );
-    } finally {
-      setIsLoading(false);
-    }
-  };
+        setFaltasPorDisciplina(
+          mapaFaltas
+        );
+      } catch (error) {
+        showAlert(
+          "Erro",
+          error instanceof Error
+            ? error.message
+            : "Erro ao carregar disciplinas."
+        );
+      } finally {
+        setIsLoading(
+          false
+        );
+      }
+    };
 
   const excluirDisciplinaSelecionada =
     async (
       idDisciplina: number
     ) => {
-      setIsLoading(true);
+      setIsLoading(
+        true
+      );
 
       try {
         const idUsuario =
@@ -198,7 +279,9 @@ export const SubjectsScreen: React.FC = () => {
             : "Erro ao excluir disciplina."
         );
       } finally {
-        setIsLoading(false);
+        setIsLoading(
+          false
+        );
       }
     };
 
@@ -207,7 +290,8 @@ export const SubjectsScreen: React.FC = () => {
   ) => {
     if (
       Platform.OS === "web" &&
-      typeof window !== "undefined"
+      typeof window !==
+        "undefined"
     ) {
       const confirmou =
         window.confirm(
@@ -231,9 +315,12 @@ export const SubjectsScreen: React.FC = () => {
           text: "Cancelar",
           style: "cancel",
         },
+
         {
           text: "Excluir",
-          style: "destructive",
+          style:
+            "destructive",
+
           onPress: () =>
             excluirDisciplinaSelecionada(
               idDisciplina
@@ -244,13 +331,15 @@ export const SubjectsScreen: React.FC = () => {
   };
 
   const abrirAvaliacoes = (
-    disciplina: DisciplinaResponse
+    disciplina:
+      DisciplinaResponse
   ) => {
     navigation.navigate(
       "Evaluations",
       {
         idDisciplina:
           disciplina.idDisciplina,
+
         nomeDisciplina:
           disciplina.nome,
       }
@@ -276,7 +365,22 @@ export const SubjectsScreen: React.FC = () => {
       ] ?? 0;
 
     const limiteFaltas =
-      item.limiteFaltas ?? 0;
+      item.limiteFaltas ??
+      0;
+
+    const percentualFaltas =
+      limiteFaltas > 0
+        ? (totalFaltas /
+            limiteFaltas) *
+          100
+        : 0;
+
+    const proximoDoLimite =
+      limiteFaltas > 0 &&
+      percentualFaltas >=
+        75 &&
+      percentualFaltas <
+        100;
 
     const atingiuLimite =
       limiteFaltas > 0 &&
@@ -285,10 +389,14 @@ export const SubjectsScreen: React.FC = () => {
 
     return (
       <Card
-        style={styles.subjectCard}
+        style={
+          styles.subjectCard
+        }
       >
         <View
-          style={styles.cardHeader}
+          style={
+            styles.cardHeader
+          }
         >
           <View
             style={
@@ -371,7 +479,9 @@ export const SubjectsScreen: React.FC = () => {
                 styles.detailValue
               }
             >
-              {item.mediaAprovacao}
+              {
+                item.mediaAprovacao
+              }
             </Text>
           </View>
         </View>
@@ -397,8 +507,12 @@ export const SubjectsScreen: React.FC = () => {
             <Text
               style={[
                 styles.detailValue,
+
                 atingiuLimite &&
                   styles.dangerText,
+
+                proximoDoLimite &&
+                  styles.warningValue,
               ]}
             >
               {totalFaltas}
@@ -428,6 +542,27 @@ export const SubjectsScreen: React.FC = () => {
           </View>
         </View>
 
+        {proximoDoLimite && (
+          <View
+            style={
+              styles.warningNearBox
+            }
+          >
+            <Text
+              style={
+                styles.warningNearText
+              }
+            >
+              Atenção: você já utilizou{" "}
+              {Math.round(
+                percentualFaltas
+              )}
+              % do limite de faltas desta
+              disciplina.
+            </Text>
+          </View>
+        )}
+
         {atingiuLimite && (
           <View
             style={
@@ -452,7 +587,9 @@ export const SubjectsScreen: React.FC = () => {
           }
         >
           <View
-            style={styles.idRow}
+            style={
+              styles.idRow
+            }
           >
             <Clock
               size={13}
@@ -460,10 +597,14 @@ export const SubjectsScreen: React.FC = () => {
             />
 
             <Text
-              style={styles.idText}
+              style={
+                styles.idText
+              }
             >
               ID:{" "}
-              {item.idDisciplina}
+              {
+                item.idDisciplina
+              }
             </Text>
           </View>
 
@@ -543,14 +684,18 @@ export const SubjectsScreen: React.FC = () => {
 
   return (
     <View
-      style={styles.container}
+      style={
+        styles.container
+      }
     >
       <MobileHeader
         title="Disciplinas"
       />
 
       <View
-        style={styles.content}
+        style={
+          styles.content
+        }
       >
         <Card
           style={
@@ -559,7 +704,9 @@ export const SubjectsScreen: React.FC = () => {
         >
           <Input
             placeholder="Pesquisar por nome ou professor..."
-            value={termoBusca}
+            value={
+              termoBusca
+            }
             onChangeText={
               setTermoBusca
             }
@@ -595,7 +742,9 @@ export const SubjectsScreen: React.FC = () => {
               title="Limpar"
               variant="outline"
               onPress={() => {
-                setTermoBusca("");
+                setTermoBusca(
+                  ""
+                );
 
                 carregarDisciplinas(
                   ""
@@ -630,8 +779,12 @@ export const SubjectsScreen: React.FC = () => {
           </View>
         ) : (
           <FlatList
-            data={disciplinas}
-            keyExtractor={(item) =>
+            data={
+              disciplinas
+            }
+            keyExtractor={(
+              item
+            ) =>
               item.idDisciplina.toString()
             }
             renderItem={
@@ -660,8 +813,9 @@ export const SubjectsScreen: React.FC = () => {
                     styles.emptySubtitle
                   }
                 >
-                  Cadastre suas matérias
-                  para organizar seus
+                  Cadastre suas
+                  matérias para
+                  organizar seus
                   estudos e faltas.
                 </Text>
 
@@ -694,7 +848,9 @@ export const SubjectsScreen: React.FC = () => {
             "NewSubject"
           )
         }
-        style={styles.fab}
+        style={
+          styles.fab
+        }
       >
         <Plus
           size={24}
@@ -824,11 +980,33 @@ const styles =
       color: "#DC2626",
     },
 
+    warningValue: {
+      color: "#D97706",
+    },
+
+    warningNearBox: {
+      backgroundColor:
+        "#FFFBEB",
+      borderWidth: 1,
+      borderColor:
+        "#FDE68A",
+      borderRadius: 8,
+      padding: 10,
+      marginBottom: 12,
+    },
+
+    warningNearText: {
+      color: "#92400E",
+      fontSize: 12,
+      fontWeight: "600",
+    },
+
     warningBox: {
       backgroundColor:
         "#FEF2F2",
       borderWidth: 1,
-      borderColor: "#FECACA",
+      borderColor:
+        "#FECACA",
       borderRadius: 8,
       padding: 10,
       marginBottom: 12,
@@ -910,10 +1088,12 @@ const styles =
         "center",
 
       shadowColor: "#000",
+
       shadowOffset: {
         width: 0,
         height: 4,
       },
+
       shadowOpacity: 0.2,
       shadowRadius: 6,
       elevation: 5,
