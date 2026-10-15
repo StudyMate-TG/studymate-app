@@ -14,9 +14,15 @@ import {
 } from "react-native";
 
 import { useNavigation } from "@react-navigation/native";
-import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 
-import type { RootStackParamList, DisciplinaResponse } from "../types";
+import type {
+  NativeStackNavigationProp,
+} from "@react-navigation/native-stack";
+
+import type {
+  RootStackParamList,
+  DisciplinaResponse,
+} from "../types";
 
 import { MobileHeader } from "../components/MobileHeader";
 import { Card } from "../components/Card";
@@ -31,95 +37,150 @@ import {
 } from "lucide-react-native";
 
 import { obterUsuarioSessao } from "../services/authService";
+
 import { listarDisciplinas } from "../services/disciplinaService";
-import { cadastrarFalta } from "../services/faltaService";
+
+import {
+  cadastrarFalta,
+  buscarTotalFaltas,
+} from "../services/faltaService";
+
 import { cadastrarPresenca } from "../services/presencaService";
-import { formatarDataEstudo, obterDataHojeSaoPaulo } from "../utils/dataEstudoUtils";
+
+import {
+  formatarDataEstudo,
+  obterDataHojeSaoPaulo,
+} from "../utils/dataEstudoUtils";
+
+import { verificarNotificacaoFaltas } from "../services/notificacaoService";
 
 export const NewAttendanceScreen: React.FC = () => {
   const navigation =
-    useNavigation<NativeStackNavigationProp<RootStackParamList>>();
+    useNavigation<
+      NativeStackNavigationProp<
+        RootStackParamList
+      >
+    >();
 
-  const [idUsuario, setIdUsuario] = useState<number | null>(null);
-  const [tipoRegistro, setTipoRegistro] = useState<"PRESENCA" | "FALTA">("PRESENCA");
-  const [xpRecebido, setXpRecebido] = useState(0);
-  const [dataPresencaHoje, setDataPresencaHoje] = useState(obterDataHojeSaoPaulo);
+const [idUsuario, setIdUsuario] = useState<number | null>(null);
 
-  const [disciplinas, setDisciplinas] = useState<DisciplinaResponse[]>([]);
-  const [idDisciplina, setIdDisciplina] = useState<number | null>(null);
+const [tipoRegistro, setTipoRegistro] = useState<"PRESENCA" | "FALTA">(
+  "PRESENCA"
+);
 
-  const [mostrarDisciplinas, setMostrarDisciplinas] = useState(false);
+const [xpRecebido, setXpRecebido] = useState(0);
 
-  const [dataFalta, setDataFalta] = useState(
-    new Date().toLocaleDateString("pt-BR", { timeZone: "America/Sao_Paulo" })
-  );
+const [dataPresencaHoje, setDataPresencaHoje] = useState(
+  obterDataHojeSaoPaulo
+);
 
-  const [quantidadeAulas, setQuantidadeAulas] = useState("1");
+const [disciplinas, setDisciplinas] = useState<DisciplinaResponse[]>([]);
 
-  const [carregando, setCarregando] = useState(true);
-  const [salvando, setSalvando] = useState(false);
+const [idDisciplina, setIdDisciplina] = useState<number | null>(null);
 
-  const [showSuccess, setShowSuccess] = useState(false);
+const [mostrarDisciplinas, setMostrarDisciplinas] = useState(false);
 
-  useEffect(() => {
-    const atualizarDataHoje = () => setDataPresencaHoje(obterDataHojeSaoPaulo());
-    const timer = setInterval(atualizarDataHoje, 60_000);
-    const subscription = AppState.addEventListener("change", (estado) => {
-      if (estado === "active") atualizarDataHoje();
-    });
-    return () => { clearInterval(timer); subscription.remove(); };
-  }, []);
+const [dataFalta, setDataFalta] = useState(
+  new Date().toLocaleDateString("pt-BR", {
+    timeZone: "America/Sao_Paulo",
+  })
+);
 
-  const showAlert = (title: string, message: string) => {
-    if (Platform.OS === "web" && typeof window !== "undefined") {
-      window.alert(`${title}: ${message}`);
+const [quantidadeAulas, setQuantidadeAulas] = useState("1");
+
+const [carregando, setCarregando] = useState(true);
+
+const [salvando, setSalvando] = useState(false);
+
+const [showSuccess, setShowSuccess] = useState(false);
+
+useEffect(() => {
+  const atualizarDataHoje = () => {
+    setDataPresencaHoje(obterDataHojeSaoPaulo());
+  };
+
+  const timer = setInterval(atualizarDataHoje, 60_000);
+
+  const subscription = AppState.addEventListener("change", (estado) => {
+    if (estado === "active") {
+      atualizarDataHoje();
+    }
+  });
+
+  return () => {
+    clearInterval(timer);
+    subscription.remove();
+  };
+}, []);
+
+const showAlert = (title: string, message: string) => {
+  if (Platform.OS === "web" && typeof window !== "undefined") {
+    window.alert(`${title}: ${message}`);
     } else {
-      Alert.alert(title, message);
+      Alert.alert(
+        title,
+        message
+      );
     }
   };
 
   useEffect(() => {
     let ativo = true;
 
-    const carregarDisciplinas = async () => {
-      try {
-        setCarregando(true);
-
-        const usuario = await obterUsuarioSessao();
-
-        if (!usuario) {
-          showAlert(
-            "Atenção",
-            "Usuário não encontrado. Faça login novamente."
+    const carregarDisciplinas =
+      async () => {
+        try {
+          setCarregando(
+            true
           );
 
-          return;
-        }
+          const usuario =
+            await obterUsuarioSessao();
 
-        if (ativo) {
-          setIdUsuario(usuario.idUsuario);
-        }
+          if (
+            !usuario?.idUsuario
+          ) {
+            showAlert(
+              "Atenção",
+              "Usuário não encontrado. Faça login novamente."
+            );
 
-        const dados = await listarDisciplinas(usuario.idUsuario);
+            return;
+          }
 
-        if (ativo) {
-          setDisciplinas(dados);
+          if (ativo) {
+            setIdUsuario(
+              usuario.idUsuario
+            );
+          }
+
+          const dados =
+            await listarDisciplinas(
+              usuario.idUsuario
+            );
+
+          if (ativo) {
+            setDisciplinas(
+              dados
+            );
+          }
+        } catch (erro) {
+          if (ativo) {
+            showAlert(
+              "Erro",
+              erro instanceof Error
+                ? erro.message
+                : "Não foi possível carregar as disciplinas."
+            );
+          }
+        } finally {
+          if (ativo) {
+            setCarregando(
+              false
+            );
+          }
         }
-      } catch (erro) {
-        if (ativo) {
-          showAlert(
-            "Erro",
-            erro instanceof Error
-              ? erro.message
-              : "Não foi possível carregar as disciplinas."
-          );
-        }
-      } finally {
-        if (ativo) {
-          setCarregando(false);
-        }
-      }
-    };
+      };
 
     carregarDisciplinas();
 
@@ -128,18 +189,27 @@ export const NewAttendanceScreen: React.FC = () => {
     };
   }, []);
 
-  const isValidBrazilianDate = (dateString: string) => {
-    const regex = /^(\d{2})\/(\d{2})\/(\d{4})$/;
+  const isValidBrazilianDate = (
+    dateString: string
+  ) => {
+    const regex =
+      /^(\d{2})\/(\d{2})\/(\d{4})$/;
 
-    const match = dateString.match(regex);
+    const match =
+      dateString.match(regex);
 
     if (!match) {
       return false;
     }
 
-    const day = Number(match[1]);
-    const month = Number(match[2]);
-    const year = Number(match[3]);
+    const day =
+      Number(match[1]);
+
+    const month =
+      Number(match[2]);
+
+    const year =
+      Number(match[3]);
 
     if (
       month < 1 ||
@@ -150,124 +220,179 @@ export const NewAttendanceScreen: React.FC = () => {
       return false;
     }
 
-    const date = new Date(year, month - 1, day);
+    const date =
+      new Date(
+        year,
+        month - 1,
+        day
+      );
 
     return (
-      date.getFullYear() === year &&
-      date.getMonth() === month - 1 &&
-      date.getDate() === day
+      date.getFullYear() ===
+        year &&
+      date.getMonth() ===
+        month - 1 &&
+      date.getDate() ===
+        day
     );
   };
 
-  const converterDataParaApi = (data: string) => {
-    const [dia, mes, ano] = data.split("/");
+  const converterDataParaApi = (
+    data: string
+  ) => {
+    const [
+      dia,
+      mes,
+      ano,
+    ] = data.split("/");
 
     return `${ano}-${mes}-${dia}`;
   };
 
-  const handleSubmit = async () => {
-    const dataRegistro = tipoRegistro === "PRESENCA"
+const disciplinaSelecionada = disciplinas.find(
+  (disciplina) => disciplina.idDisciplina === idDisciplina
+);
+
+const handleSubmit = async () => {
+  const dataRegistro =
+    tipoRegistro === "PRESENCA"
       ? formatarDataEstudo(obterDataHojeSaoPaulo())
       : dataFalta.trim();
-    if (!idUsuario) {
-      showAlert(
-        "Atenção",
-        "Usuário não encontrado. Faça login novamente."
-      );
 
-      return;
-    }
+  if (!idUsuario) {
+    showAlert(
+      "Atenção",
+      "Usuário não encontrado. Faça login novamente."
+    );
 
-    if (!idDisciplina) {
-      showAlert(
-        "Atenção",
-        "Selecione uma disciplina."
-      );
+    return;
+  }
 
-      return;
-    }
+  if (!idDisciplina) {
+    showAlert(
+      "Atenção",
+      "Selecione uma disciplina."
+    );
 
-    if (!dataRegistro) {
-      showAlert(
-        "Atenção",
-        "Informe a data da aula."
-      );
+    return;
+  }
 
-      return;
-    }
+  if (!dataRegistro) {
+    showAlert(
+      "Atenção",
+      "Informe a data da aula."
+    );
 
-    if (!isValidBrazilianDate(dataRegistro)) {
-      showAlert(
-        "Atenção",
-        "Informe a data no formato DD/MM/AAAA."
-      );
+    return;
+  }
 
-      return;
-    }
+  if (!isValidBrazilianDate(dataRegistro)) {
+    showAlert(
+      "Atenção",
+      "Informe a data no formato DD/MM/AAAA."
+    );
 
-    const quantidade = Number(quantidadeAulas);
+    return;
+  }
 
-    if (
-      tipoRegistro === "FALTA" && (
+  const quantidade = Number(quantidadeAulas);
+
+  if (
+    tipoRegistro === "FALTA" &&
+    (
       Number.isNaN(quantidade) ||
       !Number.isInteger(quantidade) ||
-      quantidade <= 0)
-    ) {
-      showAlert(
-        "Atenção",
-        "Informe uma quantidade válida de aulas perdidas."
-      );
+      quantidade <= 0
+    )
+  ) {
+    showAlert(
+      "Atenção",
+      "Informe uma quantidade válida de aulas perdidas."
+    );
 
-      return;
-    }
+    return;
+  }
 
-    try {
-      setSalvando(true);
+  try {
+    setSalvando(true);
 
-      const dataApi = converterDataParaApi(
-        dataRegistro
-      );
+    const dataApi = converterDataParaApi(dataRegistro);
 
-      if (tipoRegistro === "PRESENCA") {
-        const presenca = await cadastrarPresenca(idUsuario, { idDisciplina, dataPresenca: dataApi });
-        setXpRecebido(presenca.xpGerado);
-      } else {
-        await cadastrarFalta(idUsuario, {
+    if (tipoRegistro === "PRESENCA") {
+      const presenca = await cadastrarPresenca(idUsuario, {
+        idDisciplina,
+        dataPresenca: dataApi,
+      });
+
+      setXpRecebido(presenca.xpGerado);
+    } else {
+      await cadastrarFalta(idUsuario, {
+        idDisciplina,
+        dataFalta: dataApi,
+        quantidadeAulas: quantidade,
+      });
+
+      try {
+        const totalFaltas = await buscarTotalFaltas(
           idDisciplina,
-          dataFalta: dataApi,
-          quantidadeAulas: quantidade,
-        });
+          idUsuario
+        );
+
+        if (disciplinaSelecionada) {
+          await verificarNotificacaoFaltas({
+            idUsuario,
+            idDisciplina,
+            nomeDisciplina: disciplinaSelecionada.nome,
+            totalFaltas,
+            limiteFaltas: disciplinaSelecionada.limiteFaltas ?? 0,
+          });
+        }
+      } catch (notificationError) {
+        console.warn(
+          "Falta registrada, mas não foi possível verificar o alerta de faltas.",
+          notificationError
+        );
       }
-
-      setShowSuccess(true);
-    } catch (erro) {
-      showAlert(
-        "Erro",
-        erro instanceof Error
-          ? erro.message
-          : "Não foi possível registrar a frequência."
-      );
-    } finally {
-      setSalvando(false);
     }
-  };
 
-  const disciplinaSelecionada = disciplinas.find(
-    (disciplina) =>
-      disciplina.idDisciplina === idDisciplina
+  setShowSuccess(true);
+} catch (erro) {
+  showAlert(
+    "Erro",
+    erro instanceof Error
+      ? erro.message
+      : "Não foi possível registrar a frequência."
   );
+} finally {
+  setSalvando(false);
+}
+};
 
   if (showSuccess) {
     return (
-      <View style={styles.container}>
+      <View
+        style={
+          styles.container
+        }
+      >
         <MobileHeader
           title="Registrar frequência"
           showBack
-          onBack={() => navigation.goBack()}
+          onBack={() =>
+            navigation.goBack()
+          }
         />
 
-        <View style={styles.successContainer}>
-          <View style={styles.iconCircle}>
+        <View
+          style={
+            styles.successContainer
+          }
+        >
+          <View
+            style={
+              styles.iconCircle
+            }
+          >
             <CheckCircle2
               size={64}
               color="#16A34A"
@@ -275,42 +400,58 @@ export const NewAttendanceScreen: React.FC = () => {
           </View>
 
           <Text style={styles.successTitle}>
-            {tipoRegistro === "PRESENCA" ? "Presença registrada!" : "Falta registrada com sucesso!"}
+            {tipoRegistro === "PRESENCA"
+              ? "Presença registrada!"
+              : "Falta registrada com sucesso!"}
           </Text>
 
           <Text style={styles.successSubtitle}>
-            {tipoRegistro === "PRESENCA" ? "Sua presença foi registrada em " : "A falta foi registrada em "}
-            {disciplinaSelecionada?.nome ??
-              "disciplina selecionada"}.
+            {tipoRegistro === "PRESENCA"
+              ? "Sua presença foi registrada em "
+              : "A falta foi registrada em "}
+            {disciplinaSelecionada?.nome ?? "disciplina selecionada"}.
           </Text>
 
-          {tipoRegistro === "PRESENCA" && xpRecebido > 0 && <View style={styles.xpReward}><Text style={styles.xpRewardText}>✨ +{xpRecebido} XP conquistados</Text><Text style={styles.xpRewardCaption}>Mais um passo na sua jornada de estudos.</Text></View>}
+          {tipoRegistro === "PRESENCA" && xpRecebido > 0 && (
+            <View style={styles.xpReward}>
+              <Text style={styles.xpRewardText}>
+                ✨ +{xpRecebido} XP conquistados
+              </Text>
+
+              <Text style={styles.xpRewardCaption}>
+                Mais um passo na sua jornada de estudos.
+              </Text>
+            </View>
+          )}
 
           <Button
             title="Voltar ao Início"
-            onPress={() =>
-              navigation.navigate("MainTabs")
-            }
+            onPress={() => navigation.navigate("MainTabs")}
             style={styles.backButton}
           />
-        </View>
-      </View>
-    );
-  }
+                  </View>
+                </View>
+              );
+            }
 
   return (
     <KeyboardAvoidingView
       behavior={
-        Platform.OS === "ios"
+        Platform.OS ===
+        "ios"
           ? "padding"
           : undefined
       }
-      style={styles.container}
+      style={
+        styles.container
+      }
     >
       <MobileHeader
         title="Registrar frequência"
         showBack
-        onBack={() => navigation.goBack()}
+        onBack={() =>
+          navigation.goBack()
+        }
       />
 
       <ScrollView
@@ -320,38 +461,91 @@ export const NewAttendanceScreen: React.FC = () => {
         keyboardShouldPersistTaps="handled"
       >
         <Card style={styles.formCard}>
-          <Text style={styles.formTitle}>Cada aula conta</Text>
-          <Text style={styles.formSubtitle}>Registre sua presença, ganhe XP e mantenha sua ofensiva.</Text>
+          <Text style={styles.formTitle}>
+            Cada aula conta
+          </Text>
+
+          <Text style={styles.formSubtitle}>
+            Registre sua presença, ganhe XP e mantenha sua ofensiva.
+          </Text>
+
           <View style={styles.typeRow}>
-            {(["PRESENCA", "FALTA"] as const).map((tipo) => <Pressable key={tipo} disabled={salvando} accessibilityRole="button" accessibilityState={{ selected: tipoRegistro === tipo }} onPress={() => setTipoRegistro(tipo)} style={[styles.typeButton, tipoRegistro === tipo && styles.typeButtonSelected]}><Text style={[styles.typeText, tipoRegistro === tipo && styles.typeTextSelected]}>{tipo === "PRESENCA" ? "✓ Estive presente" : "Registrar falta"}</Text></Pressable>)}
+            {(["PRESENCA", "FALTA"] as const).map((tipo) => (
+              <Pressable
+                key={tipo}
+                disabled={salvando}
+                accessibilityRole="button"
+                accessibilityState={{
+                  selected: tipoRegistro === tipo,
+                }}
+                onPress={() => setTipoRegistro(tipo)}
+                style={[
+                  styles.typeButton,
+                  tipoRegistro === tipo && styles.typeButtonSelected,
+                ]}
+              >
+                <Text
+                  style={[
+                    styles.typeText,
+                    tipoRegistro === tipo && styles.typeTextSelected,
+                  ]}
+                >
+                  {tipo === "PRESENCA"
+                    ? "✓ Estive presente"
+                    : "Registrar falta"}
+                </Text>
+              </Pressable>
+            ))}
           </View>
+
           <Text style={styles.sectionLabel}>
             Disciplina
           </Text>
 
           {carregando ? (
-            <View style={styles.loadingContainer}>
+            <View
+              style={
+                styles.loadingContainer
+              }
+            >
               <ActivityIndicator />
 
-              <Text style={styles.loadingText}>
-                Carregando disciplinas...
+              <Text
+                style={
+                  styles.loadingText
+                }
+              >
+                Carregando
+                disciplinas...
               </Text>
             </View>
-          ) : disciplinas.length === 0 ? (
-            <Text style={styles.emptyText}>
-              Nenhuma disciplina cadastrada.
+          ) : disciplinas.length ===
+            0 ? (
+            <Text
+              style={
+                styles.emptyText
+              }
+            >
+              Nenhuma disciplina
+              cadastrada.
             </Text>
           ) : (
             <>
               <Pressable
-                style={styles.selectButton}
+                style={
+                  styles.selectButton
+                }
                 onPress={() =>
                   setMostrarDisciplinas(
                     !mostrarDisciplinas
                   )
                 }
               >
-                <View style={styles.selectContent}>
+                <View
+                  style={
+                    styles.selectContent
+                  }
+                >
                   <BookOpen
                     size={20}
                     color="#64748B"
@@ -360,6 +554,7 @@ export const NewAttendanceScreen: React.FC = () => {
                   <Text
                     style={[
                       styles.selectText,
+
                       !disciplinaSelecionada &&
                         styles.selectPlaceholder,
                     ]}
@@ -390,13 +585,16 @@ export const NewAttendanceScreen: React.FC = () => {
                   }
                 >
                   {disciplinas.map(
-                    (disciplina) => (
+                    (
+                      disciplina
+                    ) => (
                       <Pressable
                         key={
                           disciplina.idDisciplina
                         }
                         style={[
                           styles.disciplinaOption,
+
                           idDisciplina ===
                             disciplina.idDisciplina &&
                             styles.disciplinaOptionSelected,
@@ -416,7 +614,9 @@ export const NewAttendanceScreen: React.FC = () => {
                             styles.disciplinaNome
                           }
                         >
-                          {disciplina.nome}
+                          {
+                            disciplina.nome
+                          }
                         </Text>
 
                         {disciplina.professor && (
@@ -438,30 +638,46 @@ export const NewAttendanceScreen: React.FC = () => {
             </>
           )}
 
-          <View style={styles.fieldSpacing}>
+          <View
+            style={
+              styles.fieldSpacing
+            }
+          >
             <Input
               label={tipoRegistro === "PRESENCA" ? "Data da presença" : "Data da Falta"}
               placeholder="DD/MM/AAAA"
-              value={tipoRegistro === "PRESENCA" ? formatarDataEstudo(dataPresencaHoje) : dataFalta}
+              
+              value={
+                tipoRegistro === "PRESENCA"
+                  ? formatarDataEstudo(dataPresencaHoje)
+                  : dataFalta
+              }
               editable={tipoRegistro === "FALTA"}
               onChangeText={setDataFalta}
-            />
-          </View>
+              />
+              </View>
 
-          {tipoRegistro === "FALTA" && <View style={styles.fieldSpacing}>
+              {tipoRegistro === "FALTA" && (
+                <View style={styles.fieldSpacing}>
+
             <Input
               label="Quantidade de aulas perdidas"
               placeholder="Ex: 2"
-              value={quantidadeAulas}
+              value={
+                quantidadeAulas
+              }
               onChangeText={
                 setQuantidadeAulas
               }
               keyboardType="numeric"
             />
-          </View>}
+          </View>
+        )}
 
           <Text style={styles.helpText}>
-            {tipoRegistro === "PRESENCA" ? "Presenças somente hoje, no horário de Brasília: +20 XP uma vez por disciplina. A atividade de hoje mantém sua ofensiva." : "Informe quantas aulas foram perdidas nessa data."}
+            {tipoRegistro === "PRESENCA"
+              ? "Presenças somente hoje, no horário de Brasília: +20 XP uma vez por disciplina. A atividade de hoje mantém sua ofensiva."
+              : "Informe quantas aulas foram perdidas nessa data."}
           </Text>
 
           <Button
@@ -470,13 +686,18 @@ export const NewAttendanceScreen: React.FC = () => {
                 ? "Registrando..."
                 : tipoRegistro === "PRESENCA" ? "Registrar presença • +20 XP" : "Registrar Falta"
             }
-            onPress={handleSubmit}
+            onPress={
+              handleSubmit
+            }
             disabled={
               salvando ||
               carregando ||
-              disciplinas.length === 0
+              disciplinas.length ===
+                0
             }
-            style={styles.submitButton}
+            style={
+              styles.submitButton
+            }
           />
         </Card>
       </ScrollView>
@@ -500,151 +721,159 @@ const styles = StyleSheet.create({
     backgroundColor: "#F8FAFC",
   },
 
-  scrollContent: {
-    padding: 16,
-    maxWidth: 600,
-    width: "100%",
-    alignSelf: "center",
-  },
+    scrollContent: {
+      padding: 16,
+      maxWidth: 600,
+      width: "100%",
+      alignSelf: "center",
+    },
 
-  formCard: {
-    padding: 20,
-  },
+    formCard: {
+      padding: 20,
+    },
 
-  sectionLabel: {
-    fontSize: 14,
-    fontWeight: "500",
-    color: "#334155",
-    marginBottom: 8,
-  },
+    sectionLabel: {
+      fontSize: 14,
+      fontWeight: "500",
+      color: "#334155",
+      marginBottom: 8,
+    },
 
-  loadingContainer: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 10,
-    paddingVertical: 14,
-  },
+    loadingContainer: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 10,
+      paddingVertical: 14,
+    },
 
-  loadingText: {
-    fontSize: 14,
-    color: "#64748B",
-  },
+    loadingText: {
+      fontSize: 14,
+      color: "#64748B",
+    },
 
-  emptyText: {
-    fontSize: 14,
-    color: "#64748B",
-    paddingVertical: 12,
-  },
+    emptyText: {
+      fontSize: 14,
+      color: "#64748B",
+      paddingVertical: 12,
+    },
 
-  selectButton: {
-    minHeight: 48,
-    borderWidth: 1,
-    borderColor: "#CBD5E1",
-    borderRadius: 10,
-    paddingHorizontal: 14,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    backgroundColor: "#FFFFFF",
-  },
+    selectButton: {
+      minHeight: 48,
+      borderWidth: 1,
+      borderColor: "#CBD5E1",
+      borderRadius: 10,
+      paddingHorizontal: 14,
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent:
+        "space-between",
+      backgroundColor:
+        "#FFFFFF",
+    },
 
-  selectContent: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 10,
-    flex: 1,
-  },
+    selectContent: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 10,
+      flex: 1,
+    },
 
-  selectText: {
-    fontSize: 15,
-    color: "#0F172A",
-    flex: 1,
-  },
+    selectText: {
+      fontSize: 15,
+      color: "#0F172A",
+      flex: 1,
+    },
 
-  selectPlaceholder: {
-    color: "#94A3B8",
-  },
+    selectPlaceholder: {
+      color: "#94A3B8",
+    },
 
-  optionsContainer: {
-    borderWidth: 1,
-    borderColor: "#E2E8F0",
-    borderRadius: 10,
-    marginTop: 6,
-    overflow: "hidden",
-    backgroundColor: "#FFFFFF",
-  },
+    optionsContainer: {
+      borderWidth: 1,
+      borderColor: "#E2E8F0",
+      borderRadius: 10,
+      marginTop: 6,
+      overflow: "hidden",
+      backgroundColor:
+        "#FFFFFF",
+    },
 
-  disciplinaOption: {
-    paddingVertical: 12,
-    paddingHorizontal: 14,
-    borderBottomWidth: 1,
-    borderBottomColor: "#F1F5F9",
-  },
+    disciplinaOption: {
+      paddingVertical: 12,
+      paddingHorizontal: 14,
+      borderBottomWidth: 1,
+      borderBottomColor:
+        "#F1F5F9",
+    },
 
-  disciplinaOptionSelected: {
-    backgroundColor: "#EFF6FF",
-  },
+    disciplinaOptionSelected: {
+      backgroundColor:
+        "#EFF6FF",
+    },
 
-  disciplinaNome: {
-    fontSize: 15,
-    fontWeight: "600",
-    color: "#0F172A",
-  },
+    disciplinaNome: {
+      fontSize: 15,
+      fontWeight: "600",
+      color: "#0F172A",
+    },
 
-  disciplinaProfessor: {
-    fontSize: 13,
-    color: "#64748B",
-    marginTop: 2,
-  },
+    disciplinaProfessor: {
+      fontSize: 13,
+      color: "#64748B",
+      marginTop: 2,
+    },
 
-  fieldSpacing: {
-    marginTop: 18,
-  },
+    fieldSpacing: {
+      marginTop: 18,
+    },
 
-  helpText: {
-    fontSize: 12,
-    color: "#64748B",
-    marginTop: 8,
-  },
+    helpText: {
+      fontSize: 12,
+      color: "#64748B",
+      marginTop: 8,
+    },
 
-  submitButton: {
-    marginTop: 20,
-  },
+    submitButton: {
+      marginTop: 20,
+    },
 
-  successContainer: {
-    flex: 1,
-    alignItems: "center",
-    justifyContent: "center",
-    padding: 24,
-  },
+    successContainer: {
+      flex: 1,
+      alignItems: "center",
+      justifyContent:
+        "center",
+      padding: 24,
+    },
 
-  iconCircle: {
-    width: 96,
-    height: 96,
-    borderRadius: 48,
-    backgroundColor: "#DCFCE7",
-    alignItems: "center",
-    justifyContent: "center",
-    marginBottom: 20,
-  },
+    iconCircle: {
+      width: 96,
+      height: 96,
+      borderRadius: 48,
+      backgroundColor:
+        "#DCFCE7",
+      alignItems: "center",
+      justifyContent:
+        "center",
+      marginBottom: 20,
+    },
 
-  successTitle: {
-    fontSize: 20,
-    fontWeight: "700",
-    color: "#0F172A",
-    textAlign: "center",
-  },
+    successTitle: {
+      fontSize: 20,
+      fontWeight: "700",
+      color: "#0F172A",
+      textAlign: "center",
+    },
 
-  successSubtitle: {
-    fontSize: 14,
-    color: "#64748B",
-    textAlign: "center",
-    marginTop: 6,
-    marginBottom: 24,
-  },
+    successSubtitle: {
+      fontSize: 14,
+      color: "#64748B",
+      textAlign: "center",
+      marginTop: 6,
+      marginBottom: 24,
+    },
 
-  backButton: {
-    width: "100%",
-    maxWidth: 240,
-  },
+    backButton: {
+      width: "100%",
+      maxWidth: 240,
+    },
 });
