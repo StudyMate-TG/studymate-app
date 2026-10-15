@@ -126,39 +126,7 @@ BEGIN
         REFERENCES disciplina (id_disciplina),
     CONSTRAINT ck_notificacao_lida CHECK (lida IN ('S', 'N'))
 )~');
-    criar_tabela('conquista', q'~CREATE TABLE conquista (
-    id_conquista NUMBER(38) NOT NULL,
-    nome VARCHAR2(100) NOT NULL,
-    descricao VARCHAR2(255) NOT NULL,
-    icone VARCHAR2(100) NOT NULL,
-    criterio VARCHAR2(50) NOT NULL,
-    CONSTRAINT pk_conquista PRIMARY KEY (id_conquista)
-)~');
-    criar_tabela('usuario_conquista', q'~CREATE TABLE usuario_conquista (
-    id_usuario NUMBER(38) NOT NULL,
-    id_conquista NUMBER(38) NOT NULL,
-    data_conquista DATE DEFAULT SYSDATE NOT NULL,
-    CONSTRAINT pk_usuario_conquista PRIMARY KEY (id_usuario, id_conquista),
-    CONSTRAINT fk_usuario_conquista_usuario FOREIGN KEY (id_usuario)
-        REFERENCES usuario (id_usuario),
-    CONSTRAINT fk_usuario_conquista_conquista FOREIGN KEY (id_conquista)
-        REFERENCES conquista (id_conquista)
-)~');
-    criar_tabela('progresso_estudante', q'~CREATE TABLE progresso_estudante (
-    id_usuario NUMBER(38) NOT NULL,
-    xp_total NUMBER(38) NOT NULL,
-    nivel NUMBER(38) NOT NULL,
-    sequencia_atual NUMBER(38) NOT NULL,
-    maior_sequencia NUMBER(38) NOT NULL,
-    data_ultimo_dia_sequencia DATE,
-    CONSTRAINT pk_progresso_estudante PRIMARY KEY (id_usuario),
-    CONSTRAINT fk_progresso_estudante_usuario FOREIGN KEY (id_usuario)
-        REFERENCES usuario (id_usuario),
-    CONSTRAINT ck_progresso_xp CHECK (xp_total >= 0),
-    CONSTRAINT ck_progresso_nivel CHECK (nivel >= 1),
-    CONSTRAINT ck_progresso_seq_atual CHECK (sequencia_atual >= 0),
-    CONSTRAINT ck_progresso_maior_seq CHECK (maior_sequencia >= 0)
-)~');
+
     criar_tabela('sync_request', q'~CREATE TABLE sync_request (
     client_tx_id VARCHAR2(36) NOT NULL,
     id_usuario NUMBER(38) NOT NULL,
@@ -270,26 +238,6 @@ BEGIN
 END;
 /
 
-DECLARE
-    quantidade NUMBER;
-BEGIN
-    SELECT COUNT(*)
-    INTO quantidade
-    FROM user_constraints
-    WHERE constraint_name = 'CK_PROCESSED_SYNC_OPERATION';
-
-    IF quantidade > 0 THEN
-        EXECUTE IMMEDIATE
-            'ALTER TABLE processed_sync_operations ' ||
-            'DROP CONSTRAINT ck_processed_sync_operation';
-    END IF;
-
-    EXECUTE IMMEDIATE
-        'ALTER TABLE processed_sync_operations ' ||
-        'ADD CONSTRAINT ck_processed_sync_operation ' ||
-        'CHECK (operation IN (''CREATE'',''UPDATE'',''DELETE'',''COMPLETE'',''REOPEN''))';
-END;
-/
 
 -- Nao reinicia sequences existentes; cria as ausentes acima do maior ID persistido.
 DECLARE
@@ -314,7 +262,6 @@ BEGIN
     criar_sequence('seq_tarefa','tarefa','id_tarefa','9223372036854775807');
     criar_sequence('seq_avaliacao','avaliacao','id_avaliacao','9223372036854775807');
     criar_sequence('seq_notificacao','notificacao','id_notificacao','9223372036854775807');
-    criar_sequence('seq_conquista','conquista','id_conquista','9223372036854775807');
 END;
 /
 
@@ -338,7 +285,6 @@ BEGIN
     criar_indice('ix_horario_disciplina', 'CREATE INDEX ix_horario_disciplina ON horario_aula(id_disciplina)');
     criar_indice('ix_notificacao_usuario', 'CREATE INDEX ix_notificacao_usuario ON notificacao(id_usuario)');
     criar_indice('ix_notificacao_disciplina', 'CREATE INDEX ix_notificacao_disciplina ON notificacao(id_disciplina)');
-    criar_indice('ix_usuario_conquista', 'CREATE INDEX ix_usuario_conquista ON usuario_conquista(id_conquista)');
 END;
 /
 @@../../migrations/003_auth_protection.sql

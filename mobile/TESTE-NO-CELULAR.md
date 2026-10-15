@@ -1,158 +1,364 @@
-# Testar a gamificação no celular
+# Testar o StudyMate no celular
 
-A gamificação foi implementada no aplicativo React Native (`mobile/`).
-A interface web (`frontend/`) permanece na versão anterior.
+Este documento apresenta o procedimento para executar e validar o aplicativo StudyMate em um celular físico utilizando Expo Go, incluindo autenticação, gamificação e funcionamento offline das tarefas.
 
 ## 1. Preparar computador e celular
 
-- No computador Windows: JDK 17 ou superior e **Node.js 22.13 ou superior com npm**.
-  Internet é necessária na primeira instalação das dependências.
-- Conecte computador e celular à mesma rede do roteador. O computador pode usar
-  cabo Ethernet e o celular Wi-Fi, desde que se comuniquem na mesma rede.
-- No Windows, se esta for sua rede de confiança, abra **Configurações → Rede e
-  Internet → Ethernet/Wi-Fi → rede conectada** e escolha o perfil **Privado**.
-  Isso permite usar as permissões de rede privada de Java e Node para este teste.
-- **iPhone:** use o **Expo Go já instalado com suporte ao SDK 57**.
-  O projeto usa **SDK 57**, correspondente à versão confirmada no aparelho.
-  Entre no Expo Go com sua **conta Expo gratuita**. No computador, dê dois
-  cliques em **`entrar-expo.cmd`**, na raiz do projeto, e faça login no navegador
-  com **a mesma conta**. Se necessário, [crie uma conta Expo](https://expo.dev/signup).
-  Esse é o login do Expo; a conta do StudyMate será usada depois, dentro do aplicativo.
-- **Android:** instale Expo Go compatível com **SDK 57** pelo
-  [site oficial do Expo](https://expo.dev/go), caso a versão da Play Store use outro SDK.
+- No computador Windows, utilize JDK 17 ou superior e Node.js 22.13 ou superior com npm.
+- Internet é necessária na primeira instalação das dependências.
+- Conecte o computador e o celular à mesma rede do roteador. O computador pode utilizar cabo Ethernet e o celular Wi-Fi, desde que os dispositivos consigam se comunicar pela mesma rede.
+- No Windows, se estiver utilizando uma rede de confiança, abra **Configurações → Rede e Internet → Ethernet/Wi-Fi → rede conectada** e selecione o perfil **Privado**.
+- No iPhone, utilize o Expo Go compatível com o SDK 57 utilizado pelo projeto.
+- No Android, utilize uma versão do Expo Go compatível com o SDK 57.
+
+### Login no Expo
+
+Entre no Expo Go com uma conta Expo.
+
+No computador, execute:
+
+```powershell
+npx expo login
+```
+
+Faça login com a mesma conta utilizada no Expo Go.
+
+Esse login é utilizado apenas pelo Expo. A conta do StudyMate será utilizada posteriormente dentro do aplicativo.
+
+Caso ainda não possua uma conta Expo, crie uma pelo site oficial:
+
+https://expo.dev/signup
+
+---
 
 ## 2. Iniciar a API e o aplicativo
 
-Na pasta raiz `studymate-app`, dê dois cliques em **`iniciar-mobile.cmd`**.
-Espere a compilação da API e a exibição do QR Code. Mantenha a janela aberta.
+### Iniciar a API
 
-O iniciador faz o seguinte:
-
-1. Instala dependências mobile se necessário.
-2. Inicia a API local na porta **8081**, acessível pela rede para este teste.
-   Se a API estiver restrita ao computador, reinicia somente o processo gerenciado.
-3. Configura `EXPO_PUBLIC_API_URL` com o IPv4 do computador.
-4. Inicia o Expo/Metro na porta **8082**, usando Expo Go e conexão LAN.
-
-O cache do Metro é limpo ao iniciar para que os módulos do SDK 57 sejam usados.
-
-Se o IP escolhido for de uma VPN ou outra rede, abra PowerShell na raiz e use:
+Abra um PowerShell na raiz do projeto:
 
 ```powershell
-.\iniciar-mobile.cmd -IpComputador 192.168.0.105
+cd backend
+
+$env:SPRING_PROFILES_ACTIVE="local"
+$env:SERVER_ADDRESS="0.0.0.0"
+$env:JWT_SECRET=[Convert]::ToBase64String(
+    [System.Security.Cryptography.RandomNumberGenerator]::GetBytes(64)
+)
+
+.\mvnw.cmd spring-boot:run
 ```
 
-Substitua `192.168.0.105` pelo **IPv4 do Wi-Fi/Ethernet**, mostrado por `ipconfig`.
-No celular, `localhost` é o próprio celular; `10.0.2.2` é específico do emulador Android.
+A API ficará disponível na porta:
+
+```text
+8081
+```
+
+Mantenha esse terminal aberto durante os testes.
+
+### Descobrir o IP do computador
+
+Abra outro PowerShell e execute:
+
+```powershell
+ipconfig
+```
+
+Localize o endereço IPv4 da conexão Wi-Fi ou Ethernet utilizada pelo computador.
+
+Exemplo:
+
+```text
+192.168.0.105
+```
+
+### Iniciar o aplicativo mobile
+
+Abra outro PowerShell:
+
+```powershell
+cd mobile
+npm ci
+
+$env:EXPO_PUBLIC_API_URL="http://192.168.0.105:8081/api"
+$env:REACT_NATIVE_PACKAGER_HOSTNAME="192.168.0.105"
+
+npx expo start --lan --port 8082
+```
+
+Substitua `192.168.0.105` pelo IPv4 do seu computador.
+
+O computador e o celular devem estar conectados à mesma rede local.
+
+Caso o Expo solicite autenticação:
+
+```powershell
+npx expo login
+```
+
+Utilize no computador a mesma conta utilizada no Expo Go.
+
+---
 
 ## 3. Abrir no celular
 
-No Android, abra Expo Go e use o leitor de QR Code. No iPhone, leia o QR Code
-pela câmera e confirme a abertura no Expo Go. Se solicitada, permita ao Expo Go
-acessar a rede local. O app deve abrir a tela de login do StudyMate.
+No Android, abra o Expo Go e utilize o leitor de QR Code.
 
-Se aparecer o aviso de login no Expo, confira que computador e Expo Go usam
-**a mesma conta Expo** e toque em **Try Again**. Se o servidor estava sem login,
-é suficiente entrar nas duas pontas e tentar novamente, mantendo a janela aberta.
-Se você trocou uma conta Expo por outra no computador, encerre o Expo com Ctrl+C
-e execute `iniciar-mobile.cmd` novamente. Veja a [orientação oficial sobre login no Expo Go](https://docs.expo.dev/troubleshooting/expo-go-sign-in-required/).
+No iPhone, leia o QR Code pela câmera e confirme a abertura no Expo Go.
 
-Para conferir a conexão com a API, abra no navegador do celular:
+Caso seja solicitado, permita que o Expo Go acesse a rede local.
+
+O aplicativo deverá abrir a tela de login do StudyMate.
+
+Se aparecer um aviso de autenticação do Expo, confirme que o computador e o Expo Go utilizam a mesma conta.
+
+Se necessário:
+
+1. encerre o Expo com `Ctrl + C`;
+2. execute novamente:
+
+```powershell
+npx expo login
+```
+
+3. reinicie o Expo:
+
+```powershell
+npx expo start --lan --port 8082
+```
+
+Para conferir se o celular consegue alcançar a API, acesse pelo navegador do aparelho:
 
 ```text
 http://IP_DO_COMPUTADOR:8081/api/health
 ```
 
-A resposta **401** com mensagem de token ausente é esperada nesse endereço,
-pois ele exige login: isso confirma que a API está alcançável. Página sem resposta
-ou conexão recusada indica problema de rede, IP, porta ou firewall.
+Exemplo:
+
+```text
+http://192.168.0.105:8081/api/health
+```
+
+Se o servidor retornar uma resposta HTTP da aplicação, a comunicação entre o celular e o backend está funcionando.
+
+Erro de conexão, timeout ou conexão recusada indicam possível problema de rede, IP, porta ou firewall.
+
+---
 
 ## 4. Usar uma conta sem XP
 
-A conta padrão `teste@studymate.local` / `StudyMate123!` está disponível,
-mas pode ter atividade de testes anteriores. Para testar a primeira comemoração,
-use a conta nova fornecida na conversa ou cadastre outra em **Cadastrar**.
-Na tela do StudyMate, use essas credenciais do StudyMate, não as da conta Expo.
+A conta padrão:
 
-No perfil local, os códigos de confirmação ficam no computador em
-`backend/.local/emails/`. Abra o arquivo mais recente, copie o código para a
-tela **Confirmar e-mail** e informe a senha escolhida. Depois entre na conta.
-Nenhum e-mail é enviado pela internet nesse perfil.
+```text
+E-mail: teste@studymate.local
+Senha: StudyMate123!
+```
 
-Uma conta nova deve mostrar **0 XP**, **nível 1**, **0 dias de ofensiva** e medalhas
-bloqueadas. O login sozinho não abre a comemoração.
+pode possuir atividades de testes anteriores.
 
-Se a conta estiver vazia, vá a **Perfil → Períodos Letivos** para criar um período
-e a **Disciplinas → + / Cadastrar disciplina** para cadastrar uma matéria nesse período.
+Para testar a gamificação desde o início, é recomendável cadastrar uma nova conta.
 
-## 5. Conferir as regras e a comemoração
+Na tela do StudyMate, utilize as credenciais da conta do StudyMate, e não as credenciais da conta Expo.
 
-Faça os testes nesta ordem, com a conexão ativa:
+No perfil local, os códigos de confirmação de e-mail são armazenados em:
+
+```text
+backend/.local/emails/
+```
+
+Abra o arquivo mais recente, copie o código e informe-o na tela **Confirmar e-mail**, juntamente com a senha escolhida.
+
+Nenhum e-mail é enviado pela internet no perfil local.
+
+Uma conta nova deverá iniciar com:
+
+```text
+0 XP
+Nível 1
+0 dias de ofensiva
+Medalhas bloqueadas
+```
+
+O login sozinho não deve abrir a comemoração de gamificação.
+
+Caso a conta ainda não possua dados acadêmicos:
+
+1. acesse **Perfil → Períodos Letivos** e crie um período;
+2. acesse **Disciplinas → Cadastrar disciplina** e cadastre uma disciplina vinculada ao período.
+
+---
+
+## 5. Conferir gamificação
+
+Realize os testes abaixo com conexão ativa:
 
 | Ação | Resultado esperado |
 | --- | --- |
-| No topo do Início, toque em `Registrar presença`; escolha a disciplina e registre presença | +20 XP, 1 dia de ofensiva e medalha `Presente!` |
-| Observe a primeira atividade do dia | Mascote com olhos fechados, sorriso sem dentes e três pequenos fogos estáticos; botão `Continuar estudando` fecha a tela |
-| Confira a data da presença | Data de hoje fixa, pelo horário de São Paulo; campo não aceita editar para ontem ou amanhã |
-| Registre novamente presença na mesma disciplina hoje | API recusa duplicidade; continua com 20 XP |
-| Crie uma tarefa com entrega hoje e, na aba Agenda, toque no círculo à esquerda dela para concluir | +30 XP; total 50, meta diária atingida, medalha `Primeiro passo`; ofensiva continua 1 dia |
-| Toque no círculo para reabrir e concluir a mesma tarefa novamente | Continua com 50 XP; não há segunda recompensa nem nova comemoração |
-| Vá a Conquistas | Medalhas conquistadas e progresso das bloqueadas refletem atividades reais |
-| Conclua mais duas tarefas distintas | Total 110 XP, nível 2 e medalha `Aprendiz` |
-| Registre uma falta | Salva a falta sem conceder XP nem preencher a ofensiva de outro dia |
-| Feche/recarregue e entre novamente | XP e medalhas preservados; comemoração de hoje não se repete nesse aparelho |
+| Registrar presença em uma disciplina | +20 XP, 1 dia de ofensiva e medalha relacionada à primeira presença |
+| Observar a primeira atividade válida do dia | Exibição da comemoração do StudyMate |
+| Conferir a data da presença | A data corresponde ao dia atual no horário de São Paulo |
+| Registrar novamente presença na mesma disciplina no mesmo dia | A API recusa a duplicidade e nenhum XP adicional é concedido |
+| Criar uma tarefa e concluí-la | +30 XP |
+| Reabrir e concluir novamente a mesma tarefa | Nenhum XP adicional é concedido |
+| Acessar Conquistas | Medalhas conquistadas e progresso refletem as atividades registradas |
+| Concluir mais duas tarefas distintas após os testes anteriores | XP e nível são atualizados conforme as regras de gamificação |
+| Registrar uma falta | A falta é salva sem conceder XP |
+| Fechar o aplicativo, abrir novamente e entrar na conta | XP, medalhas e histórico permanecem registrados |
 
-Se preferir começar pela tarefa, a primeira conclusão também abre a comemoração
-e concede 30 XP. Presença posterior concede mais 20 XP, sem repetir a comemoração.
+A primeira conclusão de uma tarefa concede:
 
-Para a ofensiva de vários dias, faça uma atividade **amanhã**, após a meia-noite
-de São Paulo: deve chegar a 2 dias. Ao perder um dia inteiro, a contagem atual
-reinicia; melhor ofensiva e medalhas permanecem. Alterar a data do celular não
-retroage a ofensiva: a API define o dia da recompensa.
+```text
+30 XP
+```
 
-## 6. Testar tarefa offline
+Uma presença válida concede:
 
-1. Com conexão, crie uma tarefa distinta e espere ela sincronizar.
-2. Ative modo avião **sem fechar o aplicativo já carregado**.
-3. Conclua essa tarefa na Agenda. Ela fica concluída localmente, com
-   sincronização pendente/erro; os 30 XP ainda não foram confirmados na API.
-4. Desative modo avião, reconecte ao mesmo Wi-Fi e saia/volte à Agenda
-   ou ao Início para disparar sincronização. Espere a atualização de última sincronização.
-5. Confira os +30 XP, a tarefa concluída e a medalha/progresso correspondente.
-   Reabrir a tela ou reenviar a fila não pode duplicar os pontos.
+```text
+20 XP
+```
 
-Se a conexão retornar em outro dia, os pontos e a ofensiva usam **o dia da
-confirmação no servidor**, nunca o dia anterior. A presença exige conexão e é
-registrada somente hoje; não há fila de presença retroativa.
+A meta diária é:
 
-## Se não conectar
+```text
+30 XP
+```
 
-- Confirme o IP exibido na janela, a mesma rede e as portas 8081/8082 livres.
-- Se o Windows perguntar, permita **Java** e **Node.js** na rede **Privada**.
-  Uma conexão marcada como Pública pode continuar bloqueada mesmo que você
-  tenha permitido esses aplicativos apenas em redes privadas; confira o perfil.
-  Se houver bloqueio, permita TCP 8081 e 8082 apenas na rede privada/local;
-  o iniciador não modifica regras do firewall automaticamente.
-- Redes de convidados podem impedir comunicação entre aparelhos. Use a rede
-  principal do roteador. VPN também pode selecionar o endereço errado.
-- O túnel do Expo só entrega o bundle: não torna a API 8081 acessível. Para este
-  tutorial, use LAN e confirme primeiro o endereço `/api/health` no celular.
-- Se trocar o IP do computador, encerre o Expo com Ctrl+C e execute novamente
-  `iniciar-mobile.cmd` com o IP correto, depois releia o QR Code.
-- Erro de SDK: confirme que o Expo Go instalado suporta **SDK 57** e que o
-  projeto usa a mesma versão. Atualize as dependências com `npm ci` dentro de
-  `mobile/`, reinicie `iniciar-mobile.cmd` e leia novamente o QR Code.
+Um novo nível é alcançado a cada:
 
-## Encerrar
+```text
+100 XP
+```
 
-Pressione **Ctrl+C** na janela do Expo. Para encerrar os serviços locais,
-execute `parar-studymate.cmd`. Os dados permanecem para o próximo teste.
-Para voltar a testar somente pelo computador, execute `iniciar-studymate.cmd`:
-a API volta a aceitar apenas conexões locais.
+Reabrir e concluir novamente uma tarefa já recompensada não concede uma segunda recompensa.
 
-## Verificações no computador
+A mesma operação reenviada pela sincronização também não deve duplicar os pontos.
 
-Dentro de `mobile/`:
+### Ofensiva
+
+Uma atividade válida realizada no dia mantém a ofensiva.
+
+Para testar uma sequência de vários dias, realize uma nova atividade após a mudança do dia no horário de `America/Sao_Paulo`.
+
+Se um dia inteiro for perdido, a sequência atual é reiniciada, mas o recorde e as medalhas conquistadas permanecem.
+
+A alteração manual da data do celular não deve permitir criar atividades retroativas, pois o servidor determina a data utilizada pela gamificação.
+
+---
+
+## 6. Testar tarefas offline
+
+### Concluir uma tarefa sem internet
+
+1. Com conexão ativa, crie uma tarefa e aguarde a sincronização.
+2. Ative o modo avião sem fechar o aplicativo.
+3. Na Agenda, conclua a tarefa.
+4. A tarefa deverá ser atualizada localmente.
+5. A operação deverá permanecer pendente de sincronização.
+6. Os 30 XP ainda não deverão ser confirmados pela API.
+7. Desative o modo avião.
+8. Reconecte o celular à mesma rede Wi-Fi.
+9. Volte à Agenda ou ao Início para permitir uma nova tentativa de sincronização.
+10. Aguarde a atualização do estado de sincronização.
+11. Confira se a tarefa foi confirmada no servidor e se os 30 XP foram concedidos.
+
+Reabrir telas ou reenviar a mesma operação não deve duplicar os pontos.
+
+### Outras operações offline
+
+Também podem ser verificadas operações de:
+
+```text
+CREATE
+UPDATE
+DELETE
+COMPLETE
+REOPEN
+```
+
+As alterações realizadas sem conexão devem permanecer armazenadas localmente até que possam ser enviadas ao backend.
+
+Se a conexão retornar apenas em outro dia, XP e ofensiva utilizam o dia em que a operação é confirmada pelo servidor.
+
+O registro de presença não utiliza a fila offline e deve ser realizado com conexão ativa.
+
+---
+
+## 7. Se não conectar
+
+Confira:
+
+- se o IP utilizado é o IPv4 correto da conexão Wi-Fi ou Ethernet;
+- se computador e celular estão na mesma rede;
+- se as portas `8081` e `8082` estão disponíveis;
+- se Java e Node.js possuem permissão no Firewall do Windows para redes privadas;
+- se a rede do Windows está configurada como **Privada**;
+- se o roteador permite comunicação entre os dispositivos da rede;
+- se alguma VPN está interferindo na seleção do endereço de rede.
+
+Redes de convidados podem impedir a comunicação direta entre dispositivos.
+
+O túnel do Expo pode disponibilizar o bundle do aplicativo, mas não torna automaticamente a API local da porta `8081` acessível. Para este procedimento, utilize conexão LAN.
+
+### Se o IP do computador mudar
+
+Encerre o Expo:
+
+```text
+Ctrl + C
+```
+
+Configure novamente:
+
+```powershell
+$env:EXPO_PUBLIC_API_URL="http://NOVO_IP:8081/api"
+$env:REACT_NATIVE_PACKAGER_HOSTNAME="NOVO_IP"
+```
+
+E reinicie:
+
+```powershell
+npx expo start --lan --port 8082
+```
+
+Leia novamente o QR Code.
+
+### Problema de versão do Expo
+
+Confirme que a versão instalada do Expo Go é compatível com o SDK utilizado pelo projeto.
+
+Dentro de `mobile/`, execute:
+
+```powershell
+npm ci
+npx expo start --lan --port 8082
+```
+
+Depois leia novamente o QR Code.
+
+---
+
+## 8. Encerrar
+
+No terminal do Expo, pressione:
+
+```text
+Ctrl + C
+```
+
+No terminal do backend, pressione também:
+
+```text
+Ctrl + C
+```
+
+Os dados persistidos pelo ambiente local permanecem disponíveis para os próximos testes.
+
+---
+
+## 9. Verificações no computador
+
+Dentro de `mobile/`, execute:
 
 ```powershell
 npm test
@@ -160,6 +366,8 @@ npx tsc --noEmit
 npx expo export --platform android --platform ios
 ```
 
-Esses comandos verificam regras, concorrência da fila offline, TypeScript e os
-bundles Android/iOS. O teste visual e os toques no aparelho devem seguir os passos
-acima; a exportação não é uma instalação de APK/IPA.
+Esses comandos verificam os testes automatizados, a validação TypeScript e a geração dos bundles Android e iOS.
+
+A exportação do Expo não representa a instalação de um APK ou IPA.
+
+Os fluxos visuais, comportamento offline, sincronização e gamificação também devem ser verificados diretamente no aparelho.
