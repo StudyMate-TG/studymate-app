@@ -27,6 +27,7 @@ import * as tarefaService from "../services/tarefaService";
 import type { TarefaResponse } from "../services/tarefaService";
 import { formatarPrioridade } from "../utils/tarefaUtils";
 import { TaskDeadline } from "../components/TaskDeadline";
+import { onProgressoAtualizado } from "../services/gamificacaoService";
 import {
   LastSyncStatus,
 } from "../components/LastSyncStatus";
@@ -41,6 +42,8 @@ export const CalendarScreen: React.FC = () => {
 const isFocused = useIsFocused();
 
 const [tarefas, setTarefas] = useState<TarefaResponse[]>([]);
+const [mensagemStatus, setMensagemStatus] = useState("");
+const [erroStatus, setErroStatus] = useState("");
 
 const [
   ultimaSincronizacao,
@@ -103,6 +106,28 @@ useEffect(() => {
   if (isFocused) void carregarTarefas();
   return () => { ativo = false; };
 }, [isFocused]);
+
+useEffect(() => {
+  if (!isFocused) return;
+  let ativo = true;
+  const unsubscribe = onProgressoAtualizado((idUsuario) => {
+    void Promise.all([
+      tarefaService.listarTarefasConfirmadas(idUsuario),
+      tarefaService.obterUltimaSincronizacaoTarefas(idUsuario),
+    ]).then(([dados, ultimaSync]) => {
+      if (!ativo) return;
+      setTarefas(dados);
+      setUltimaSincronizacao(ultimaSync);
+    }).catch(() => { /* Local tasks remain available offline. */ });
+  });
+  return () => { ativo = false; unsubscribe(); };
+}, [isFocused]);
+
+useEffect(() => {
+  if (!mensagemStatus) return;
+  const timer = setTimeout(() => setMensagemStatus(""), 5500);
+  return () => clearTimeout(timer);
+}, [mensagemStatus]);
 
 const tarefasDoDia = useMemo(() => {
   const ano = selectedDate.getFullYear();
@@ -238,6 +263,7 @@ const handleAlternarStatusTarefa =
       "CONCLUIDA";
 
     try {
+      setErroStatus("");
       setTarefaAlterandoStatus(
         chave
       );
@@ -274,7 +300,12 @@ const handleAlternarStatusTarefa =
                 : item
           )
       );
+      if (!concluida && tarefaAtualizada.syncStatus !== "PENDING" && tarefaAtualizada.syncStatus !== "ERROR") {
+        const xpNovo = tarefaAtualizada.xpGerado - tarefa.xpGerado;
+        if (xpNovo > 0) setMensagemStatus(`✨ +${xpNovo} XP confirmados! Tarefa concluída.`);
+      }
     } catch (error) {
+      setErroStatus(error instanceof Error ? error.message : "Não foi possível alterar a tarefa.");
       console.error(
         "Erro ao alterar status da tarefa:",
         error
@@ -294,6 +325,8 @@ const handleAlternarStatusTarefa =
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
+        {mensagemStatus ? <View style={styles.rewardBanner} accessibilityLiveRegion="polite"><Text style={styles.rewardText}>{mensagemStatus}</Text></View> : null}
+        {erroStatus ? <Text style={styles.errorText}>{erroStatus}</Text> : null}
         <Card style={styles.monthCard}>
           <View style={styles.monthRow}>
             <Pressable onPress={goToPreviousMonth} style={styles.monthArrow}>
@@ -502,7 +535,7 @@ const handleAlternarStatusTarefa =
                     styles.completedText
                   }
                 >
-                  Tarefa concluída
+                  {tarefa.syncStatus === "PENDING" || tarefa.syncStatus === "ERROR" ? "Concluída • XP aguardando sincronização" : tarefa.xpGerado > 0 ? `Concluída • ${tarefa.xpGerado} XP registrados` : "Tarefa concluída"}
                 </Text>
               )}
             </View>
@@ -548,6 +581,9 @@ const handleAlternarStatusTarefa =
 };
 
 const styles = StyleSheet.create({
+  rewardBanner: { backgroundColor: "#DCFCE7", borderColor: "#86EFAC", borderWidth: 1, borderRadius: 12, padding: 14, marginBottom: 14 },
+  rewardText: { color: "#166534", fontWeight: "700", fontSize: 13, textAlign: "center" },
+  errorText: { color: "#DC2626", fontSize: 13, marginBottom: 14 },
   container: {
     flex: 1,
     backgroundColor: "#F8FAFC",

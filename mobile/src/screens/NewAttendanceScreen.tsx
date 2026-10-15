@@ -10,6 +10,7 @@ import {
   Platform,
   KeyboardAvoidingView,
   ActivityIndicator,
+  AppState,
 } from "react-native";
 
 import { useNavigation } from "@react-navigation/native";
@@ -35,22 +36,23 @@ import {
   BookOpen,
 } from "lucide-react-native";
 
-import {
-  obterUsuarioSessao,
-} from "../services/authService";
+import { obterUsuarioSessao } from "../services/authService";
 
-import {
-  listarDisciplinas,
-} from "../services/disciplinaService";
+import { listarDisciplinas } from "../services/disciplinaService";
 
 import {
   cadastrarFalta,
   buscarTotalFaltas,
 } from "../services/faltaService";
 
+import { cadastrarPresenca } from "../services/presencaService";
+
 import {
-  verificarNotificacaoFaltas,
-} from "../services/notificacaoService";
+  formatarDataEstudo,
+  obterDataHojeSaoPaulo,
+} from "../utils/dataEstudoUtils";
+
+import { verificarNotificacaoFaltas } from "../services/notificacaoService";
 
 export const NewAttendanceScreen: React.FC = () => {
   const navigation =
@@ -60,73 +62,60 @@ export const NewAttendanceScreen: React.FC = () => {
       >
     >();
 
-  const [
-    idUsuario,
-    setIdUsuario,
-  ] = useState<number | null>(
-    null
-  );
+const [idUsuario, setIdUsuario] = useState<number | null>(null);
 
-  const [
-    disciplinas,
-    setDisciplinas,
-  ] = useState<
-    DisciplinaResponse[]
-  >([]);
+const [tipoRegistro, setTipoRegistro] = useState<"PRESENCA" | "FALTA">(
+  "PRESENCA"
+);
 
-  const [
-    idDisciplina,
-    setIdDisciplina,
-  ] = useState<number | null>(
-    null
-  );
+const [xpRecebido, setXpRecebido] = useState(0);
 
-  const [
-    mostrarDisciplinas,
-    setMostrarDisciplinas,
-  ] = useState(false);
+const [dataPresencaHoje, setDataPresencaHoje] = useState(
+  obterDataHojeSaoPaulo
+);
 
-  const [
-    dataFalta,
-    setDataFalta,
-  ] = useState(
-    new Date().toLocaleDateString(
-      "pt-BR"
-    )
-  );
+const [disciplinas, setDisciplinas] = useState<DisciplinaResponse[]>([]);
 
-  const [
-    quantidadeAulas,
-    setQuantidadeAulas,
-  ] = useState("1");
+const [idDisciplina, setIdDisciplina] = useState<number | null>(null);
 
-  const [
-    carregando,
-    setCarregando,
-  ] = useState(true);
+const [mostrarDisciplinas, setMostrarDisciplinas] = useState(false);
 
-  const [
-    salvando,
-    setSalvando,
-  ] = useState(false);
+const [dataFalta, setDataFalta] = useState(
+  new Date().toLocaleDateString("pt-BR", {
+    timeZone: "America/Sao_Paulo",
+  })
+);
 
-  const [
-    showSuccess,
-    setShowSuccess,
-  ] = useState(false);
+const [quantidadeAulas, setQuantidadeAulas] = useState("1");
 
-  const showAlert = (
-    title: string,
-    message: string
-  ) => {
-    if (
-      Platform.OS === "web" &&
-      typeof window !==
-        "undefined"
-    ) {
-      window.alert(
-        `${title}: ${message}`
-      );
+const [carregando, setCarregando] = useState(true);
+
+const [salvando, setSalvando] = useState(false);
+
+const [showSuccess, setShowSuccess] = useState(false);
+
+useEffect(() => {
+  const atualizarDataHoje = () => {
+    setDataPresencaHoje(obterDataHojeSaoPaulo());
+  };
+
+  const timer = setInterval(atualizarDataHoje, 60_000);
+
+  const subscription = AppState.addEventListener("change", (estado) => {
+    if (estado === "active") {
+      atualizarDataHoje();
+    }
+  });
+
+  return () => {
+    clearInterval(timer);
+    subscription.remove();
+  };
+}, []);
+
+const showAlert = (title: string, message: string) => {
+  if (Platform.OS === "web" && typeof window !== "undefined") {
+    window.alert(`${title}: ${message}`);
     } else {
       Alert.alert(
         title,
@@ -260,168 +249,124 @@ export const NewAttendanceScreen: React.FC = () => {
     return `${ano}-${mes}-${dia}`;
   };
 
-  const disciplinaSelecionada =
-    disciplinas.find(
-      (disciplina) =>
-        disciplina.idDisciplina ===
-        idDisciplina
+const disciplinaSelecionada = disciplinas.find(
+  (disciplina) => disciplina.idDisciplina === idDisciplina
+);
+
+const handleSubmit = async () => {
+  const dataRegistro =
+    tipoRegistro === "PRESENCA"
+      ? formatarDataEstudo(obterDataHojeSaoPaulo())
+      : dataFalta.trim();
+
+  if (!idUsuario) {
+    showAlert(
+      "Atenção",
+      "Usuário não encontrado. Faça login novamente."
     );
 
-  const handleSubmit =
-    async () => {
-      if (!idUsuario) {
-        showAlert(
-          "Atenção",
-          "Usuário não encontrado. Faça login novamente."
-        );
+    return;
+  }
 
-        return;
-      }
+  if (!idDisciplina) {
+    showAlert(
+      "Atenção",
+      "Selecione uma disciplina."
+    );
 
-      if (!idDisciplina) {
-        showAlert(
-          "Atenção",
-          "Selecione uma disciplina."
-        );
+    return;
+  }
 
-        return;
-      }
+  if (!dataRegistro) {
+    showAlert(
+      "Atenção",
+      "Informe a data da aula."
+    );
 
-      if (
-        !dataFalta.trim()
-      ) {
-        showAlert(
-          "Atenção",
-          "Informe a data da falta."
-        );
+    return;
+  }
 
-        return;
-      }
+  if (!isValidBrazilianDate(dataRegistro)) {
+    showAlert(
+      "Atenção",
+      "Informe a data no formato DD/MM/AAAA."
+    );
 
-      if (
-        !isValidBrazilianDate(
-          dataFalta.trim()
-        )
-      ) {
-        showAlert(
-          "Atenção",
-          "Informe a data no formato DD/MM/AAAA."
-        );
+    return;
+  }
 
-        return;
-      }
+  const quantidade = Number(quantidadeAulas);
 
-      const quantidade =
-        Number(
-          quantidadeAulas
-        );
+  if (
+    tipoRegistro === "FALTA" &&
+    (
+      Number.isNaN(quantidade) ||
+      !Number.isInteger(quantidade) ||
+      quantidade <= 0
+    )
+  ) {
+    showAlert(
+      "Atenção",
+      "Informe uma quantidade válida de aulas perdidas."
+    );
 
-      if (
-        Number.isNaN(
-          quantidade
-        ) ||
-        !Number.isInteger(
-          quantidade
-        ) ||
-        quantidade <= 0
-      ) {
-        showAlert(
-          "Atenção",
-          "Informe uma quantidade válida de aulas perdidas."
-        );
+    return;
+  }
 
-        return;
-      }
+  try {
+    setSalvando(true);
+
+    const dataApi = converterDataParaApi(dataRegistro);
+
+    if (tipoRegistro === "PRESENCA") {
+      const presenca = await cadastrarPresenca(idUsuario, {
+        idDisciplina,
+        dataPresenca: dataApi,
+      });
+
+      setXpRecebido(presenca.xpGerado);
+    } else {
+      await cadastrarFalta(idUsuario, {
+        idDisciplina,
+        dataFalta: dataApi,
+        quantidadeAulas: quantidade,
+      });
 
       try {
-        setSalvando(
-          true
+        const totalFaltas = await buscarTotalFaltas(
+          idDisciplina,
+          idUsuario
         );
 
-        const dataApi =
-          converterDataParaApi(
-            dataFalta.trim()
-          );
-
-        await cadastrarFalta(
-          idUsuario,
-          {
+        if (disciplinaSelecionada) {
+          await verificarNotificacaoFaltas({
+            idUsuario,
             idDisciplina,
-
-            dataFalta:
-              dataApi,
-
-            quantidadeAulas:
-              quantidade,
-          }
-        );
-
-        /*
-         * A falta já foi registrada.
-         *
-         * Agora buscamos o total atualizado
-         * para verificar 75% e 100% do
-         * limite da disciplina.
-         */
-        try {
-          const totalFaltas =
-            await buscarTotalFaltas(
-              idDisciplina,
-              idUsuario
-            );
-
-          const disciplina =
-            disciplinas.find(
-              (item) =>
-                item.idDisciplina ===
-                idDisciplina
-            );
-
-          if (disciplina) {
-            await verificarNotificacaoFaltas({
-              idUsuario,
-
-              idDisciplina,
-
-              nomeDisciplina:
-                disciplina.nome,
-
-              totalFaltas,
-
-              limiteFaltas:
-                disciplina.limiteFaltas ??
-                0,
-            });
-          }
-        } catch (
-          notificationError
-        ) {
-          /*
-           * Falha no alerta não deve impedir
-           * o cadastro da falta.
-           */
-          console.warn(
-            "Falta registrada, mas não foi possível verificar o alerta de faltas.",
-            notificationError
-          );
+            nomeDisciplina: disciplinaSelecionada.nome,
+            totalFaltas,
+            limiteFaltas: disciplinaSelecionada.limiteFaltas ?? 0,
+          });
         }
-
-        setShowSuccess(
-          true
-        );
-      } catch (erro) {
-        showAlert(
-          "Erro",
-          erro instanceof Error
-            ? erro.message
-            : "Não foi possível registrar a falta."
-        );
-      } finally {
-        setSalvando(
-          false
+      } catch (notificationError) {
+        console.warn(
+          "Falta registrada, mas não foi possível verificar o alerta de faltas.",
+          notificationError
         );
       }
-    };
+    }
+
+  setShowSuccess(true);
+} catch (erro) {
+  showAlert(
+    "Erro",
+    erro instanceof Error
+      ? erro.message
+      : "Não foi possível registrar a frequência."
+  );
+} finally {
+  setSalvando(false);
+}
+};
 
   if (showSuccess) {
     return (
@@ -431,7 +376,7 @@ export const NewAttendanceScreen: React.FC = () => {
         }
       >
         <MobileHeader
-          title="Registrar Falta"
+          title="Registrar frequência"
           showBack
           onBack={() =>
             navigation.goBack()
@@ -454,41 +399,40 @@ export const NewAttendanceScreen: React.FC = () => {
             />
           </View>
 
-          <Text
-            style={
-              styles.successTitle
-            }
-          >
-            Falta registrada com
-            sucesso!
+          <Text style={styles.successTitle}>
+            {tipoRegistro === "PRESENCA"
+              ? "Presença registrada!"
+              : "Falta registrada com sucesso!"}
           </Text>
 
-          <Text
-            style={
-              styles.successSubtitle
-            }
-          >
-            A falta foi registrada em{" "}
-            {disciplinaSelecionada
-              ?.nome ??
-              "disciplina selecionada"}.
+          <Text style={styles.successSubtitle}>
+            {tipoRegistro === "PRESENCA"
+              ? "Sua presença foi registrada em "
+              : "A falta foi registrada em "}
+            {disciplinaSelecionada?.nome ?? "disciplina selecionada"}.
           </Text>
+
+          {tipoRegistro === "PRESENCA" && xpRecebido > 0 && (
+            <View style={styles.xpReward}>
+              <Text style={styles.xpRewardText}>
+                ✨ +{xpRecebido} XP conquistados
+              </Text>
+
+              <Text style={styles.xpRewardCaption}>
+                Mais um passo na sua jornada de estudos.
+              </Text>
+            </View>
+          )}
 
           <Button
             title="Voltar ao Início"
-            onPress={() =>
-              navigation.navigate(
-                "MainTabs"
-              )
-            }
-            style={
-              styles.backButton
-            }
+            onPress={() => navigation.navigate("MainTabs")}
+            style={styles.backButton}
           />
-        </View>
-      </View>
-    );
-  }
+                  </View>
+                </View>
+              );
+            }
 
   return (
     <KeyboardAvoidingView
@@ -503,7 +447,7 @@ export const NewAttendanceScreen: React.FC = () => {
       }
     >
       <MobileHeader
-        title="Registrar Falta"
+        title="Registrar frequência"
         showBack
         onBack={() =>
           navigation.goBack()
@@ -516,16 +460,45 @@ export const NewAttendanceScreen: React.FC = () => {
         }
         keyboardShouldPersistTaps="handled"
       >
-        <Card
-          style={
-            styles.formCard
-          }
-        >
-          <Text
-            style={
-              styles.sectionLabel
-            }
-          >
+        <Card style={styles.formCard}>
+          <Text style={styles.formTitle}>
+            Cada aula conta
+          </Text>
+
+          <Text style={styles.formSubtitle}>
+            Registre sua presença, ganhe XP e mantenha sua ofensiva.
+          </Text>
+
+          <View style={styles.typeRow}>
+            {(["PRESENCA", "FALTA"] as const).map((tipo) => (
+              <Pressable
+                key={tipo}
+                disabled={salvando}
+                accessibilityRole="button"
+                accessibilityState={{
+                  selected: tipoRegistro === tipo,
+                }}
+                onPress={() => setTipoRegistro(tipo)}
+                style={[
+                  styles.typeButton,
+                  tipoRegistro === tipo && styles.typeButtonSelected,
+                ]}
+              >
+                <Text
+                  style={[
+                    styles.typeText,
+                    tipoRegistro === tipo && styles.typeTextSelected,
+                  ]}
+                >
+                  {tipo === "PRESENCA"
+                    ? "✓ Estive presente"
+                    : "Registrar falta"}
+                </Text>
+              </Pressable>
+            ))}
+          </View>
+
+          <Text style={styles.sectionLabel}>
             Disciplina
           </Text>
 
@@ -671,22 +644,22 @@ export const NewAttendanceScreen: React.FC = () => {
             }
           >
             <Input
-              label="Data da Falta"
+              label={tipoRegistro === "PRESENCA" ? "Data da presença" : "Data da Falta"}
               placeholder="DD/MM/AAAA"
+              
               value={
-                dataFalta
+                tipoRegistro === "PRESENCA"
+                  ? formatarDataEstudo(dataPresencaHoje)
+                  : dataFalta
               }
-              onChangeText={
-                setDataFalta
-              }
-            />
-          </View>
+              editable={tipoRegistro === "FALTA"}
+              onChangeText={setDataFalta}
+              />
+              </View>
 
-          <View
-            style={
-              styles.fieldSpacing
-            }
-          >
+              {tipoRegistro === "FALTA" && (
+                <View style={styles.fieldSpacing}>
+
             <Input
               label="Quantidade de aulas perdidas"
               placeholder="Ex: 2"
@@ -699,21 +672,19 @@ export const NewAttendanceScreen: React.FC = () => {
               keyboardType="numeric"
             />
           </View>
+        )}
 
-          <Text
-            style={
-              styles.helpText
-            }
-          >
-            Informe quantas aulas
-            foram perdidas nessa data.
+          <Text style={styles.helpText}>
+            {tipoRegistro === "PRESENCA"
+              ? "Presenças somente hoje, no horário de Brasília: +20 XP uma vez por disciplina. A atividade de hoje mantém sua ofensiva."
+              : "Informe quantas aulas foram perdidas nessa data."}
           </Text>
 
           <Button
             title={
               salvando
                 ? "Registrando..."
-                : "Registrar Falta"
+                : tipoRegistro === "PRESENCA" ? "Registrar presença • +20 XP" : "Registrar Falta"
             }
             onPress={
               handleSubmit
@@ -734,13 +705,21 @@ export const NewAttendanceScreen: React.FC = () => {
   );
 };
 
-const styles =
-  StyleSheet.create({
-    container: {
-      flex: 1,
-      backgroundColor:
-        "#F8FAFC",
-    },
+const styles = StyleSheet.create({
+  formTitle: { fontSize: 21, fontWeight: "800", color: "#0F172A", marginBottom: 5 },
+  formSubtitle: { fontSize: 13, color: "#64748B", lineHeight: 20, marginBottom: 18 },
+  typeRow: { flexDirection: "row", gap: 8, marginBottom: 24 },
+  typeButton: { flex: 1, borderRadius: 10, paddingVertical: 12, alignItems: "center", borderWidth: 1, borderColor: "#E2E8F0", backgroundColor: "#F8FAFC" },
+  typeButtonSelected: { backgroundColor: "#EFF6FF", borderColor: "#2563EB" },
+  typeText: { fontSize: 12, fontWeight: "600", color: "#64748B" },
+  typeTextSelected: { color: "#2563EB" },
+  xpReward: { backgroundColor: "#EFF6FF", borderRadius: 16, padding: 20, marginBottom: 24, width: "100%", maxWidth: 350, alignItems: "center", borderWidth: 1, borderColor: "#BFDBFE" },
+  xpRewardText: { color: "#2563EB", fontWeight: "800", fontSize: 20 },
+  xpRewardCaption: { color: "#64748B", fontSize: 12, marginTop: 6 },
+  container: {
+    flex: 1,
+    backgroundColor: "#F8FAFC",
+  },
 
     scrollContent: {
       padding: 16,
@@ -897,4 +876,4 @@ const styles =
       width: "100%",
       maxWidth: 240,
     },
-  });
+});

@@ -23,9 +23,10 @@ export async function buscarMetadata(
 
 export async function salvarMetadata(
   key: string,
-  value: string
+  value: string,
+  idUsuario?: number
 ): Promise<void> {
-  const db = await getDatabase();
+  const db = await getDatabase(idUsuario);
 
   await db.runAsync(
     `

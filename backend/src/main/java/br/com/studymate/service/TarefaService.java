@@ -25,6 +25,7 @@ public class TarefaService {
     private final TarefaRepository tarefaRepository;
     private final DisciplinaRepository disciplinaRepository;
     private final UsuarioRepository usuarioRepository;
+    private final GamificacaoService gamificacaoService;
     private final int maxCount;
     private final int maxDescription;
     private final long maxStoredChars;
@@ -33,6 +34,7 @@ public class TarefaService {
             TarefaRepository tarefaRepository,
             DisciplinaRepository disciplinaRepository,
             UsuarioRepository usuarioRepository,
+            GamificacaoService gamificacaoService,
             @Value("${app.tasks.max-count:1000}") int maxCount,
             @Value("${app.tasks.max-description:4096}") int maxDescription,
             @Value("${app.tasks.max-stored-chars:4096000}") long maxStoredChars) {
@@ -40,6 +42,7 @@ public class TarefaService {
         this.tarefaRepository = tarefaRepository;
         this.disciplinaRepository = disciplinaRepository;
         this.usuarioRepository = usuarioRepository;
+        this.gamificacaoService = gamificacaoService;
         if (maxCount < 1 || maxCount > 1000
                 || maxDescription < 1 || maxDescription > 4096
                 || maxStoredChars < 1 || maxStoredChars > 4096000L) {
@@ -105,7 +108,7 @@ public class TarefaService {
         tarefa.setStatus("PENDENTE");
         tarefa.setDataConclusao(null);
 
-        // Ainda não definimos a regra de XP.
+        // O XP é concedido pelo servidor somente na primeira conclusão.
         tarefa.setXpGerado(0);
 
         Tarefa salva =
@@ -183,8 +186,9 @@ public class TarefaService {
 
         tarefa.setStatus("CONCLUIDA");
         tarefa.setDataConclusao(
-                LocalDateTime.now()
+                gamificacaoService.agoraLocal()
         );
+        gamificacaoService.premiarConclusao(idUsuario, tarefa);
 
         Tarefa salva =
                 tarefaRepository.saveAndFlush(tarefa);

@@ -16,12 +16,56 @@ npm run web
 O Metro bundler compilará a versão web e abrirá automaticamente em `http://localhost:8081`.
 
 ### Opção 2: No Celular Físico (Expo Go)
-1. Instale o aplicativo **Expo Go** no seu smartphone (Google Play Store ou Apple App Store).
-2. No computador, execute:
-   ```bash
-   npm start
-   ```
-3. Aponte a câmera do seu celular para o QR Code gerado no terminal.
+
+O computador e o celular devem estar conectados à mesma rede local.
+
+Primeiro, descubra o IPv4 do computador:
+
+```powershell
+ipconfig
+```
+
+Depois inicie a API permitindo acesso pela rede:
+
+```powershell
+cd backend
+
+$env:SPRING_PROFILES_ACTIVE="local"
+$env:SERVER_ADDRESS="0.0.0.0"
+$env:JWT_SECRET=[Convert]::ToBase64String(
+    [System.Security.Cryptography.RandomNumberGenerator]::GetBytes(64)
+)
+
+.\mvnw.cmd spring-boot:run
+```
+
+Em outro terminal, entre na pasta `mobile` e configure o IP do computador:
+
+```powershell
+cd mobile
+npm ci
+
+$env:EXPO_PUBLIC_API_URL="http://SEU_IP:8081/api"
+$env:REACT_NATIVE_PACKAGER_HOSTNAME="SEU_IP"
+
+npx expo start --lan --port 8082
+```
+
+Substitua `SEU_IP` pelo IPv4 obtido com `ipconfig`.
+
+Caso o Expo solicite autenticação:
+
+```powershell
+npx expo login
+```
+
+Utilize no computador a mesma conta utilizada no Expo Go.
+
+Para instruções detalhadas de teste em aparelho físico, consulte:
+
+```text
+TESTE-NO-CELULAR.md
+```
 
 ### Opção 3: No Docker
 Na raiz do repositório (`Study Mate/`):

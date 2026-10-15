@@ -104,13 +104,14 @@ class TaskSecurityTests {
                 () -> tarefas.concluir(criada.getIdTarefa(), usuario));
         assertEquals("CONCLUIDA", concluida.getStatus());
         assertNotNull(concluida.getDataConclusao());
-        assertEquals(0, concluida.getXpGerado());
+        assertEquals(30, concluida.getXpGerado());
         var dataConclusaoPersistida = TestIdentity.callAs(usuario,
                 () -> tarefas.consultarPorId(criada.getIdTarefa(), usuario)).getDataConclusao();
         var novamenteEditada = TestIdentity.callAs(usuario,
                 () -> tarefas.alterar(criada.getIdTarefa(), usuario, request(usuario, disciplina, null)));
         assertNull(novamenteEditada.getDescricao());
         assertEquals("CONCLUIDA", novamenteEditada.getStatus());
+        assertEquals(30, novamenteEditada.getXpGerado());
         assertEquals(dataConclusaoPersistida, novamenteEditada.getDataConclusao());
         assertThrows(IllegalArgumentException.class, () -> TestIdentity.callAs(usuario,
                 () -> tarefas.concluir(criada.getIdTarefa(), usuario)));
@@ -282,11 +283,12 @@ class TaskSecurityTests {
         var tr = mock(TarefaRepository.class);
         var dr = mock(DisciplinaRepository.class);
         var ur = mock(UsuarioRepository.class);
-        assertDoesNotThrow(() -> new TarefaService(tr, dr, ur, 1, 1, 1));
-        assertThrows(IllegalArgumentException.class, () -> new TarefaService(tr, dr, ur, 1001, 4096, 4096000));
-        assertThrows(IllegalArgumentException.class, () -> new TarefaService(tr, dr, ur, 1000, 4097, 4096000));
-        assertThrows(IllegalArgumentException.class, () -> new TarefaService(tr, dr, ur, 1000, 4096, 4096001));
-        assertThrows(IllegalArgumentException.class, () -> new TarefaService(tr, dr, ur, 0, 4096, 4096000));
+        var gs = mock(br.com.studymate.service.GamificacaoService.class);
+        assertDoesNotThrow(() -> new TarefaService(tr, dr, ur, gs, 1, 1, 1));
+        assertThrows(IllegalArgumentException.class, () -> new TarefaService(tr, dr, ur, gs, 1001, 4096, 4096000));
+        assertThrows(IllegalArgumentException.class, () -> new TarefaService(tr, dr, ur, gs, 1000, 4097, 4096000));
+        assertThrows(IllegalArgumentException.class, () -> new TarefaService(tr, dr, ur, gs, 1000, 4096, 4096001));
+        assertThrows(IllegalArgumentException.class, () -> new TarefaService(tr, dr, ur, gs, 0, 4096, 4096000));
     }
 
     private int cadastrarConcorrentes(String descricao) throws Exception {
