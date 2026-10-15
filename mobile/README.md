@@ -17,18 +17,55 @@ O Metro bundler compilará a versão web e abrirá automaticamente em `http://lo
 
 ### Opção 2: No Celular Físico (Expo Go)
 
-Na raiz do repositório, execute `iniciar-mobile.cmd`. O iniciador prepara a API,
-configura o endereço de rede do computador e abre o Expo na porta 8082.
-Use Node.js 22.13 ou superior e Expo Go compatível com o SDK 57.
-No iPhone, use o Expo Go já instalado com suporte ao SDK 57. React, React Native
-e módulos nativos seguem as versões compatíveis com esse SDK.
-Entre no Expo Go com sua **conta Expo gratuita** e, no computador, execute
-`entrar-expo.cmd` na raiz para entrar pelo navegador com **a mesma conta**.
-Depois toque em **Try Again** no iPhone, se a tela de aviso estiver aberta.
-O login do Expo é separado do login do StudyMate, feito dentro do aplicativo.
-Siga o [tutorial completo de instalação e teste da gamificação](TESTE-NO-CELULAR.md).
-Se o computador tiver várias placas de rede, use
-`iniciar-mobile.cmd -IpComputador 192.168.0.105`, trocando pelo IPv4 do `ipconfig`.
+O computador e o celular devem estar conectados à mesma rede local.
+
+Primeiro, descubra o IPv4 do computador:
+
+```powershell
+ipconfig
+```
+
+Depois inicie a API permitindo acesso pela rede:
+
+```powershell
+cd backend
+
+$env:SPRING_PROFILES_ACTIVE="local"
+$env:SERVER_ADDRESS="0.0.0.0"
+$env:JWT_SECRET=[Convert]::ToBase64String(
+    [System.Security.Cryptography.RandomNumberGenerator]::GetBytes(64)
+)
+
+.\mvnw.cmd spring-boot:run
+```
+
+Em outro terminal, entre na pasta `mobile` e configure o IP do computador:
+
+```powershell
+cd mobile
+npm ci
+
+$env:EXPO_PUBLIC_API_URL="http://SEU_IP:8081/api"
+$env:REACT_NATIVE_PACKAGER_HOSTNAME="SEU_IP"
+
+npx expo start --lan --port 8082
+```
+
+Substitua `SEU_IP` pelo IPv4 obtido com `ipconfig`.
+
+Caso o Expo solicite autenticação:
+
+```powershell
+npx expo login
+```
+
+Utilize no computador a mesma conta utilizada no Expo Go.
+
+Para instruções detalhadas de teste em aparelho físico, consulte:
+
+```text
+TESTE-NO-CELULAR.md
+```
 
 ### Opção 3: No Docker
 Na raiz do repositório (`Study Mate/`):

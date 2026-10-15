@@ -8,22 +8,18 @@ skinparam ranksep 40
 
 actor Estudante
 
-rectangle "Aplicativo StudyMate" {
+rectangle "Sistema StudyMate - Funcionamento Offline" {
 
-    usecase "Consultar dados offline" as UC16
+    usecase "Consultar tarefas\noffline" as UC16
 
-    usecase "Realizar alterações\noffline" as UC17
-    usecase "Registrar operação\npendente" as UC17A
-
-    usecase "Sincronizar dados\ncom o servidor" as UC18
-    usecase "Enviar operações\npendentes" as UC18A
-    usecase "Atualizar dados\nlocais" as UC18B
+    usecase "Realizar alterações\nem tarefas offline" as UC17
+    usecase "Persistir alteração\nno SQLite" as UC17A
+    usecase "Registrar operação\npendente" as UC17B
 
     usecase "Consultar estado da\nsincronização" as UC19
-    
+
     UC17 -[hidden]right-> UC17A
-    UC18 -[hidden]right-> UC18A
-    UC18A -[hidden]down-> UC18B
+    UC17A -[hidden]down-> UC17B
 
 }
 
@@ -32,7 +28,7 @@ Estudante --> UC17
 Estudante --> UC19
 
 UC17 .> UC17A : <<include>>
-UC18 .> UC18A : <<include>>
-UC18 .> UC18B : <<include>>
+UC17 .> UC17B : <<include>>
+
 
 @enduml

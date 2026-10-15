@@ -30,6 +30,6 @@ Media = soma(nota * peso) / soma(peso), considerando somente avaliacoes com nota
 
 Cadastro/consulta/edicao/exclusao: HTTP 200 conforme rotas existentes. Dados invalidos: 400. Avaliacao inexistente ou pertencente a outra conta: 404, sem revelar dados. Conflito de integridade: 409. Erros inesperados: 500 com mensagem generica. Exclusao fisica nesta versao; sincronizacao de avaliacoes nao faz parte deste modulo.
 
-A tabela avaliacao e a sequence seq_avaliacao ja constam no DDL Oracle; execute o script atualizado em um schema adequado antes de usar. ID da avaliacao e Long, compatível com a sequence preparada. Nenhuma alteracao no app mobile foi implementada nesta entrega.
+A tabela avaliacao e a sequence seq_avaliacao ja constam no DDL Oracle; execute o script atualizado em um schema adequado antes de usar. ID da avaliacao e Long, compatível com a sequence preparada. O aplicativo móvel integra o módulo de avaliações, permitindo cadastro, consulta, edição e exclusão de avaliações, além da visualização da média calculada por disciplina.
 
 Testes: em backend com JDK 17, executar `mvnw.cmd test`. AvaliacaoFlowTests verifica CRUD, media ponderada, notas pendentes, validacoes HTTP e restricoes por usuario.

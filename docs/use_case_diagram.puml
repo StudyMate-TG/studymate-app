@@ -1,5 +1,4 @@
 @startuml
-
 left to right direction
 
 skinparam linetype spline
@@ -22,33 +21,37 @@ rectangle "Sistema StudyMate" {
         usecase "Gerenciar período\nletivo" as UC04
         usecase "Gerenciar disciplinas" as UC05
         usecase "Gerenciar horários\nde aula" as UC06
-        
+
         usecase "Gerenciar tarefas" as UC07
-        usecase "Concluir Tarefa" as UC07A
-        usecase "Reagendar Tarefa" as UC07B
-        
+        usecase "Concluir tarefa" as UC07A
+        usecase "Reagendar tarefa" as UC07B
+        usecase "Reabrir tarefa" as UC07C
+
         usecase "Gerenciar avaliações" as UC08
         usecase "Calcular média" as UC09
-        usecase "Registrar faltas" as UC10
-        usecase "Controlar faltas" as UC11
+
+        usecase "Registrar presenças\ne faltas" as UC10
+        usecase "Acompanhar frequência\ne limite de faltas" as UC11
+
         usecase "Consultar notificações" as UC12
         usecase "Marcar notificação\ncomo lida" as UC12A
     }
 
     rectangle "Progresso e Gamificação" {
         usecase "Acompanhar progresso" as UC13
-        usecase "Consultar conquistas" as UC14
+        usecase "Acompanhar conquistas" as UC14
     }
 
     rectangle "Funcionamento Offline" {
-        usecase "Consultar dados offline" as UC16
-        usecase "Realizar alterações\noffline" as UC17
-        usecase "Sincronizar dados\ncom o servidor" as UC18
+        usecase "Consultar tarefas\noffline" as UC16
+        usecase "Realizar alterações\nem tarefas offline" as UC17
+        usecase "Sincronizar tarefas\ncom o servidor" as UC18
         usecase "Consultar estado da\nsincronização" as UC19
     }
-    
+
     UC07 -[hidden]right-> UC07A
     UC07A -[hidden]down-> UC07B
+    UC07B -[hidden]down-> UC07C
     UC12 -[hidden]right-> UC12A
 }
 
@@ -60,20 +63,21 @@ Estudante --> UC05
 Estudante --> UC06
 Estudante --> UC07
 Estudante --> UC08
+Estudante --> UC09
 Estudante --> UC10
+Estudante --> UC11
 Estudante --> UC12
 Estudante --> UC13
 Estudante --> UC14
 Estudante --> UC15
 Estudante --> UC16
 Estudante --> UC17
+Estudante --> UC18
 Estudante --> UC19
 
 UC07A ..> UC07 : <<extend>>
 UC07B ..> UC07 : <<extend>>
-UC08 ..> UC09 : <<include>>
-UC10 ..> UC11 : <<include>>
-
+UC07C ..> UC07 : <<extend>>
 UC12A ..> UC12 : <<extend>>
 
 @enduml
