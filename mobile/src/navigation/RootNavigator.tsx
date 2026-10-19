@@ -38,10 +38,12 @@ import { ProfileScreen } from "../screens/ProfileScreen";
 import { EditProfileScreen } from "../screens/EditProfileScreen";
 import { PeriodsScreen } from "../screens/PeriodsScreen";
 import { NewPeriodScreen } from "../screens/NewPeriodScreen";
-
 import { EvaluationsScreen } from "../screens/EvaluationsScreen";
 import { NewEvaluationScreen } from "../screens/NewEvaluationScreen";
 import { EditEvaluationScreen } from "../screens/EditEvaluationScreen";
+import { ClassSchedulesScreen } from "../screens/ClassSchedulesScreen";
+import { NewClassScheduleScreen } from "../screens/NewClassScheduleScreen";
+import { EditClassScheduleScreen } from "../screens/EditClassScheduleScreen";
 
 import {
   Home,
@@ -263,7 +265,7 @@ export const RootNavigator: React.FC = () => {
       />
       <Stack.Screen name="EditTask"
        component={EditTaskScreen}
-        />
+       />
 
       <Stack.Screen
         name="NewAttendance"
@@ -298,6 +300,21 @@ export const RootNavigator: React.FC = () => {
       <Stack.Screen
         name="NewPeriod"
         component={NewPeriodScreen}
+      />
+
+      <Stack.Screen
+        name="ClassSchedules"
+        component={ClassSchedulesScreen}
+      />
+
+      <Stack.Screen
+        name="NewClassSchedule"
+        component={NewClassScheduleScreen}
+      />
+
+      <Stack.Screen
+        name="EditClassSchedule"
+        component={EditClassScheduleScreen}
       />
     </Stack.Navigator>
   );
