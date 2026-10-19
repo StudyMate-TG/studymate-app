@@ -16,6 +16,8 @@ import {
   Calendar as CalendarIcon,
   CheckCircle2,
   Circle,
+  Clock,
+  MapPin,
 } from "lucide-react-native";
 
 import { useIsFocused, useNavigation } from "@react-navigation/native";
@@ -32,6 +34,14 @@ import {
   LastSyncStatus,
 } from "../components/LastSyncStatus";
 
+import {
+  listarHorariosAula,
+} from "../services/horarioAulaService";
+
+import type {
+  HorarioAulaResponse,
+} from "../types";
+
 
 export const CalendarScreen: React.FC = () => {
   const [selectedDate, setSelectedDate] = useState(new Date());
@@ -42,6 +52,10 @@ export const CalendarScreen: React.FC = () => {
 const isFocused = useIsFocused();
 
 const [tarefas, setTarefas] = useState<TarefaResponse[]>([]);
+const [
+  horariosAula,
+  setHorariosAula,
+] = useState<HorarioAulaResponse[]>([]);
 const [mensagemStatus, setMensagemStatus] = useState("");
 const [erroStatus, setErroStatus] = useState("");
 
@@ -108,6 +122,36 @@ useEffect(() => {
 }, [isFocused]);
 
 useEffect(() => {
+  let ativo = true;
+
+  const carregarHorarios = async () => {
+    try {
+      const dados =
+        await listarHorariosAula();
+
+      if (!ativo) {
+        return;
+      }
+
+      setHorariosAula(dados);
+    } catch (error) {
+      console.error(
+        "Erro ao carregar horários de aula na agenda:",
+        error
+      );
+    }
+  };
+
+  if (isFocused) {
+    void carregarHorarios();
+  }
+
+  return () => {
+    ativo = false;
+  };
+}, [isFocused]);
+
+useEffect(() => {
   if (!isFocused) return;
   let ativo = true;
   const unsubscribe = onProgressoAtualizado((idUsuario) => {
@@ -129,6 +173,74 @@ useEffect(() => {
   return () => clearTimeout(timer);
 }, [mensagemStatus]);
 
+const normalizarDiaSemana = (
+  valor: string
+) =>
+  valor
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .trim()
+    .toLowerCase();
+
+const obterNumeroDiaSemana = (
+  diaSemana: string
+): number | null => {
+  const dia =
+    normalizarDiaSemana(diaSemana);
+
+  const dias: Record<string, number> = {
+    domingo: 0,
+
+    segunda: 1,
+    "segunda-feira": 1,
+
+    terca: 2,
+    "terca-feira": 2,
+
+    quarta: 3,
+    "quarta-feira": 3,
+
+    quinta: 4,
+    "quinta-feira": 4,
+
+    sexta: 5,
+    "sexta-feira": 5,
+
+    sabado: 6,
+  };
+
+  return dias[dia] ?? null;
+};
+
+  const formatarDataIso = (
+    data: Date
+  ): string => {
+    const ano = data.getFullYear();
+
+    const mes = String(
+      data.getMonth() + 1
+    ).padStart(2, "0");
+
+    const dia = String(
+      data.getDate()
+    ).padStart(2, "0");
+
+    return `${ano}-${mes}-${dia}`;
+  };
+
+  const estaDentroDoPeriodo = (
+    data: Date,
+    horario: HorarioAulaResponse
+  ): boolean => {
+    const dataIso =
+      formatarDataIso(data);
+
+    return (
+      dataIso >= horario.dataInicioPeriodo &&
+      dataIso <= horario.dataFimPeriodo
+    );
+  };
+
 const tarefasDoDia = useMemo(() => {
   const ano = selectedDate.getFullYear();
   const mes = String(selectedDate.getMonth() + 1).padStart(2, "0");
@@ -146,6 +258,31 @@ const tarefasDoDia = useMemo(() => {
     return dataEntrega === dataSelecionada;
   });
 }, [tarefas, selectedDate]);
+
+const horariosDoDia = useMemo(() => {
+  const diaSemanaSelecionado =
+    selectedDate.getDay();
+
+  return horariosAula
+    .filter(
+      (horario) =>
+        obterNumeroDiaSemana(
+          horario.diaSemana
+        ) === diaSemanaSelecionado &&
+        estaDentroDoPeriodo(
+          selectedDate,
+          horario
+        )
+    )
+    .sort((a, b) =>
+      a.horaInicio.localeCompare(
+        b.horaInicio
+      )
+    );
+}, [
+  horariosAula,
+  selectedDate,
+]);
 
   const monthLabel = useMemo(() => {
     return selectedDate.toLocaleDateString("pt-BR", {
@@ -178,6 +315,7 @@ const tarefasDoDia = useMemo(() => {
     dayNumber: number;
     isSelected: boolean;
     hasTask: boolean;
+    hasClass: boolean;
   } | null> = [];
 
   // Espaços vazios antes do primeiro dia do mês
@@ -205,17 +343,34 @@ const tarefasDoDia = useMemo(() => {
       return tarefa.dataEntrega.substring(0, 10) === dataFormatada;
     });
 
+    const hasClass =
+      horariosAula.some(
+        (horario) =>
+          obterNumeroDiaSemana(
+            horario.diaSemana
+          ) === date.getDay() &&
+          estaDentroDoPeriodo(
+            date,
+            horario
+          )
+      );
+
     dias.push({
       fullDate: date,
       key: dataFormatada,
       dayNumber: dia,
       isSelected,
       hasTask,
+      hasClass,
     });
   }
 
   return dias;
-}, [selectedDate, tarefas]);
+}, [
+  selectedDate,
+  tarefas,
+  horariosAula,
+]);
 
   //mudança dia 07/10
  const goToPreviousMonth = () => {
@@ -316,6 +471,37 @@ const handleAlternarStatusTarefa =
       );
     }
   };
+
+  const resumoDoDia = useMemo(() => {
+  const partes: string[] = [];
+
+  if (tarefasDoDia.length === 1) {
+    partes.push(
+      "1 tarefa com entrega"
+    );
+  } else if (tarefasDoDia.length > 1) {
+    partes.push(
+      `${tarefasDoDia.length} tarefas com entrega`
+    );
+  }
+
+  if (horariosDoDia.length === 1) {
+    partes.push("1 aula");
+  } else if (horariosDoDia.length > 1) {
+    partes.push(
+      `${horariosDoDia.length} aulas`
+    );
+  }
+
+  if (partes.length === 0) {
+    return "Nenhuma tarefa ou aula neste dia.";
+  }
+
+  return `${partes.join(" • ")} neste dia.`;
+}, [
+  tarefasDoDia,
+  horariosDoDia,
+]);
   
   return (
     <View style={styles.container}>
@@ -388,14 +574,27 @@ const handleAlternarStatusTarefa =
               {day.dayNumber}
             </Text>
 
-            {day.hasTask && (
-              <View
-                style={[
-                  styles.taskDot,
-                  day.isSelected && styles.taskDotSelected,
-                ]}
-              />
-            )}
+            <View style={styles.dayIndicators}>
+              {day.hasTask && (
+                <View
+                  style={[
+                    styles.taskDot,
+                    day.isSelected &&
+                      styles.taskDotSelected,
+                  ]}
+                />
+              )}
+
+              {day.hasClass && (
+                <View
+                  style={[
+                    styles.classDot,
+                    day.isSelected &&
+                      styles.classDotSelected,
+                  ]}
+                />
+              )}
+            </View>
           </Pressable>
         </View>
       );
@@ -412,26 +611,74 @@ const handleAlternarStatusTarefa =
           <Text style={styles.summaryDate}>{selectedDateLabel}</Text>
 
           <Text style={styles.summaryText}>
-  {tarefasDoDia.length === 0
-    ? "Nenhuma tarefa com entrega neste dia."
-    : tarefasDoDia.length === 1
-    ? "1 tarefa com entrega neste dia."
-    : `${tarefasDoDia.length} tarefas com entrega neste dia.`}
-</Text>
+            {resumoDoDia}
+          </Text>
         </Card>
 
-        {tarefasDoDia.length === 0 ? (
-  <Card style={styles.eventsCard}>
-    <Text style={styles.eventsEmptyTitle}>
-      Nenhuma tarefa para este dia
-    </Text>
+       {tarefasDoDia.length === 0 &&
+        horariosDoDia.length === 0 ? (
+        <Card style={styles.eventsCard}>
+          <Text style={styles.eventsEmptyTitle}>
+            Nenhum compromisso para este dia
+          </Text>
 
-    <Text style={styles.eventsEmptyText}>
-      Não existem tarefas com entrega na data selecionada.
-    </Text>
-  </Card>
+          <Text style={styles.eventsEmptyText}>
+            Não existem aulas ou tarefas com entrega na data selecionada.
+          </Text>
+        </Card>
 ) : (
-  tarefasDoDia.map((tarefa) => {
+  <>
+    {horariosDoDia.map((horario) => (
+      <Card
+        key={`horario-${horario.idHorario}`}
+        style={styles.classCard}
+      >
+        <View style={styles.classHeader}>
+          <View style={styles.classContent}>
+            <Text style={styles.classLabel}>
+              Aula
+            </Text>
+
+            <Text style={styles.classTitle}>
+              {horario.nomeDisciplina}
+            </Text>
+
+            <View style={styles.classInfoRow}>
+              <Clock
+                size={15}
+                color="#2563EB"
+              />
+
+              <Text style={styles.classInfoText}>
+                {horario.horaInicio} às{" "}
+                {horario.horaFim}
+              </Text>
+            </View>
+
+            {horario.local ? (
+              <View
+                style={styles.classInfoRow}
+              >
+                <MapPin
+                  size={15}
+                  color="#64748B"
+                />
+
+                <Text
+                  style={
+                    styles.classLocation
+                  }
+                >
+                  {horario.local}
+                </Text>
+              </View>
+            ) : null}
+          </View>
+        </View>
+      </Card>
+    ))}
+
+    {tarefasDoDia.map((tarefa) => {
     const concluida =
       tarefa.status?.toUpperCase() ===
       "CONCLUIDA";
@@ -560,7 +807,8 @@ const handleAlternarStatusTarefa =
         </Card>
       </Pressable>
     );
-  })
+  })}
+  </>
 )}
 
         <View
@@ -630,68 +878,87 @@ const styles = StyleSheet.create({
     marginTop: 2,
   },
 
-calendarCard: {
-  marginBottom: 16,
-  padding: 12,
-},
+  calendarCard: {
+    marginBottom: 16,
+    padding: 12,
+  },
 
-weekHeader: {
-  flexDirection: "row",
-  marginBottom: 8,
-},
+  weekHeader: {
+    flexDirection: "row",
+    marginBottom: 8,
+  },
 
-weekHeaderText: {
-  width: "14.2857%",
-  textAlign: "center",
-  fontSize: 10,
-  fontWeight: "700",
-  color: "#64748B",
-},
+  weekHeaderText: {
+    width: "14.2857%",
+    textAlign: "center",
+    fontSize: 10,
+    fontWeight: "700",
+    color: "#64748B",
+  },
 
-calendarGrid: {
-  flexDirection: "row",
-  flexWrap: "wrap",
-},
+  calendarGrid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+  },
 
-calendarDayContainer: {
-  width: "14.2857%",
-  alignItems: "center",
-  marginBottom: 6,
-},
+  calendarDayContainer: {
+    width: "14.2857%",
+    alignItems: "center",
+    marginBottom: 6,
+  },
 
-calendarDay: {
-  width: 38,
-  height: 42,
-  alignItems: "center",
-  justifyContent: "center",
-  borderRadius: 10,
-},
+  calendarDay: {
+    width: 38,
+    height: 42,
+    alignItems: "center",
+    justifyContent: "center",
+    borderRadius: 10,
+  },
 
-calendarDaySelected: {
-  backgroundColor: "#2563EB",
-},
+  calendarDaySelected: {
+    backgroundColor: "#2563EB",
+  },
 
-calendarDayText: {
-  fontSize: 14,
-  fontWeight: "600",
-  color: "#0F172A",
-},
+  calendarDayText: {
+    fontSize: 14,
+    fontWeight: "600",
+    color: "#0F172A",
+  },
 
-calendarDayTextSelected: {
-  color: "#FFFFFF",
-},
+  calendarDayTextSelected: {
+    color: "#FFFFFF",
+  },
 
-taskDot: {
-  width: 5,
-  height: 5,
-  borderRadius: 3,
-  backgroundColor: "#2563EB",
-  marginTop: 3,
-},
+  taskDot: {
+    width: 5,
+    height: 5,
+    borderRadius: 3,
+    backgroundColor: "#2563EB",
+    marginTop: 3,
+  },
 
-taskDotSelected: {
-  backgroundColor: "#FFFFFF",
-},
+  taskDotSelected: {
+    backgroundColor: "#FFFFFF",
+  },
+
+  dayIndicators: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 3,
+    height: 8,
+    marginTop: 3,
+  },
+
+  classDot: {
+    width: 5,
+    height: 5,
+    borderRadius: 3,
+    backgroundColor: "#16A34A",
+  },
+
+  classDotSelected: {
+    backgroundColor: "#BBF7D0",
+  },
 
   summaryCard: {
     backgroundColor: "#EFF6FF",
@@ -743,68 +1010,116 @@ taskDotSelected: {
     color: "#64748B",
     textAlign: "center",
   },
-  taskCard: {
-  marginBottom: 12,
-},
 
-taskHeader: {
-  flexDirection: "row",
-  justifyContent: "space-between",
-  alignItems: "flex-start",
-},
+  classCard: {
+    marginBottom: 12,
+    borderColor: "#BFDBFE",
+    backgroundColor: "#EFF6FF",
+  },
 
-taskContent: {
-  flex: 1,
-  marginRight: 12,
-},
+  classHeader: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+  },
 
-taskTitle: {
-  fontSize: 15,
-  fontWeight: "700",
-  color: "#0F172A",
-},
+  classContent: {
+    flex: 1,
+  },
 
-taskSubject: {
-  fontSize: 13,
-  color: "#64748B",
-  marginTop: 4,
-},
+  classLabel: {
+    fontSize: 11,
+    fontWeight: "700",
+    color: "#2563EB",
+    textTransform: "uppercase",
+    marginBottom: 4,
+  },
 
-taskPriority: {
-  fontSize: 11,
-  fontWeight: "700",
-  color: "#2563EB",
-},
+  classTitle: {
+    fontSize: 15,
+    fontWeight: "700",
+    color: "#0F172A",
+  },
 
-completeButton: {
-  marginRight: 10,
-  marginTop: 1,
-  alignItems: "center",
-  justifyContent: "center",
-},
+  classInfoRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    marginTop: 7,
+  },
 
-taskCardCompleted: {
-  backgroundColor: "#F8FAFC",
-  borderColor: "#DCFCE7",
-},
+  classInfoText: {
+    fontSize: 13,
+    fontWeight: "600",
+    color: "#1D4ED8",
+  },
 
-taskTitleCompleted: {
-  color: "#64748B",
-  textDecorationLine:
-    "line-through",
-},
+  classLocation: {
+    fontSize: 13,
+    color: "#64748B",
+  },
 
-completedText: {
-  marginTop: 4,
-  fontSize: 12,
-  fontWeight: "600",
-  color: "#16A34A",
-},
+    taskCard: {
+    marginBottom: 12,
+  },
 
-syncStatusContainer: {
-  marginTop: 8,
-  marginBottom: 12,
-  alignItems: "center",
-},
+  taskHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "flex-start",
+  },
+
+  taskContent: {
+    flex: 1,
+    marginRight: 12,
+  },
+
+  taskTitle: {
+    fontSize: 15,
+    fontWeight: "700",
+    color: "#0F172A",
+  },
+
+  taskSubject: {
+    fontSize: 13,
+    color: "#64748B",
+    marginTop: 4,
+  },
+
+  taskPriority: {
+    fontSize: 11,
+    fontWeight: "700",
+    color: "#2563EB",
+  },
+
+  completeButton: {
+    marginRight: 10,
+    marginTop: 1,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+
+  taskCardCompleted: {
+    backgroundColor: "#F8FAFC",
+    borderColor: "#DCFCE7",
+  },
+
+  taskTitleCompleted: {
+    color: "#64748B",
+    textDecorationLine:
+      "line-through",
+  },
+
+  completedText: {
+    marginTop: 4,
+    fontSize: 12,
+    fontWeight: "600",
+    color: "#16A34A",
+  },
+
+  syncStatusContainer: {
+    marginTop: 8,
+    marginBottom: 12,
+    alignItems: "center",
+  },
 
 });

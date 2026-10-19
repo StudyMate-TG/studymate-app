@@ -634,6 +634,30 @@ export const SubjectsScreen: React.FC = () => {
             />
 
             <Button
+              title="Horários"
+              variant="outline"
+              size="sm"
+              icon={
+                <Clock
+                  size={14}
+                  color="#334155"
+                />
+              }
+              onPress={() =>
+                navigation.navigate(
+                  "ClassSchedules",
+                  {
+                    idDisciplina:
+                      item.idDisciplina,
+                    nomeDisciplina:
+                      item.nome,
+                  }
+                )
+              }
+              style={styles.actionButton}
+            />
+
+            <Button
               title="Editar"
               variant="outline"
               size="sm"

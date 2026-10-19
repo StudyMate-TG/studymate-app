@@ -53,6 +53,26 @@ export type PeriodoLetivoRequest = {
   status: PeriodoLetivoStatus;
 };
 
+export type HorarioAulaResponse = {
+  idHorario: number;
+  idDisciplina: number;
+  nomeDisciplina: string;
+  diaSemana: string;
+  horaInicio: string;
+  horaFim: string;
+  local: string | null;
+  dataInicioPeriodo: string;
+  dataFimPeriodo: string;
+};
+
+export type HorarioAulaRequest = {
+  idDisciplina: number;
+  diaSemana: string;
+  horaInicio: string;
+  horaFim: string;
+  local?: string | null;
+};
+
 export type RootStackParamList = {
   Login: undefined;
 
@@ -94,6 +114,22 @@ export type RootStackParamList = {
   Periods: undefined;
 
   NewPeriod: undefined;
+
+  ClassSchedules: {
+  idDisciplina: number;
+  nomeDisciplina: string;
+};
+
+  NewClassSchedule: {
+    idDisciplina: number;
+    nomeDisciplina: string;
+  };
+
+  EditClassSchedule: {
+    idHorario: number;
+    idDisciplina: number;
+    nomeDisciplina: string;
+  };
 };
 
 export type MainTabParamList = {
