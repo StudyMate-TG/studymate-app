@@ -21,8 +21,6 @@ import {
   encerrarSessao,
 } from "../services/authService";
 
-import { testarNotificacao } from "../services/notificacaoService";
-
 import { MobileHeader } from "../components/MobileHeader";
 
 import { Card } from "../components/Card";
@@ -100,23 +98,6 @@ export const ProfileScreen: React.FC = () => {
     showAlert("Info", "Funcionalidade disponível em breve.");
   };
 
-  const handleTestarNotificacao = async () => {
-    try {
-      await testarNotificacao();
-
-      showAlert(
-        "Teste iniciado",
-        "A notificação deve aparecer em aproximadamente 10 segundos."
-      );
-    } catch (error) {
-      showAlert(
-        "Erro",
-        error instanceof Error
-          ? error.message
-          : "Não foi possível testar a notificação."
-      );
-    }
-  };
 
   const menuItems = [
     {
@@ -245,13 +226,6 @@ export const ProfileScreen: React.FC = () => {
         </Card>
 
         <Button
-          title="Testar notificação"
-          icon={<Bell size={18} color="#FFFFFF" />}
-          onPress={handleTestarNotificacao}
-          style={styles.notificationTestButton}
-        />
-
-        <Button
           title="Sair da Conta"
           variant="destructive"
           icon={<LogOut size={18} color="#FFFFFF" />}
@@ -367,10 +341,6 @@ const styles = StyleSheet.create({
     color: "#334155",
     fontWeight: "500",
     marginLeft: 12,
-  },
-
-  notificationTestButton: {
-    marginBottom: 12,
   },
 
   logoutButton: {
