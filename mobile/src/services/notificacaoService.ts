@@ -1,849 +1,227 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Platform } from "react-native";
 import * as Notifications from "expo-notifications";
+import { getSessionGeneration, onSessionEnded, requireSessionUser } from "./apiClient";
+import { horarioLembreteTarefa, horariosLembreteAvaliacao, nivelAlertaFaltas } from "../utils/notificacaoPolicy";
 
 const CANAL_LEMBRETES = "lembretes";
+let operacao: Promise<unknown> = Promise.resolve();
+let revisaoLembretes = 0;
+export const getRevisaoLembretes = (): number => revisaoLembretes;
+const serializar = <T>(acao: () => Promise<T>): Promise<T> => {
+  const proxima = operacao.then(acao, acao);
+  operacao = proxima.catch(() => undefined);
+  return proxima;
+};
+const sessaoAtual = (usuario: number, geracao: number): boolean => {
+  try { return requireSessionUser(usuario) === usuario && getSessionGeneration() === geracao; }
+  catch { return false; }
+};
 
-Notifications.setNotificationHandler({
-  handleNotification: async () => ({
-    shouldShowBanner: true,
-    shouldShowList: true,
-    shouldPlaySound: true,
-    shouldSetBadge: false,
-  }),
-});
+if (Platform.OS !== "web") {
+  Notifications.setNotificationHandler({
+    handleNotification: async (notificacao) => {
+      const dono = Number(notificacao.request.content.data?.idUsuario);
+      let atual = false;
+      try { atual = requireSessionUser() === dono; } catch { /* Signed out. */ }
+      return { shouldShowBanner: atual, shouldShowList: atual, shouldPlaySound: atual, shouldSetBadge: false };
+    },
+  });
+}
 
 export async function configurarNotificacoes(): Promise<boolean> {
+  if (Platform.OS === "web") return false;
   try {
     if (Platform.OS === "android") {
-      await Notifications.setNotificationChannelAsync(
-        CANAL_LEMBRETES,
-        {
-          name: "Lembretes",
-          importance:
-            Notifications.AndroidImportance.HIGH,
-          sound: "default",
-          vibrationPattern: [0, 250, 250, 250],
-        }
-      );
+      await Notifications.setNotificationChannelAsync(CANAL_LEMBRETES, {
+        name: "Lembretes", importance: Notifications.AndroidImportance.HIGH,
+        sound: "default", vibrationPattern: [0, 250, 250, 250],
+      });
     }
-
-    const permissaoAtual =
-      await Notifications.getPermissionsAsync();
-
-    let permitido =
-      permissaoAtual.granted;
-
-    if (!permitido) {
-      const solicitacao =
-        await Notifications.requestPermissionsAsync();
-
-      permitido =
-        solicitacao.granted;
-    }
-
-    return permitido;
-  } catch (error) {
-    console.warn(
-      "Erro ao configurar notificações:",
-      error
-    );
-
-    return false;
-  }
+    const atual = await Notifications.getPermissionsAsync();
+    return atual.granted || (await Notifications.requestPermissionsAsync()).granted;
+  } catch (error) { console.warn("Não foi possível configurar lembretes locais.", error); return false; }
 }
 
 export async function listarNotificacoesAgendadas() {
-  return Notifications.getAllScheduledNotificationsAsync();
+  if (Platform.OS === "web") return [];
+  const usuario = requireSessionUser();
+  return (await Notifications.getAllScheduledNotificationsAsync())
+    .filter((item) => Number(item.content.data?.idUsuario) === usuario);
 }
 
-export async function testarNotificacao(): Promise<string | null> {
-  const permitido =
-    await configurarNotificacoes();
-
-  if (!permitido) {
-    return null;
-  }
-
-  try {
-    return await Notifications.scheduleNotificationAsync({
-      content: {
-        title:
-          "Teste StudyMate",
-
-        body:
-          "As notificações estão funcionando.",
-
-        sound:
-          "default",
-
-        data: {
-          tipo:
-            "TESTE",
-        },
-      },
-
-      trigger: {
-        type:
-          Notifications.SchedulableTriggerInputTypes.TIME_INTERVAL,
-
-        seconds:
-          10,
-      },
-    });
-  } catch (error) {
-    console.warn(
-      "Erro ao criar notificação de teste:",
-      error
-    );
-
-    return null;
-  }
-}
-
-async function cancelarPorFiltro(
-  filtro: (
-    notificacao:
-      Notifications.NotificationRequest
-  ) => boolean
-): Promise<number> {
-  const notificacoes =
-    await Notifications.getAllScheduledNotificationsAsync();
-
-  const notificacoesParaCancelar =
-    notificacoes.filter(
-      filtro
-    );
-
-  for (
-    const notificacao
-    of notificacoesParaCancelar
-  ) {
-    await Notifications.cancelScheduledNotificationAsync(
-      notificacao.identifier
-    );
-  }
-
-  return notificacoesParaCancelar.length;
-}
-
-/* =========================================================
- * TAREFAS
- * =======================================================*/
-
-export type ReferenciaNotificacaoTarefa = {
-  localId?: string;
-  idTarefa?: number;
-};
-
-export type AgendarNotificacaoTarefaParams =
-  ReferenciaNotificacaoTarefa & {
-    titulo: string;
-    nomeDisciplina?: string;
-    dataEntrega: string;
-  };
-
-export async function cancelarNotificacoesTarefa({
-  localId,
-  idTarefa,
-}: ReferenciaNotificacaoTarefa): Promise<number> {
-  try {
-    return await cancelarPorFiltro(
-      (
-        notificacao
-      ) => {
-        const data =
-          notificacao.content.data;
-
-        if (
-          data?.tipo !==
-          "TAREFA"
-        ) {
-          return false;
-        }
-
-        const mesmoLocalId =
-          Boolean(
-            localId
-          ) &&
-          String(
-            data?.localId ??
-              ""
-          ) ===
-            String(
-              localId
-            );
-
-        const mesmoIdTarefa =
-          idTarefa !==
-            undefined &&
-          idTarefa !==
-            null &&
-          Number(
-            data?.idTarefa
-          ) ===
-            Number(
-              idTarefa
-            );
-
-        return (
-          mesmoLocalId ||
-          mesmoIdTarefa
-        );
-      }
-    );
-  } catch (error) {
-    console.warn(
-      "Erro ao cancelar lembrete da tarefa:",
-      error
-    );
-
-    return 0;
-  }
-}
-
-export async function agendarNotificacaoTarefa({
-  localId,
-  idTarefa,
-  titulo,
-  nomeDisciplina,
-  dataEntrega,
-}: AgendarNotificacaoTarefaParams): Promise<string | null> {
-  const permitido =
-    await configurarNotificacoes();
-
-  if (!permitido) {
-    return null;
-  }
-
-  await cancelarNotificacoesTarefa({
-    localId,
-    idTarefa,
+/** Device reminders are separate from the backend inbox. No remote push is sent. */
+export function cancelarTodosLembretesLocais(): Promise<void> {
+  revisaoLembretes++;
+  return serializar(async () => {
+    if (Platform.OS === "web") return;
+    await Notifications.cancelAllScheduledNotificationsAsync();
+    await Notifications.dismissAllNotificationsAsync();
   });
-
-  const entrega =
-    new Date(
-      dataEntrega
-    );
-
-  if (
-    Number.isNaN(
-      entrega.getTime()
-    )
-  ) {
-    console.warn(
-      "Data de entrega inválida para notificação:",
-      dataEntrega
-    );
-
-    return null;
-  }
-
-  const dataNotificacao =
-    new Date(
-      entrega.getTime() -
-        24 *
-          60 *
-          60 *
-          1000
-    );
-
-  if (
-    dataNotificacao.getTime() <=
-    Date.now()
-  ) {
-    return null;
-  }
-
-  try {
-    const mensagem =
-      nomeDisciplina
-        ? `${titulo} de ${nomeDisciplina} vence amanhã.`
-        : `${titulo} vence amanhã.`;
-
-    const dados:
-      Record<
-        string,
-        string | number
-      > = {
-      tipo:
-        "TAREFA",
-    };
-
-    if (localId) {
-      dados.localId =
-        localId;
-    }
-
-    if (
-      idTarefa !==
-        undefined &&
-      idTarefa !== null
-    ) {
-      dados.idTarefa =
-        idTarefa;
-    }
-
-    return await Notifications.scheduleNotificationAsync(
-      {
-        content: {
-          title:
-            "Tarefa próxima do prazo",
-
-          body:
-            mensagem,
-
-          sound:
-            "default",
-
-          data:
-            dados,
-        },
-
-        trigger: {
-          type:
-            Notifications.SchedulableTriggerInputTypes.DATE,
-
-          date:
-            dataNotificacao,
-        },
-      }
-    );
-  } catch (error) {
-    console.warn(
-      "Erro ao agendar lembrete da tarefa:",
-      error
-    );
-
-    return null;
-  }
 }
 
-export const reagendarNotificacaoTarefa =
-  agendarNotificacaoTarefa;
+onSessionEnded(() => { void cancelarTodosLembretesLocais().catch((error) => console.warn("Não foi possível limpar lembretes.", error)); });
 
-/* =========================================================
- * AVALIAÇÕES
- * =======================================================*/
-
-export async function cancelarNotificacoesAvaliacao(
-  idAvaliacao: number
-): Promise<number> {
-  try {
-    const notificacoes =
-      await Notifications.getAllScheduledNotificationsAsync();
-
-    const encontradas =
-      notificacoes.filter(
-        (
-          notificacao
-        ) => {
-          const data =
-            notificacao.content.data;
-
-          const tipo =
-            String(
-              data?.tipo ??
-                ""
-            );
-
-          const ehAvaliacao =
-            tipo ===
-              "AVALIACAO_VESPERA" ||
-            tipo ===
-              "AVALIACAO_DIA";
-
-          const mesmoId =
-            Number(
-              data?.idAvaliacao
-            ) ===
-            Number(
-              idAvaliacao
-            );
-
-          return (
-            ehAvaliacao &&
-            mesmoId
-          );
-        }
-      );
-
-    for (
-      const notificacao
-      of encontradas
-    ) {
-      await Notifications.cancelScheduledNotificationAsync(
-        notificacao.identifier
-      );
-    }
-
-    return encontradas.length;
-  } catch (error) {
-    console.warn(
-      `Erro ao cancelar notificações da avaliação ${idAvaliacao}:`,
-      error
-    );
-
-    return 0;
-  }
+async function cancelarPorFiltro(usuario: number, filtro: (data: Record<string, unknown>) => boolean): Promise<number> {
+  const agendadas = await Notifications.getAllScheduledNotificationsAsync();
+  const encontradas = agendadas.filter((item) => Number(item.content.data?.idUsuario) === usuario && filtro(item.content.data ?? {}));
+  for (const item of encontradas) await Notifications.cancelScheduledNotificationAsync(item.identifier);
+  return encontradas.length;
 }
 
-function converterDataAvaliacao(
-  data: string,
-  hora: number,
-  minuto: number
-): Date | null {
-  const dataSemHorario =
-    data
-      .trim()
-      .split("T")[0];
+export type ReferenciaNotificacaoTarefa = { localId?: string; idTarefa?: number; idUsuario?: number };
+export type AgendarNotificacaoTarefaParams = ReferenciaNotificacaoTarefa & {
+  titulo: string; nomeDisciplina?: string; dataEntrega: string;
+};
+const mesmaTarefa = (data: Record<string, unknown>, ref: ReferenciaNotificacaoTarefa): boolean =>
+  data.tipo === "TAREFA" && (Boolean(ref.localId && data.localId === ref.localId)
+    || (ref.idTarefa !== undefined && Number(data.idTarefa) === ref.idTarefa));
 
-  const partes =
-    dataSemHorario.split(
-      "-"
-    );
+export function cancelarNotificacoesTarefa(ref: ReferenciaNotificacaoTarefa): Promise<number> {
+  revisaoLembretes++;
+  if (Platform.OS === "web") return Promise.resolve(0);
+  const usuario = requireSessionUser(ref.idUsuario);
+  const geracao = getSessionGeneration();
+  return serializar(async () => sessaoAtual(usuario, geracao)
+    ? cancelarPorFiltro(usuario, (data) => mesmaTarefa(data, ref)) : 0);
+}
 
-  if (
-    partes.length !== 3
-  ) {
+async function agendarSeguro(usuario: number, geracao: number, identifier: string,
+  title: string, body: string, data: Record<string, string | number>, date: Date | null): Promise<string | null> {
+  if (!sessaoAtual(usuario, geracao)) return null;
+  const id = await Notifications.scheduleNotificationAsync({
+    identifier,
+    content: { title, body, sound: "default", data: { ...data, idUsuario: usuario } },
+    trigger: date ? { type: Notifications.SchedulableTriggerInputTypes.DATE, date, channelId: CANAL_LEMBRETES } : null,
+  });
+  // An OS call can resolve after logout. Remove its result before the next queued operation.
+  if (!sessaoAtual(usuario, geracao)) {
+    await Notifications.cancelScheduledNotificationAsync(id);
+    await Notifications.dismissNotificationAsync(id);
     return null;
   }
-
-  const ano =
-    Number(
-      partes[0]
-    );
-
-  const mes =
-    Number(
-      partes[1]
-    );
-
-  const dia =
-    Number(
-      partes[2]
-    );
-
-  if (
-    !Number.isInteger(
-      ano
-    ) ||
-    !Number.isInteger(
-      mes
-    ) ||
-    !Number.isInteger(
-      dia
-    )
-  ) {
-    return null;
-  }
-
-  const resultado =
-    new Date(
-      ano,
-      mes - 1,
-      dia,
-      hora,
-      minuto,
-      0,
-      0
-    );
-
-  if (
-    resultado.getFullYear() !==
-      ano ||
-    resultado.getMonth() !==
-      mes - 1 ||
-    resultado.getDate() !==
-      dia
-  ) {
-    return null;
-  }
-
-  return resultado;
+  return id;
 }
 
-export type AgendarNotificacoesAvaliacaoParams =
-  {
-    idAvaliacao: number;
-    nome: string;
-    nomeDisciplina?: string;
-    dataAvaliacao: string;
-  };
-
-export async function agendarNotificacoesAvaliacao({
-  idAvaliacao,
-  nome,
-  nomeDisciplina,
-  dataAvaliacao,
-}: AgendarNotificacoesAvaliacaoParams): Promise<
-  string[]
-> {
-  const permitido =
-    await configurarNotificacoes();
-
-  if (!permitido) {
-    return [];
-  }
-
-  await cancelarNotificacoesAvaliacao(
-    idAvaliacao
-  );
-
-  const dataDia =
-    converterDataAvaliacao(
-      dataAvaliacao,
-      8,
-      0
-    );
-
-  if (!dataDia) {
-    console.warn(
-      "Data da avaliação inválida:",
-      dataAvaliacao
-    );
-
-    return [];
-  }
-
-  const dataVespera =
-    new Date(
-      dataDia.getFullYear(),
-      dataDia.getMonth(),
-      dataDia.getDate() -
-        1,
-      18,
-      0,
-      0,
-      0
-    );
-
-  const ids: string[] =
-    [];
-
-  if (
-    dataVespera.getTime() >
-    Date.now()
-  ) {
-    const mensagem =
-      nomeDisciplina
-        ? `${nome} de ${nomeDisciplina} acontece amanhã.`
-        : `${nome} acontece amanhã.`;
-
-    const idVespera =
-      await Notifications.scheduleNotificationAsync(
-        {
-          content: {
-            title:
-              "Avaliação amanhã",
-
-            body:
-              mensagem,
-
-            sound:
-              "default",
-
-            data: {
-              tipo:
-                "AVALIACAO_VESPERA",
-
-              idAvaliacao,
-            },
-          },
-
-          trigger: {
-            type:
-              Notifications.SchedulableTriggerInputTypes.DATE,
-
-            date:
-              dataVespera,
-          },
-        }
-      );
-
-    ids.push(
-      idVespera
-    );
-  }
-
-  if (
-    dataDia.getTime() >
-    Date.now()
-  ) {
-    const mensagem =
-      nomeDisciplina
-        ? `${nome} de ${nomeDisciplina} é hoje.`
-        : `${nome} é hoje.`;
-
-    const idDia =
-      await Notifications.scheduleNotificationAsync(
-        {
-          content: {
-            title:
-              "Avaliação hoje",
-
-            body:
-              mensagem,
-
-            sound:
-              "default",
-
-            data: {
-              tipo:
-                "AVALIACAO_DIA",
-
-              idAvaliacao,
-            },
-          },
-
-          trigger: {
-            type:
-              Notifications.SchedulableTriggerInputTypes.DATE,
-
-            date:
-              dataDia,
-          },
-        }
-      );
-
-    ids.push(
-      idDia
-    );
-  }
-
-  return ids;
+export function agendarNotificacaoTarefa(params: AgendarNotificacaoTarefaParams): Promise<string | null> {
+  if (Platform.OS === "web") return Promise.resolve(null);
+  const usuario = requireSessionUser(params.idUsuario);
+  const geracao = getSessionGeneration();
+  revisaoLembretes++;
+  return serializar(() => agendarTarefaNaFila(params, usuario, geracao));
+}
+async function agendarTarefaNaFila(params: AgendarNotificacaoTarefaParams, usuario: number, geracao: number): Promise<string | null> {
+    if (!sessaoAtual(usuario, geracao)) return null;
+    await cancelarPorFiltro(usuario, (data) => mesmaTarefa(data, params));
+    const data = horarioLembreteTarefa(params.dataEntrega);
+    if (!data || data.getTime() <= Date.now() || !(await configurarNotificacoes())) return null;
+    const dados: Record<string, string | number> = { tipo: "TAREFA" };
+    if (params.localId) dados.localId = params.localId;
+    if (params.idTarefa !== undefined) dados.idTarefa = params.idTarefa;
+    return agendarSeguro(usuario, geracao, `studymate:${usuario}:tarefa:${params.localId ?? params.idTarefa}`,
+      "Tarefa próxima do prazo", `${params.titulo}${params.nomeDisciplina ? ` de ${params.nomeDisciplina}` : ""} vence em 24 horas.`, dados, data);
 }
 
-/* =========================================================
- * FALTAS
- * =======================================================*/
+export const reagendarNotificacaoTarefa = agendarNotificacaoTarefa;
 
-type NivelAlertaFalta =
-  | 0
-  | 75
-  | 100;
-
-export type VerificarNotificacaoFaltasParams =
-  {
-    idUsuario: number;
-    idDisciplina: number;
-    nomeDisciplina: string;
-    totalFaltas: number;
-    limiteFaltas: number;
-  };
-
-function obterChaveFaltas(
-  idUsuario: number,
-  idDisciplina: number
-): string {
-  return `@studymate:notificacao:faltas:${idUsuario}:${idDisciplina}`;
+export function cancelarNotificacoesAvaliacao(idAvaliacao: number, idUsuario?: number): Promise<number> {
+  revisaoLembretes++;
+  if (Platform.OS === "web") return Promise.resolve(0);
+  const usuario = requireSessionUser(idUsuario);
+  const geracao = getSessionGeneration();
+  return serializar(async () => sessaoAtual(usuario, geracao) ? cancelarPorFiltro(usuario, (data) =>
+    ["AVALIACAO_VESPERA", "AVALIACAO_DIA"].includes(String(data.tipo)) && Number(data.idAvaliacao) === idAvaliacao) : 0);
+}
+export type AgendarNotificacoesAvaliacaoParams = { idUsuario?: number; idDisciplina?: number; idAvaliacao: number; nome: string; nomeDisciplina?: string; dataAvaliacao: string };
+export function agendarNotificacoesAvaliacao(params: AgendarNotificacoesAvaliacaoParams): Promise<string[]> {
+  if (Platform.OS === "web") return Promise.resolve([]);
+  const usuario = requireSessionUser(params.idUsuario);
+  const geracao = getSessionGeneration();
+  revisaoLembretes++;
+  return serializar(() => agendarAvaliacaoNaFila(params, usuario, geracao));
+}
+async function agendarAvaliacaoNaFila(params: AgendarNotificacoesAvaliacaoParams, usuario: number, geracao: number): Promise<string[]> {
+    if (!sessaoAtual(usuario, geracao)) return [];
+    await cancelarPorFiltro(usuario, (data) => ["AVALIACAO_VESPERA", "AVALIACAO_DIA"].includes(String(data.tipo))
+      && Number(data.idAvaliacao) === params.idAvaliacao);
+    const datas = horariosLembreteAvaliacao(params.dataAvaliacao);
+    if (!datas || !(await configurarNotificacoes())) return [];
+    const ids: string[] = [];
+    for (const [tipo, date, texto] of [
+      ["AVALIACAO_VESPERA", datas.vespera, "amanhã"], ["AVALIACAO_DIA", datas.dia, "hoje"],
+    ] as const) {
+      if (date.getTime() <= Date.now()) continue;
+      const id = await agendarSeguro(usuario, geracao, `studymate:${usuario}:${tipo}:${params.idAvaliacao}`,
+        `Avaliação ${texto}`, `${params.nome}${params.nomeDisciplina ? ` de ${params.nomeDisciplina}` : ""} acontece ${texto}.`,
+        { tipo, idAvaliacao: params.idAvaliacao, ...(params.idDisciplina === undefined ? {} : { idDisciplina: params.idDisciplina }) }, date);
+      if (id) ids.push(id);
+    }
+    return ids;
 }
 
-function calcularNivelFaltas(
-  totalFaltas: number,
-  limiteFaltas: number
-): NivelAlertaFalta {
-  if (
-    limiteFaltas <= 0
-  ) {
-    return 0;
-  }
-
-  const percentual =
-    (
-      totalFaltas /
-      limiteFaltas
-    ) *
-    100;
-
-  if (
-    percentual >= 100
-  ) {
-    return 100;
-  }
-
-  if (
-    percentual >= 75
-  ) {
-    return 75;
-  }
-
-  return 0;
+export type VerificarNotificacaoFaltasParams = {
+  idUsuario: number; idDisciplina: number; nomeDisciplina: string; totalFaltas: number; limiteFaltas: number;
+};
+export function verificarNotificacaoFaltas(params: VerificarNotificacaoFaltasParams): Promise<void> {
+  if (Platform.OS === "web") return Promise.resolve();
+  const usuario = requireSessionUser(params.idUsuario);
+  const geracao = getSessionGeneration();
+  return serializar(async () => {
+    if (!sessaoAtual(usuario, geracao)) return;
+    const chave = `@studymate:notificacao:faltas:${usuario}:${params.idDisciplina}`;
+    const nivel = nivelAlertaFaltas(params.totalFaltas, params.limiteFaltas);
+    const anterior = Number(await AsyncStorage.getItem(chave) ?? "0");
+    if (!sessaoAtual(usuario, geracao)) return;
+    if (nivel <= anterior || nivel === 0) { await AsyncStorage.setItem(chave, String(nivel)); return; }
+    if (!(await configurarNotificacoes())) return;
+    const id = await agendarSeguro(usuario, geracao, `studymate:${usuario}:faltas:${params.idDisciplina}:${nivel}`,
+      nivel === 100 ? "Limite de faltas atingido" : "Atenção às faltas",
+      `${params.nomeDisciplina}: ${params.totalFaltas}/${params.limiteFaltas} faltas (${nivel}% do limite atingido).`,
+      { tipo: `FALTAS_${nivel}`, idDisciplina: params.idDisciplina }, null);
+    if (id && sessaoAtual(usuario, geracao)) await AsyncStorage.setItem(chave, String(nivel));
+  });
+}
+export function testarNotificacao(): Promise<string | null> {
+  if (Platform.OS === "web") return Promise.resolve(null);
+  const usuario = requireSessionUser();
+  const geracao = getSessionGeneration();
+  return serializar(async () => (await configurarNotificacoes()) ? agendarSeguro(usuario, geracao,
+    `studymate:${usuario}:teste`, "Teste StudyMate", "Os lembretes locais estão funcionando.", { tipo: "TESTE" }, new Date(Date.now() + 10000)) : null);
 }
 
-export async function verificarNotificacaoFaltas({
-  idUsuario,
-  idDisciplina,
-  nomeDisciplina,
-  totalFaltas,
-  limiteFaltas,
-}: VerificarNotificacaoFaltasParams): Promise<void> {
-  if (
-    limiteFaltas <= 0
-  ) {
-    return;
-  }
-
-  try {
-    const permitido =
-      await configurarNotificacoes();
-
-    if (!permitido) {
-      return;
+/** Rebuild from the committed local snapshot, including remote tombstones and completions. */
+export async function reconciliarLembretesTarefas(tarefas: Array<{
+  localId: string; serverId: number | null; titulo: string; nomeDisciplina?: string; dataEntrega: string; status: string;
+}>, idUsuario: number, revisaoEsperada = revisaoLembretes): Promise<void> {
+  if (Platform.OS === "web") return;
+  const usuario = requireSessionUser(idUsuario);
+  const geracao = getSessionGeneration();
+  const pendentes = tarefas.filter((tarefa) => tarefa.status === "PENDENTE");
+  await serializar(async () => {
+    if (!sessaoAtual(usuario, geracao) || revisaoEsperada !== revisaoLembretes) return;
+    await cancelarPorFiltro(usuario, (data) => data.tipo === "TAREFA" && !pendentes.some((tarefa) =>
+      mesmaTarefa(data, { localId: tarefa.localId, idTarefa: tarefa.serverId ?? undefined })));
+    for (const tarefa of pendentes) {
+    if (!sessaoAtual(usuario, geracao) || revisaoEsperada !== revisaoLembretes) return;
+      await agendarTarefaNaFila({ ...tarefa, idTarefa: tarefa.serverId ?? undefined, idUsuario }, usuario, geracao);
     }
+  });
+}
 
-    const chave =
-      obterChaveFaltas(
-        idUsuario,
-        idDisciplina
-      );
-
-    const nivelAtual =
-      calcularNivelFaltas(
-        totalFaltas,
-        limiteFaltas
-      );
-
-    const armazenado =
-      await AsyncStorage.getItem(
-        chave
-      );
-
-    const nivelAnteriorNumero =
-      armazenado
-        ? Number(
-            armazenado
-          )
-        : 0;
-
-    const nivelAnterior:
-      NivelAlertaFalta =
-      nivelAnteriorNumero ===
-        100
-        ? 100
-        : nivelAnteriorNumero ===
-            75
-          ? 75
-          : 0;
-
-    if (
-      nivelAtual <
-      nivelAnterior
-    ) {
-      await AsyncStorage.setItem(
-        chave,
-        String(
-          nivelAtual
-        )
-      );
-
-      return;
+export async function reconciliarLembretesAvaliacoes(avaliacoes: Array<{
+  idAvaliacao: number; nome: string; dataAvaliacao: string; nota: number | null;
+}>, idUsuario: number, idDisciplina: number, revisaoEsperada = revisaoLembretes): Promise<void> {
+  if (Platform.OS === "web") return;
+  const usuario = requireSessionUser(idUsuario);
+  const geracao = getSessionGeneration();
+  const pendentes = avaliacoes.filter((item) => item.nota === null);
+  await serializar(async () => {
+    if (!sessaoAtual(usuario, geracao) || revisaoEsperada !== revisaoLembretes) return;
+    await cancelarPorFiltro(usuario, (data) => ["AVALIACAO_VESPERA", "AVALIACAO_DIA"].includes(String(data.tipo))
+      && Number(data.idDisciplina) === idDisciplina && !pendentes.some((item) => item.idAvaliacao === Number(data.idAvaliacao)));
+    for (const item of pendentes) {
+    if (!sessaoAtual(usuario, geracao) || revisaoEsperada !== revisaoLembretes) return;
+      await agendarAvaliacaoNaFila({ ...item, idUsuario, idDisciplina }, usuario, geracao);
     }
-
-    if (
-      nivelAtual ===
-      nivelAnterior
-    ) {
-      return;
-    }
-
-    if (
-      nivelAtual === 0
-    ) {
-      await AsyncStorage.setItem(
-        chave,
-        "0"
-      );
-
-      return;
-    }
-
-    const percentual =
-      Math.round(
-        (
-          totalFaltas /
-          limiteFaltas
-        ) *
-          100
-      );
-
-    if (
-      nivelAtual === 75
-    ) {
-      await Notifications.scheduleNotificationAsync(
-        {
-          content: {
-            title:
-              "Atenção às faltas",
-
-            body:
-              `${nomeDisciplina}: você atingiu ${percentual}% do limite de faltas (${totalFaltas}/${limiteFaltas}).`,
-
-            sound:
-              "default",
-
-            data: {
-              tipo:
-                "FALTAS_75",
-
-              idDisciplina,
-
-              idUsuario,
-            },
-          },
-
-          trigger:
-            null,
-        }
-      );
-
-      await AsyncStorage.setItem(
-        chave,
-        "75"
-      );
-
-      return;
-    }
-
-    if (
-      nivelAtual === 100
-    ) {
-      await Notifications.scheduleNotificationAsync(
-        {
-          content: {
-            title:
-              "Limite de faltas atingido",
-
-            body:
-              `${nomeDisciplina}: você atingiu o limite de faltas (${totalFaltas}/${limiteFaltas}).`,
-
-            sound:
-              "default",
-
-            data: {
-              tipo:
-                "FALTAS_100",
-
-              idDisciplina,
-
-              idUsuario,
-            },
-          },
-
-          trigger:
-            null,
-        }
-      );
-
-      await AsyncStorage.setItem(
-        chave,
-        "100"
-      );
-    }
-  } catch (error) {
-    console.warn(
-      "Erro ao verificar alerta de faltas:",
-      error
-    );
-  }
+  });
 }

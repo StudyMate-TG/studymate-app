@@ -123,3 +123,31 @@ CREATE TABLE IF NOT EXISTS presenca_aula (
  CONSTRAINT uk_presenca_dia UNIQUE (id_usuario,id_disciplina,data_presenca)
 );
 CREATE SEQUENCE IF NOT EXISTS seq_presenca_aula START WITH 1 INCREMENT BY 1;
+
+CREATE TABLE IF NOT EXISTS notificacao (
+ id_notificacao BIGINT PRIMARY KEY,
+ id_usuario INTEGER NOT NULL REFERENCES usuario(id_usuario) ON DELETE CASCADE,
+ id_disciplina INTEGER REFERENCES disciplina(id_disciplina) ON DELETE SET NULL,
+ titulo VARCHAR(100) NOT NULL,
+ mensagem CLOB NOT NULL,
+ tipo VARCHAR(20) NOT NULL,
+ data_envio TIMESTAMP NOT NULL,
+ lida CHAR(1) DEFAULT 'N' NOT NULL,
+ criado_em TIMESTAMP WITH TIME ZONE NOT NULL,
+ previsto_para TIMESTAMP WITH TIME ZONE NOT NULL,
+ processado_em TIMESTAMP WITH TIME ZONE,
+ cancelado_em TIMESTAMP WITH TIME ZONE,
+ origem_tipo VARCHAR(20) NOT NULL,
+ origem_id BIGINT,
+ id_tarefa INTEGER REFERENCES tarefa(id_tarefa) ON DELETE SET NULL,
+ id_avaliacao BIGINT REFERENCES avaliacao(id_avaliacao) ON DELETE SET NULL,
+ chave_deduplicacao VARCHAR(200) NOT NULL,
+ CONSTRAINT uk_notificacao_chave UNIQUE (chave_deduplicacao),
+ CONSTRAINT ck_notificacao_lida CHECK (CASE WHEN lida='S' THEN 1 WHEN lida='N' THEN 1 ELSE 0 END=1),
+ CONSTRAINT ck_notificacao_estado CHECK (processado_em IS NULL OR cancelado_em IS NULL)
+);
+CREATE SEQUENCE IF NOT EXISTS seq_notificacao START WITH 1 INCREMENT BY 1;
+CREATE INDEX IF NOT EXISTS ix_notificacao_historico ON notificacao(id_usuario,processado_em DESC,id_notificacao DESC,lida);
+CREATE INDEX IF NOT EXISTS ix_notificacao_pendente ON notificacao(processado_em,cancelado_em,previsto_para,id_usuario);
+CREATE INDEX IF NOT EXISTS ix_notificacao_tarefa ON notificacao(id_tarefa);
+CREATE INDEX IF NOT EXISTS ix_notificacao_avaliacao ON notificacao(id_avaliacao);

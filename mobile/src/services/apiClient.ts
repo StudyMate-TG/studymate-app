@@ -3,14 +3,18 @@ let accessToken: string | null = null;
 let expiresAt = 0;
 let sessionUserId: number | null = null;
 let sessionGeneration = 0;
+let sessionEndReason = "";
+export const getSessionEndReason = (): string => sessionEndReason;
 const sessionListeners = new Set<() => void>();
+export const getSessionGeneration = (): number => sessionGeneration;
 
 export const onSessionEnded = (listener: () => void): (() => void) => {
   sessionListeners.add(listener);
   return () => { sessionListeners.delete(listener); };
 };
 
-export const clearAccessToken = (): void => {
+export const clearAccessToken = (reason = ""): void => {
+  sessionEndReason = reason;
   sessionGeneration++;
   accessToken = null;
   expiresAt = 0;
@@ -23,13 +27,14 @@ export const setAccessToken = (token: string, expiresIn: number, idUsuario: numb
     throw new Error("Não foi possível iniciar a sessão. Entre novamente.");
   }
   sessionGeneration++;
+  sessionEndReason = "";
   sessionUserId = idUsuario;
   accessToken = token;
   expiresAt = Date.now() + expiresIn * 1000;
 };
 
 export const hasSession = (): boolean => {
-  if (accessToken && Date.now() >= expiresAt) clearAccessToken();
+  if (accessToken && Date.now() >= expiresAt) clearAccessToken("Sua sessão expirou. Entre novamente.");
   return Boolean(accessToken);
 };
 
@@ -54,7 +59,6 @@ export const apiFetch = async (
   const requestGeneration = sessionGeneration;
   if (authenticated) {
     if (!hasSession()) {
-      clearAccessToken();
       throw new Error("Sua sessão terminou. Entre novamente.");
     }
     if (expectedUserId !== undefined) requireSessionUser(expectedUserId);
@@ -62,10 +66,13 @@ export const apiFetch = async (
   }
   const response = await fetch(url, { ...init, headers });
   if (response.status === 401) {
-    if (sessionGeneration === requestGeneration) clearAccessToken();
+    if (sessionGeneration === requestGeneration) clearAccessToken("Sua sessão expirou. Entre novamente.");
     throw new Error(authenticated
       ? "Sua sessão terminou. Entre novamente."
       : "Não foi possível entrar. Confira suas credenciais e a confirmação do e-mail.");
+  }
+  if (authenticated && sessionGeneration !== requestGeneration) {
+    throw new Error("A sessão mudou. Abra novamente os dados da sua conta.");
   }
   return response;
 };

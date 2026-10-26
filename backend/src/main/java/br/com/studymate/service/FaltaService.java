@@ -5,6 +5,7 @@ import br.com.studymate.dto.FaltaResponse;
 import br.com.studymate.model.Falta;
 import br.com.studymate.repository.DisciplinaRepository;
 import br.com.studymate.repository.FaltaRepository;
+import br.com.studymate.repository.UsuarioRepository;
 
 import org.springframework.stereotype.Service;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -18,13 +19,18 @@ public class FaltaService {
 
     private final FaltaRepository faltaRepository;
     private final DisciplinaRepository disciplinaRepository;
+    private final UsuarioRepository usuarios;
+    private final NotificacaoService notificacoes;
 
     public FaltaService(
             FaltaRepository faltaRepository,
-            DisciplinaRepository disciplinaRepository
+            DisciplinaRepository disciplinaRepository,
+            UsuarioRepository usuarios, NotificacaoService notificacoes
     ) {
         this.faltaRepository = faltaRepository;
         this.disciplinaRepository = disciplinaRepository;
+        this.usuarios = usuarios;
+        this.notificacoes = notificacoes;
     }
 
     @PreAuthorize("#idUsuario != null and #idUsuario.toString() == authentication.name")
@@ -47,6 +53,7 @@ public class FaltaService {
             Integer idUsuario,
             FaltaRequest request
     ) {
+        bloquearUsuario(idUsuario);
         validarRequest(request);
 
         validarDisciplinaDoUsuario(
@@ -60,9 +67,9 @@ public class FaltaService {
                 request.getQuantidadeAulas()
         );
 
-        return new FaltaResponse(
-                faltaRepository.saveAndFlush(falta)
-        );
+        Falta salva = faltaRepository.saveAndFlush(falta);
+        notificacoes.reavaliarDisciplina(salva.getIdDisciplina(), idUsuario);
+        return new FaltaResponse(salva);
     }
 
     @Transactional
@@ -73,6 +80,7 @@ public class FaltaService {
             FaltaRequest request
     ) {
         validarIdFalta(idFalta);
+        bloquearUsuario(idUsuario);
         validarRequest(request);
 
         validarDisciplinaDoUsuario(
@@ -92,13 +100,17 @@ public class FaltaService {
                 idUsuario
         );
 
+        Integer disciplinaAnterior = falta.getIdDisciplina();
         falta.setIdDisciplina(request.getIdDisciplina());
         falta.setDataFalta(request.getDataFalta());
         falta.setQuantidadeAulas(request.getQuantidadeAulas());
 
-        return new FaltaResponse(
-                faltaRepository.saveAndFlush(falta)
-        );
+        Falta salva = faltaRepository.saveAndFlush(falta);
+        notificacoes.reavaliarDisciplina(salva.getIdDisciplina(), idUsuario);
+        if (!disciplinaAnterior.equals(salva.getIdDisciplina())) {
+            notificacoes.reavaliarDisciplina(disciplinaAnterior, idUsuario);
+        }
+        return new FaltaResponse(salva);
     }
 
     @Transactional
@@ -107,6 +119,7 @@ public class FaltaService {
             Integer idFalta,
             Integer idUsuario
     ) {
+        bloquearUsuario(idUsuario);
         validarIdFalta(idFalta);
 
         Falta falta = faltaRepository.findById(idFalta)
@@ -123,6 +136,7 @@ public class FaltaService {
 
         faltaRepository.delete(falta);
         faltaRepository.flush();
+        notificacoes.reavaliarDisciplina(falta.getIdDisciplina(), idUsuario);
     }
 
     @PreAuthorize("#idUsuario != null and #idUsuario.toString() == authentication.name")
@@ -191,6 +205,14 @@ public class FaltaService {
                     "A quantidade de aulas deve ser maior que zero."
             );
         }
+    }
+
+    private void bloquearUsuario(Integer idUsuario) {
+        if (idUsuario == null || idUsuario <= 0) {
+            throw new IllegalArgumentException("O usuário informado é inválido.");
+        }
+        usuarios.buscarParaAtualizacao(idUsuario)
+                .orElseThrow(() -> new IllegalArgumentException("Usuário não encontrado."));
     }
 
     private void validarIdFalta(Integer idFalta) {

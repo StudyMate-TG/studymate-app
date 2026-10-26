@@ -21,14 +21,17 @@ public class DisciplinaService {
     private final PeriodoLetivoRepository periodoRepository;
     private final UsuarioRepository usuarioRepository;
     private final PeriodoLetivoService periodoService;
+    private final NotificacaoService notificacoes;
 
     public DisciplinaService(DisciplinaRepository disciplinaRepository,
                              PeriodoLetivoRepository periodoRepository,
-                             UsuarioRepository usuarioRepository, PeriodoLetivoService periodoService) {
+                             UsuarioRepository usuarioRepository, PeriodoLetivoService periodoService,
+                             NotificacaoService notificacoes) {
         this.disciplinaRepository = disciplinaRepository;
         this.periodoRepository = periodoRepository;
         this.usuarioRepository = usuarioRepository;
         this.periodoService = periodoService;
+        this.notificacoes = notificacoes;
     }
 
     @PreAuthorize("#idUsuario != null and #idUsuario.toString() == authentication.name")
@@ -71,7 +74,9 @@ public class DisciplinaService {
         Disciplina disciplina = buscarDoUsuario(idDisciplina, idUsuario);
         // Mantem o periodo original, como no contrato anterior de edicao.
         preencherDados(disciplina, request);
-        return resposta(disciplinaRepository.saveAndFlush(disciplina), idUsuario);
+        Disciplina salva = disciplinaRepository.saveAndFlush(disciplina);
+        notificacoes.reavaliarDisciplina(idDisciplina, idUsuario);
+        return resposta(salva, idUsuario);
     }
 
     @Transactional
@@ -80,6 +85,7 @@ public class DisciplinaService {
         bloquearUsuario(idUsuario);
         Disciplina disciplina = buscarDoUsuario(idDisciplina, idUsuario);
         try {
+            notificacoes.excluirDisciplina(idDisciplina, idUsuario);
             disciplinaRepository.delete(disciplina);
             disciplinaRepository.flush();
         } catch (DataIntegrityViolationException erro) {
