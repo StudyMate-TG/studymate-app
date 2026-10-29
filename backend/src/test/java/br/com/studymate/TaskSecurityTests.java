@@ -284,11 +284,11 @@ class TaskSecurityTests {
         var dr = mock(DisciplinaRepository.class);
         var ur = mock(UsuarioRepository.class);
         var gs = mock(br.com.studymate.service.GamificacaoService.class);
-        assertDoesNotThrow(() -> new TarefaService(tr, dr, ur, gs, 1, 1, 1));
-        assertThrows(IllegalArgumentException.class, () -> new TarefaService(tr, dr, ur, gs, 1001, 4096, 4096000));
-        assertThrows(IllegalArgumentException.class, () -> new TarefaService(tr, dr, ur, gs, 1000, 4097, 4096000));
-        assertThrows(IllegalArgumentException.class, () -> new TarefaService(tr, dr, ur, gs, 1000, 4096, 4096001));
-        assertThrows(IllegalArgumentException.class, () -> new TarefaService(tr, dr, ur, gs, 0, 4096, 4096000));
+        assertDoesNotThrow(() -> new TarefaService(tr, dr, ur, gs, org.mockito.Mockito.mock(br.com.studymate.service.NotificacaoService.class), 1, 1, 1));
+        assertThrows(IllegalArgumentException.class, () -> new TarefaService(tr, dr, ur, gs, org.mockito.Mockito.mock(br.com.studymate.service.NotificacaoService.class), 1001, 4096, 4096000));
+        assertThrows(IllegalArgumentException.class, () -> new TarefaService(tr, dr, ur, gs, org.mockito.Mockito.mock(br.com.studymate.service.NotificacaoService.class), 1000, 4097, 4096000));
+        assertThrows(IllegalArgumentException.class, () -> new TarefaService(tr, dr, ur, gs, org.mockito.Mockito.mock(br.com.studymate.service.NotificacaoService.class), 1000, 4096, 4096001));
+        assertThrows(IllegalArgumentException.class, () -> new TarefaService(tr, dr, ur, gs, org.mockito.Mockito.mock(br.com.studymate.service.NotificacaoService.class), 0, 4096, 4096000));
     }
 
     private int cadastrarConcorrentes(String descricao) throws Exception {

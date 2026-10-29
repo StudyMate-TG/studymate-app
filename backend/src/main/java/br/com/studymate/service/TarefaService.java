@@ -26,6 +26,7 @@ public class TarefaService {
     private final DisciplinaRepository disciplinaRepository;
     private final UsuarioRepository usuarioRepository;
     private final GamificacaoService gamificacaoService;
+    private final NotificacaoService notificacoes;
     private final int maxCount;
     private final int maxDescription;
     private final long maxStoredChars;
@@ -35,6 +36,7 @@ public class TarefaService {
             DisciplinaRepository disciplinaRepository,
             UsuarioRepository usuarioRepository,
             GamificacaoService gamificacaoService,
+            NotificacaoService notificacoes,
             @Value("${app.tasks.max-count:1000}") int maxCount,
             @Value("${app.tasks.max-description:4096}") int maxDescription,
             @Value("${app.tasks.max-stored-chars:4096000}") long maxStoredChars) {
@@ -43,6 +45,7 @@ public class TarefaService {
         this.disciplinaRepository = disciplinaRepository;
         this.usuarioRepository = usuarioRepository;
         this.gamificacaoService = gamificacaoService;
+        this.notificacoes = notificacoes;
         if (maxCount < 1 || maxCount > 1000
                 || maxDescription < 1 || maxDescription > 4096
                 || maxStoredChars < 1 || maxStoredChars > 4096000L) {
@@ -114,6 +117,7 @@ public class TarefaService {
         Tarefa salva =
                 tarefaRepository.saveAndFlush(tarefa);
 
+        notificacoes.sincronizarTarefa(salva, request.getIdUsuario());
         return new TarefaResponse(
                 salva,
                 disciplina.getNome()
@@ -162,7 +166,9 @@ public class TarefaService {
         if (alteradas != 1) {
             throw new IllegalArgumentException("Tarefa não encontrada.");
         }
-        return new TarefaResponse(buscarDoUsuario(idTarefa, idUsuario), disciplina.getNome());
+        Tarefa atualizada = buscarDoUsuario(idTarefa, idUsuario);
+        notificacoes.sincronizarTarefa(atualizada, idUsuario);
+        return new TarefaResponse(atualizada, disciplina.getNome());
     }
 
     @Transactional
@@ -193,6 +199,7 @@ public class TarefaService {
         Tarefa salva =
                 tarefaRepository.saveAndFlush(tarefa);
 
+        notificacoes.sincronizarTarefa(salva, idUsuario);
         return resposta(salva, idUsuario);
     }
 
@@ -226,6 +233,7 @@ public class TarefaService {
                         tarefa
                 );
 
+        notificacoes.sincronizarTarefa(salva, idUsuario);
         return resposta(
                 salva,
                 idUsuario
@@ -244,6 +252,7 @@ public class TarefaService {
         if (tarefaRepository.excluirPorIdEUsuario(idTarefa, idUsuario, OffsetDateTime.now()) != 1) {
             throw new IllegalArgumentException("Tarefa não encontrada.");
         }
+        notificacoes.cancelarTarefa(idTarefa, idUsuario);
     }
 
     private Tarefa buscarDoUsuario(

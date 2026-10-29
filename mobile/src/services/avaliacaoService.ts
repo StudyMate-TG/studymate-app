@@ -1,5 +1,7 @@
 import {
   apiFetch,
+  requireSessionUser,
+  getSessionGeneration,
   handleResponse,
 } from "./apiClient";
 
@@ -10,6 +12,8 @@ import {
 import {
   agendarNotificacoesAvaliacao,
   cancelarNotificacoesAvaliacao,
+  reconciliarLembretesAvaliacoes,
+  getRevisaoLembretes,
 } from "./notificacaoService";
 
 export type AvaliacaoRequest = {
@@ -38,10 +42,16 @@ export type MediaDisciplinaResponse = {
 };
 
 async function atualizarLembretesAvaliacao(
-  avaliacao: AvaliacaoResponse
+  avaliacao: AvaliacaoResponse,
+  idUsuario: number,
+  geracao: number
 ): Promise<void> {
   try {
+    requireSessionUser(idUsuario);
+    if (getSessionGeneration() !== geracao) return;
+    if (avaliacao.nota !== null) { await cancelarNotificacoesAvaliacao(avaliacao.idAvaliacao); return; }
     await agendarNotificacoesAvaliacao({
+      idUsuario, idDisciplina: avaliacao.idDisciplina,
       idAvaliacao:
         avaliacao.idAvaliacao,
 
@@ -75,14 +85,19 @@ export const listarAvaliacoes =
           idDisciplina.toString(),
       });
 
+    requireSessionUser(idUsuario);
+    const geracao = getSessionGeneration();
+    const revisao = getRevisaoLembretes();
     const response =
       await apiFetch(
         `${API_BASE_URL}/avaliacoes?${params.toString()}`
       );
 
-    return handleResponse<
-      AvaliacaoResponse[]
-    >(response);
+    const avaliacoes = await handleResponse<AvaliacaoResponse[]>(response);
+    requireSessionUser(idUsuario);
+    if (getSessionGeneration() !== geracao) throw new Error("A sessão mudou. Abra novamente as avaliações.");
+    await reconciliarLembretesAvaliacoes(avaliacoes, idUsuario, idDisciplina, revisao).catch((error) => console.warn("Não foi possível atualizar lembretes de avaliações.", error));
+    return avaliacoes;
   };
 
 export const buscarAvaliacaoPorId =
@@ -92,6 +107,8 @@ export const buscarAvaliacaoPorId =
   ): Promise<
     AvaliacaoResponse
   > => {
+    requireSessionUser(idUsuario);
+    const geracao = getSessionGeneration();
     const response =
       await apiFetch(
         `${API_BASE_URL}/avaliacoes/${idAvaliacao}?idUsuario=${idUsuario}`
@@ -109,6 +126,8 @@ export const cadastrarAvaliacao =
   ): Promise<
     AvaliacaoResponse
   > => {
+    requireSessionUser(idUsuario);
+    const geracao = getSessionGeneration();
     const response =
       await apiFetch(
         `${API_BASE_URL}/avaliacoes?idUsuario=${idUsuario}`,
@@ -133,7 +152,7 @@ export const cadastrarAvaliacao =
       >(response);
 
     await atualizarLembretesAvaliacao(
-      avaliacao
+      avaliacao, idUsuario, geracao
     );
 
     return avaliacao;
@@ -147,6 +166,8 @@ export const atualizarAvaliacao =
   ): Promise<
     AvaliacaoResponse
   > => {
+    requireSessionUser(idUsuario);
+    const geracao = getSessionGeneration();
     const response =
       await apiFetch(
         `${API_BASE_URL}/avaliacoes/${idAvaliacao}?idUsuario=${idUsuario}`,
@@ -171,7 +192,7 @@ export const atualizarAvaliacao =
       >(response);
 
     await atualizarLembretesAvaliacao(
-      avaliacao
+      avaliacao, idUsuario, geracao
     );
 
     return avaliacao;
@@ -182,6 +203,8 @@ export const excluirAvaliacao =
     idAvaliacao: number,
     idUsuario: number
   ): Promise<void> => {
+    requireSessionUser(idUsuario);
+    const geracao = getSessionGeneration();
     const response =
       await apiFetch(
         `${API_BASE_URL}/avaliacoes/${idAvaliacao}?idUsuario=${idUsuario}`,
@@ -214,6 +237,8 @@ export const excluirAvaliacao =
     }
 
     try {
+      requireSessionUser(idUsuario);
+      if (getSessionGeneration() !== geracao) return;
       await cancelarNotificacoesAvaliacao(
         idAvaliacao
       );
@@ -241,6 +266,8 @@ export const buscarMediaDisciplina =
           idDisciplina.toString(),
       });
 
+    requireSessionUser(idUsuario);
+    const geracao = getSessionGeneration();
     const response =
       await apiFetch(
         `${API_BASE_URL}/avaliacoes/media?${params.toString()}`

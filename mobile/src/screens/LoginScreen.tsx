@@ -16,6 +16,7 @@ import type { RootStackScreenProps } from "../types";
 
 import { cadastrarUsuario, loginUsuario, salvarUsuarioSessao, verificarEmail } from "../services/authService";
 
+import { getSessionEndReason } from "../services/apiClient";
 import { Input } from "../components/Input";
 import { Button } from "../components/Button";
 import { Card } from "../components/Card";
@@ -156,6 +157,7 @@ export const LoginScreen: React.FC<Props> = ({ navigation }) => {
 
         <Text style={styles.cardDescription}>Por segurança, entre novamente após recarregar ou fechar o aplicativo.</Text>
         {mensagem ? <Text accessibilityLiveRegion="polite" style={styles.cardDescription}>{mensagem}</Text> : null}
+        {getSessionEndReason() ? <Text accessibilityRole="alert" style={{ color: "#B91C1C", marginBottom: 12 }}>{getSessionEndReason()}</Text> : null}
         <Card style={styles.formCard}>
           {activeTab === "login" ? (
             <View>

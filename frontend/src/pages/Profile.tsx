@@ -95,6 +95,8 @@ const Profile = () => {
                   onClick={() => {
                     if (item.label === "Editar Perfil") {
                       navigate("/profile/edit");
+                    } else if (item.label === "Notificações") {
+                      navigate("/notifications");
                     }
                   }}
                 >

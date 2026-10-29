@@ -35,6 +35,7 @@ function ambiente() {
   let cursor = 0;
   const chamadas = [];
   const notificacoes = [];
+  const lembretes = [];
   const donos = [];
   const servidor = new Map([[1, tarefa()]]);
   const validar = (esperado) => {
@@ -52,6 +53,7 @@ function ambiente() {
     },
   };
   const substitutions = new Map([
+    [path.join(src, "services/notificacaoService.ts"), { getRevisaoLembretes: () => 0, reconciliarLembretesTarefas: async (tarefas, id) => { validar(id); lembretes.push({ tarefas, id }); } }],
     [path.join(src, "database/database.ts"), { getDatabase: async (id) => { donos.push(id); validar(id); return db; } }],
     [path.join(src, "services/apiConfig.ts"), { API_BASE_URL: "http://test/api" }],
     [path.join(src, "services/apiClient.ts"), {
@@ -109,7 +111,7 @@ function ambiente() {
     VALUES (?, 'local-1', 'TAREFA', ?, '{}', ?, '2026-10-11T12:00:00')`, randomUUID(), operation, status);
   executar("INSERT INTO sync_metadata (key, value) VALUES ('tarefas_cursor_1', 'original')");
   return { sqlite, query, executar, inserirLocal, enfileirar, repo, metadata, pull, engine,
-    chamadas, notificacoes, donos, servidor,
+    chamadas, notificacoes, lembretes, donos, servidor,
     trocarUsuario: (id) => { usuario = id; },
     requisicoes: (handler) => { aoRequisitar = handler; },
     captura: (handler) => { aoCapturar = handler; },
@@ -238,4 +240,19 @@ test("switching accounts during an active synchronization stops old-account pull
   release.resolve(); await failure;
   assert.equal(a.chamadas.length, 0); assert.equal(a.notificacoes.length, 0);
   assert.equal(a.cursor(), "original");
+});
+
+test("successful pull reconciles native reminders from the committed local state", async (t) => {
+  const a = ambiente(); t.after(() => a.sqlite.close());
+  a.inserirLocal(1, "PENDENTE");
+  await a.pull.executarPullTarefas(1);
+  assert.equal(a.lembretes.length, 1);
+  assert.equal(a.lembretes[0].id, 1);
+  assert.equal(a.lembretes[0].tarefas[0].status, "PENDENTE");
+  a.servidor.set(1, tarefa({ status: "CONCLUIDA" }));
+  await a.pull.executarPullTarefas(1);
+  assert.equal(a.lembretes[1].tarefas[0].status, "CONCLUIDA");
+  a.servidor.set(1, tarefa({ deletedAt: "2026-10-11T13:00:00Z" }));
+  await a.pull.executarPullTarefas(1);
+  assert.deepEqual(a.lembretes[2].tarefas, []);
 });

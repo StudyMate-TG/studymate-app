@@ -14,6 +14,7 @@ import { useNavigate } from "react-router-dom";
 import { hasSession, onSessionEnded } from "./services/apiClient";
 import Index from "./pages/Index";
 import Home from "./pages/Home";
+import Notifications from "./pages/Notifications";
 import Subjects from "./pages/Subjects";
 import CalendarPage from "./pages/CalendarPage";
 import Achievements from "./pages/Achievements";
@@ -32,9 +33,12 @@ const queryClient = new QueryClient();
 const AppContent = () => {
   const location = useLocation();
   const navigate = useNavigate();
-  useEffect(() => onSessionEnded(() => navigate("/", { replace: true })), [navigate]);
+  useEffect(() => onSessionEnded((reason) => {
+    queryClient.clear();
+    navigate("/", { replace: true, state: { sessionExpired: reason === "expired" } });
+  }), [navigate]);
   useEffect(() => {
-    if (!["/", "/desktop"].includes(location.pathname) && !hasSession()) navigate("/", { replace: true });
+    if (!["/", "/desktop"].includes(location.pathname) && !hasSession()) navigate("/", { replace: true, state: { sessionExpired: true } });
   }, [location.pathname, navigate]);
 
   const routesWithoutNav = ["/login", "/desktop"];
@@ -48,6 +52,7 @@ const AppContent = () => {
           <Routes>
           <Route path="/desktop" element={<Index />} />
           <Route path="/home" element={<Home />} />
+          <Route path="/notifications" element={<Notifications />} />
           <Route path="/" element={<Login />} />
           <Route path="/subjects" element={<Subjects />} />
           <Route path="/subjects/new" element={<NewSubject />} />

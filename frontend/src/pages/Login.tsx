@@ -1,6 +1,6 @@
 import { cadastrarUsuario, loginUsuario, salvarUsuarioSessao, verificarEmail } from "@/services/authService";
 import { useState, type FormEvent } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -16,6 +16,7 @@ import mascot from "@/assets/mascot.png";
 
 const Login = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const [isLoading, setIsLoading] = useState(false);
   const [activeTab, setActiveTab] = useState("login");
   const [confirmarCadastro, setConfirmarCadastro] = useState(false);
@@ -114,6 +115,7 @@ const Login = () => {
         </div>
 
         <p className="text-sm text-muted-foreground">Por segurança, entre novamente após recarregar ou fechar o aplicativo.</p>
+        {location.state?.sessionExpired && <p role="alert" className="text-sm text-destructive">Sua sessão terminou. Entre novamente para acessar suas notificações.</p>}
         {mensagem && <p role="status" className="text-sm text-primary">{mensagem}</p>}
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
           <TabsList className="grid w-full grid-cols-2">

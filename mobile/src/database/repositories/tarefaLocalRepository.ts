@@ -153,10 +153,10 @@ export async function criarTarefaLocal(
   return tarefa;
 }
 
-export async function listarTarefasLocais(): Promise<
+export async function listarTarefasLocais(idUsuario?: number): Promise<
   LocalTarefa[]
 > {
-  const db = await getDatabase();
+  const db = await getDatabase(idUsuario);
 
   const rows =
     await db.getAllAsync<LocalTarefaRow>(

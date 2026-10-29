@@ -2,6 +2,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { API_BASE_URL } from "./apiConfig";
 import { apiFetch, handleResponse, setAccessToken, clearAccessToken, hasSession, onSessionEnded } from "./apiClient";
 import type { UsuarioResponse } from "../types";
+import { cancelarTodosLembretesLocais } from "./notificacaoService";
 const CURRENT_USER_KEY = "studymate_current_user";
 type CadastroUsuarioPayload = { nome: string; email: string; senha: string };
 type LoginUsuarioPayload = { email: string; senha: string };
@@ -53,7 +54,9 @@ export const loginUsuario = async (payload: LoginUsuarioPayload): Promise<Usuari
   }, false);
   const data = await handleResponse<LoginResponse>(response);
   if (data.tipo !== "Bearer") throw new Error("Resposta de autenticação inválida.");
+  await cancelarTodosLembretesLocais();
   setAccessToken(data.token, data.expiresIn, data.idUsuario);
+  await cancelarTodosLembretesLocais();
   return perfilUsuario(data);
 };
 
@@ -69,5 +72,6 @@ export const obterUsuarioSessao = async (): Promise<UsuarioResponse | null> => {
 };
 export const encerrarSessao = async (): Promise<void> => {
   clearAccessToken();
+  await cancelarTodosLembretesLocais();
   await AsyncStorage.removeItem(CURRENT_USER_KEY);
 };

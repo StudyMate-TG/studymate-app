@@ -109,6 +109,7 @@ export type RootStackParamList = {
     nomeDisciplina: string;
   };
 
+  Notifications: undefined;
   EditProfile: undefined;
 
   Periods: undefined;
