@@ -12,8 +12,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.validation.annotation.Validated;
-import java.math.BigDecimal;
-import java.math.RoundingMode;
 import java.util.List;
 
 @Service
@@ -23,12 +21,14 @@ public class AvaliacaoService {
     private final AvaliacaoRepository avaliacoes;
     private final DisciplinaRepository disciplinas;
     private final UsuarioRepository usuarios;
+    private final NotificacaoService notificacoes;
 
     public AvaliacaoService(AvaliacaoRepository avaliacoes, DisciplinaRepository disciplinas,
-                            UsuarioRepository usuarios) {
+                            UsuarioRepository usuarios, NotificacaoService notificacoes) {
         this.avaliacoes = avaliacoes;
         this.disciplinas = disciplinas;
         this.usuarios = usuarios;
+        this.notificacoes = notificacoes;
     }
 
     @PreAuthorize("#idUsuario != null and #idUsuario.toString() == authentication.name")
@@ -50,7 +50,10 @@ public class AvaliacaoService {
         validarDisciplina(request.idDisciplina(), idUsuario);
         Avaliacao avaliacao = new Avaliacao();
         preencher(avaliacao, request);
-        return new AvaliacaoResponse(avaliacoes.saveAndFlush(avaliacao));
+        Avaliacao salva = avaliacoes.saveAndFlush(avaliacao);
+        notificacoes.sincronizarAvaliacao(salva, idUsuario);
+        notificacoes.reavaliarDisciplina(salva.getIdDisciplina(), idUsuario);
+        return new AvaliacaoResponse(salva);
     }
 
     @Transactional
@@ -59,35 +62,34 @@ public class AvaliacaoService {
                                       @NotNull @Valid AvaliacaoRequest request) {
         bloquearUsuario(idUsuario);
         Avaliacao avaliacao = buscar(idAvaliacao, idUsuario);
+        Integer disciplinaAnterior = avaliacao.getIdDisciplina();
         validarDisciplina(request.idDisciplina(), idUsuario);
         preencher(avaliacao, request);
-        return new AvaliacaoResponse(avaliacoes.saveAndFlush(avaliacao));
+        Avaliacao salva = avaliacoes.saveAndFlush(avaliacao);
+        notificacoes.sincronizarAvaliacao(salva, idUsuario);
+        notificacoes.reavaliarDisciplina(salva.getIdDisciplina(), idUsuario);
+        if (!disciplinaAnterior.equals(salva.getIdDisciplina())) {
+            notificacoes.reavaliarDisciplina(disciplinaAnterior, idUsuario);
+        }
+        return new AvaliacaoResponse(salva);
     }
 
     @Transactional
     @PreAuthorize("#idUsuario != null and #idUsuario.toString() == authentication.name")
     public void excluir(Long idAvaliacao, Integer idUsuario) {
         bloquearUsuario(idUsuario);
-        avaliacoes.delete(buscar(idAvaliacao, idUsuario));
+        Avaliacao avaliacao = buscar(idAvaliacao, idUsuario);
+        notificacoes.excluirAvaliacao(idAvaliacao, idUsuario);
+        avaliacoes.delete(avaliacao);
         avaliacoes.flush();
+        notificacoes.reavaliarDisciplina(avaliacao.getIdDisciplina(), idUsuario);
     }
 
     @PreAuthorize("#idUsuario != null and #idUsuario.toString() == authentication.name")
     public MediaDisciplinaResponse calcularMedia(Integer idDisciplina, Integer idUsuario) {
         validarDisciplina(idDisciplina, idUsuario);
         List<Avaliacao> lista = avaliacoes.findByIdDisciplinaOrderByDataAvaliacaoDescIdAvaliacaoDesc(idDisciplina);
-        BigDecimal soma = BigDecimal.ZERO;
-        BigDecimal pesos = BigDecimal.ZERO;
-        int corrigidas = 0;
-        for (Avaliacao avaliacao : lista) {
-            if (avaliacao.getNota() != null) {
-                soma = soma.add(avaliacao.getNota().multiply(avaliacao.getPeso()));
-                pesos = pesos.add(avaliacao.getPeso());
-                corrigidas++;
-            }
-        }
-        BigDecimal media = corrigidas == 0 ? null : soma.divide(pesos, 2, RoundingMode.HALF_UP);
-        return new MediaDisciplinaResponse(idDisciplina, media, corrigidas, lista.size() - corrigidas);
+        return MediaPonderada.calcular(idDisciplina, lista);
     }
 
     private Avaliacao buscar(Long id, Integer usuario) {

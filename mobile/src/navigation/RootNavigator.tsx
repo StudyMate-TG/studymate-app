@@ -55,6 +55,7 @@ import {
   User,
 } from "lucide-react-native";
 
+import { NotificationsScreen } from "../screens/NotificationsScreen";
 import { EditTaskScreen } from "../screens/EditTaskScreen";
 
 export const navigationRef =
@@ -329,6 +330,7 @@ export const RootNavigator: React.FC = () => {
         name="EditClassSchedule"
         component={EditClassScheduleScreen}
       />
+      <Stack.Screen name="Notifications" component={NotificationsScreen} />
     </Stack.Navigator>
   );
 };

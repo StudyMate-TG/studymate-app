@@ -5,6 +5,7 @@ import type { UsuarioResponse } from "../types";
 import { Platform } from "react-native";
 import * as SecureStore from "expo-secure-store";
 
+import { cancelarTodosLembretesLocais } from "./notificacaoService";
 const CURRENT_USER_KEY = "studymate_current_user";
 const AUTH_SESSION_KEY = "studymate_auth_session";
 
@@ -134,6 +135,8 @@ export const loginUsuario = async (payload: LoginUsuarioPayload): Promise<Usuari
   }, false);
   const data = await handleResponse<LoginResponse>(response);
   if (data.tipo !== "Bearer") throw new Error("Resposta de autenticação inválida.");
+  await cancelarTodosLembretesLocais();
+
   const expiresAt = setAccessToken(
     data.token,
     data.expiresIn,
@@ -153,7 +156,6 @@ export const loginUsuario = async (payload: LoginUsuarioPayload): Promise<Usuari
       "Não foi possível armazenar a sessão com segurança. Tente entrar novamente."
     );
   }
-
   return perfilUsuario(data);
 };
 
@@ -209,5 +211,6 @@ export const obterUsuarioSessao =
 export const encerrarSessao = async (): Promise<void> => {
   clearAccessToken();
   await removerSessaoSegura();
+  await cancelarTodosLembretesLocais();
   await AsyncStorage.removeItem(CURRENT_USER_KEY);
 };

@@ -1,3 +1,5 @@
+import { listarTarefasLocais } from "../database/repositories/tarefaLocalRepository";
+import { getRevisaoLembretes, reconciliarLembretesTarefas } from "./notificacaoService";
 import { API_BASE_URL } from "./apiConfig";
 import { apiFetch, handleResponse, requireSessionUser } from "./apiClient";
 import type { TarefaResponse } from "./tarefaTypes";
@@ -29,4 +31,10 @@ export async function executarPullTarefas(idUsuario: number): Promise<void> {
     cursor = dados.cursor;
     hasMore = dados.hasMore === true;
   } while (hasMore);
+  requireSessionUser(idUsuario);
+  const revisao = getRevisaoLembretes();
+  const tarefas = await listarTarefasLocais(idUsuario);
+  requireSessionUser(idUsuario);
+  try { await reconciliarLembretesTarefas(tarefas, idUsuario, revisao); }
+  catch (error) { requireSessionUser(idUsuario); console.warn("Sincronização concluída, mas não foi possível atualizar lembretes locais.", error); }
 }

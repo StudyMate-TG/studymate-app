@@ -1,29 +1,35 @@
 // JWTs stay in memory. Restarting or reloading the app requires a new login.
 let accessToken: string | null = null;
 let expiresAt = 0;
-const sessionListeners = new Set<() => void>();
+let sessionVersion = 0;
+type SessionEndReason = "logout" | "expired";
+const sessionListeners = new Set<(reason: SessionEndReason) => void>();
 
-export const onSessionEnded = (listener: () => void): (() => void) => {
+export const getSessionVersion = (): number => sessionVersion;
+
+export const onSessionEnded = (listener: (reason: SessionEndReason) => void): (() => void) => {
   sessionListeners.add(listener);
   return () => { sessionListeners.delete(listener); };
 };
 
-export const clearAccessToken = (): void => {
+export const clearAccessToken = (reason: SessionEndReason = "logout"): void => {
   accessToken = null;
   expiresAt = 0;
-  sessionListeners.forEach((listener) => listener());
+  sessionVersion += 1;
+  sessionListeners.forEach((listener) => listener(reason));
 };
 
 export const setAccessToken = (token: string, expiresIn: number): void => {
   if (!token || !Number.isFinite(expiresIn) || expiresIn <= 0) {
     throw new Error("Não foi possível iniciar a sessão. Entre novamente.");
   }
+  sessionVersion += 1;
   accessToken = token;
   expiresAt = Date.now() + expiresIn * 1000;
 };
 
 export const hasSession = (): boolean => {
-  if (accessToken && Date.now() >= expiresAt) clearAccessToken();
+  if (accessToken && Date.now() >= expiresAt) clearAccessToken("expired");
   return Boolean(accessToken);
 };
 
@@ -35,14 +41,19 @@ export const apiFetch = async (
   const headers = new Headers(init.headers);
   if (authenticated) {
     if (!hasSession()) {
-      clearAccessToken();
+      clearAccessToken("expired");
       throw new Error("Sua sessão terminou. Entre novamente.");
     }
     headers.set("Authorization", `Bearer ${accessToken}`);
   }
+  const requestSessionVersion = sessionVersion;
   const response = await fetch(url, { ...init, headers });
+  // An old account's request must not populate the new session or end its login.
+  if (authenticated && requestSessionVersion !== sessionVersion) {
+    throw new Error("A sessão mudou. Tente novamente.");
+  }
   if (response.status === 401) {
-    clearAccessToken();
+    if (authenticated) clearAccessToken("expired");
     throw new Error(authenticated
       ? "Sua sessão terminou. Entre novamente."
       : "Não foi possível entrar. Confira suas credenciais e a confirmação do e-mail.");

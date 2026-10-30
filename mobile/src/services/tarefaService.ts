@@ -32,6 +32,8 @@ import {
 import {
   agendarNotificacaoTarefa,
   cancelarNotificacoesTarefa,
+  reconciliarLembretesTarefas,
+  getRevisaoLembretes,
 } from "./notificacaoService";
 
 export type {
@@ -143,10 +145,13 @@ async function tentarSincronizar(
  * pois existe mesmo antes da sincronização com o backend.
  */
 async function atualizarNotificacaoDaTarefa(
-  tarefa: LocalTarefa
+  tarefa: LocalTarefa,
+  idUsuario: number
 ): Promise<void> {
   try {
+    requireSessionUser(idUsuario);
     await agendarNotificacaoTarefa({
+      idUsuario,
       localId:
         tarefa.localId,
 
@@ -180,10 +185,12 @@ async function atualizarNotificacaoDaTarefa(
  * a uma determinada tarefa.
  */
 async function cancelarNotificacaoDaTarefa(
-  referencia: TarefaReferencia
+  referencia: TarefaReferencia,
+  idUsuario: number
 ): Promise<void> {
   try {
     await cancelarNotificacoesTarefa({
+      idUsuario,
       localId:
         referencia.localId,
 
@@ -243,7 +250,7 @@ export async function cadastrarTarefa(
    * Agenda o lembrete de 24h.
    */
   await atualizarNotificacaoDaTarefa(
-    tarefaFinal
+    tarefaFinal, payload.idUsuario
   );
 
   return mapearLocalParaResponse(
@@ -264,8 +271,11 @@ export async function listarTarefas(
     idUsuario
   );
 
+  const revisao = getRevisaoLembretes();
   const tarefas =
-    await listarTarefasLocais();
+    await listarTarefasLocais(idUsuario);
+  requireSessionUser(idUsuario);
+  void reconciliarLembretesTarefas(tarefas, idUsuario, revisao).catch((error) => console.warn("Não foi possível restaurar lembretes locais.", error));
 
   /*
    * Retorna imediatamente os dados locais
@@ -283,7 +293,7 @@ export async function listarTarefas(
 // Refresh the UI after Push/Pull without starting another sync cycle.
 export async function listarTarefasConfirmadas(idUsuario: number): Promise<TarefaResponse[]> {
   requireSessionUser(idUsuario);
-  const tarefas = await listarTarefasLocais();
+  const tarefas = await listarTarefasLocais(idUsuario);
   requireSessionUser(idUsuario);
   return tarefas.map(mapearLocalParaResponse);
 }
@@ -397,7 +407,7 @@ export async function atualizarTarefa(
    * de entrega tenha sido alterada.
    */
   await atualizarNotificacaoDaTarefa(
-    tarefaFinal
+    tarefaFinal, idUsuario
   );
 
   return mapearLocalParaResponse(
@@ -434,7 +444,7 @@ export async function excluirTarefa(
    * enviando lembretes.
    */
   await cancelarNotificacaoDaTarefa(
-    referencia
+    referencia, idUsuario
   );
 
   void tentarSincronizar(
@@ -471,6 +481,7 @@ export async function concluirTarefa(
    */
   try {
     await cancelarNotificacoesTarefa({
+      idUsuario,
       localId:
         tarefaLocal.localId,
 
@@ -523,7 +534,7 @@ export async function reabrirTarefa(
    * cria o lembrete.
    */
   await atualizarNotificacaoDaTarefa(
-    tarefaLocal
+    tarefaLocal, idUsuario
   );
 
   void tentarSincronizar(

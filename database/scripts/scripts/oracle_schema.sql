@@ -290,4 +290,5 @@ END;
 @@../../migrations/003_auth_protection.sql
 @@../../migrations/004_email_verification.sql
 @@../../migrations/005_gamificacao.sql
+@@../../migrations/006_notificacoes.sql
 PROMPT StudyMate: DDL concluido.

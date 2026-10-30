@@ -23,6 +23,7 @@ import {
 
 import { MobileHeader } from "../components/MobileHeader";
 
+import { useNotificacoesNaoLidas } from "../hooks/useNotificacoesNaoLidas";
 import { Card } from "../components/Card";
 
 import { Button } from "../components/Button";
@@ -43,6 +44,8 @@ export const ProfileScreen: React.FC = () => {
     useNavigation<NativeStackNavigationProp<RootStackParamList>>();
 
   const isFocused = useIsFocused();
+  const notificacoes = useNotificacoesNaoLidas();
+  useEffect(() => { if (isFocused) void notificacoes.refetch(); }, [isFocused, notificacoes.refetch]);
 
   const [usuario, setUsuario] = useState<UsuarioResponse | null>(null);
 
@@ -134,7 +137,7 @@ export const ProfileScreen: React.FC = () => {
     {
       icon: <Bell size={20} color="#64748B" />,
       label: "Notificações",
-      onPress: handleComingSoon,
+      onPress: () => navigation.navigate("Notifications"),
     },
     {
       icon: <Moon size={20} color="#64748B" />,
@@ -238,7 +241,7 @@ export const ProfileScreen: React.FC = () => {
               <View style={styles.menuLeft}>
                 {item.icon}
 
-                <Text style={styles.menuLabel}>{item.label}</Text>
+                <Text style={styles.menuLabel}>{item.label}{item.label === "Notificações" && notificacoes.data ? ` (${notificacoes.data.total} não lidas)` : ""}</Text>
               </View>
 
               <ChevronRight size={18} color="#94A3B8" />

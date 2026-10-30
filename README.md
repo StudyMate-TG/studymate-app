@@ -411,3 +411,6 @@ npx expo export --platform android --platform ios
 - **João Vitor** — Back-End
 - **Kaue Guedes** — Mobile
 - **Luiz Gustavo** — Front-End
+## Central de notificações (RF12)
+
+Consulte [a documentação do módulo](docs/api/notificacoes-api.md) para migrations, regras, configuração, endpoints, testes e uso no navegador.
