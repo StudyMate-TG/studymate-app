@@ -23,7 +23,8 @@
       "favicon": "./assets/logo.png"
     },
     "plugins": [
-      "expo-sqlite"
+      "expo-sqlite",
+      "expo-status-bar"
     ]
   }
 }
