@@ -93,11 +93,32 @@ class JwtSecurityTests {
    .andExpect(status().isForbidden());
   assertThrows(AccessDeniedException.class,()->TestIdentity.callAs(bia,()->disciplinaService.listar(ana,null)));
  }
- @Test void corsAceitaPreflightSemToken() throws Exception {
-  mvc.perform(options("/api/avaliacoes").header("Origin","http://localhost:8080")
-   .header("Access-Control-Request-Method","POST").header("Access-Control-Request-Headers","Authorization,Content-Type"))
-   .andExpect(status().isOk()).andExpect(header().string("Access-Control-Allow-Origin","http://localhost:8080"));
- }
+  @Test
+  void corsAceitaPreflightSemToken() throws Exception {
+      mvc.perform(options("/api/avaliacoes")
+              .header("Origin", "http://localhost:5173")
+              .header("Access-Control-Request-Method", "POST")
+              .header(
+                      "Access-Control-Request-Headers",
+                      "Authorization,Content-Type"
+              ))
+              .andExpect(status().isOk())
+              .andExpect(header().string(
+                      "Access-Control-Allow-Origin",
+                      "http://localhost:5173"
+              ));
+  }
+  @Test
+  void corsRejeitaOrigemNaoAutorizada() throws Exception {
+      mvc.perform(options("/api/avaliacoes")
+              .header("Origin", "http://localhost:9999")
+              .header("Access-Control-Request-Method", "POST")
+              .header(
+                      "Access-Control-Request-Headers",
+                      "Authorization,Content-Type"
+              ))
+              .andExpect(status().isForbidden());
+  }
  @Test void erroRealDePersistenciaNaoExpoeSqlEReverteSomenteAFalha() throws Exception {
   mvc.perform(post("/api/disciplinas").header("Authorization","Bearer "+tokenAna).contentType("application/json")
    .content("{\"nome\":\"Java\",\"professor\":\"Maria\",\"mediaAprovacao\":6,\"limiteFaltas\":10}")).andExpect(status().isOk());
