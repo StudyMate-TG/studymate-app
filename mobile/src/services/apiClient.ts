@@ -1,4 +1,4 @@
-// JWTs stay in memory. Restarting or reloading the app requires a new login.
+// JWT remains in memory during runtime and can be restored from secure storage.
 let accessToken: string | null = null;
 let expiresAt = 0;
 let sessionUserId: number | null = null;
@@ -19,10 +19,11 @@ export const clearAccessToken = (reason = ""): void => {
   accessToken = null;
   expiresAt = 0;
   sessionUserId = null;
+
   sessionListeners.forEach((listener) => listener());
 };
 
-export const setAccessToken = (token: string, expiresIn: number, idUsuario: number): void => {
+export const setAccessToken = (token: string, expiresIn: number, idUsuario: number): number => {
   if (!token || !Number.isFinite(expiresIn) || expiresIn <= 0 || !Number.isInteger(idUsuario) || idUsuario <= 0) {
     throw new Error("Não foi possível iniciar a sessão. Entre novamente.");
   }
@@ -31,6 +32,31 @@ export const setAccessToken = (token: string, expiresIn: number, idUsuario: numb
   sessionUserId = idUsuario;
   accessToken = token;
   expiresAt = Date.now() + expiresIn * 1000;
+
+  return expiresAt;
+};
+
+export const restoreAccessToken = (
+  token: string,
+  storedExpiresAt: number,
+  idUsuario: number
+): boolean => {
+  if (
+    !token ||
+    !Number.isFinite(storedExpiresAt) ||
+    storedExpiresAt <= Date.now() ||
+    !Number.isInteger(idUsuario) ||
+    idUsuario <= 0
+  ) {
+    return false;
+  }
+
+  sessionGeneration++;
+  sessionUserId = idUsuario;
+  accessToken = token;
+  expiresAt = storedExpiresAt;
+
+  return true;
 };
 
 export const hasSession = (): boolean => {

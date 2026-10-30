@@ -14,7 +14,7 @@ import { useNavigation, useIsFocused } from "@react-navigation/native";
 
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 
-import { RootStackParamList, UsuarioResponse } from "../types";
+import type { RootStackParamList, UsuarioResponse } from "../types";
 
 import {
   obterUsuarioSessao,
@@ -59,42 +59,63 @@ export const ProfileScreen: React.FC = () => {
 
   useEffect(() => {
     const carregarUsuario = async () => {
-      const usuarioSessao = await obterUsuarioSessao();
-
-      setUsuario(usuarioSessao);
+      try {
+        const usuarioSessao = await obterUsuarioSessao();
+        setUsuario(usuarioSessao);
+      } catch (error) {
+        console.error("Erro ao carregar usuário da sessão:", error);
+        setUsuario(null);
+      }
     };
 
     if (isFocused) {
-      carregarUsuario();
+      void carregarUsuario();
     }
   }, [isFocused]);
 
-  const handleLogout = () => {
-    const logout = async () => {
+  const executarLogout = async () => {
+    try {
       await encerrarSessao();
-    };
+    } catch (error) {
+      console.error("Erro ao encerrar sessão:", error);
 
+      showAlert(
+        "Erro",
+        "Não foi possível encerrar a sessão. Tente novamente."
+      );
+    }
+  };
+
+  const handleLogout = () => {
     if (Platform.OS === "web" && typeof window !== "undefined") {
-      const confirmou = window.confirm("Deseja realmente sair da conta?");
+      const confirmou = window.confirm(
+        "Deseja realmente sair da conta?"
+      );
 
       if (confirmou) {
-        logout();
+        void executarLogout();
       }
 
       return;
     }
 
-    Alert.alert("Confirmação", "Deseja realmente sair da sua conta?", [
-      {
-        text: "Cancelar",
-        style: "cancel",
-      },
-      {
-        text: "Sair",
-        style: "destructive",
-        onPress: logout,
-      },
-    ]);
+    Alert.alert(
+      "Confirmação",
+      "Deseja realmente sair da sua conta?",
+      [
+        {
+          text: "Cancelar",
+          style: "cancel",
+        },
+        {
+          text: "Sair",
+          style: "destructive",
+          onPress: () => {
+            void executarLogout();
+          },
+        },
+      ]
+    );
   };
 
   const handleComingSoon = () => {
@@ -153,10 +174,10 @@ export const ProfileScreen: React.FC = () => {
             <Text style={styles.avatarEmoji}>👨‍🎓</Text>
           </View>
 
-          <Text style={styles.userName}>{usuario?.nome || "Estudante"}</Text>
+          <Text style={styles.userName}>{usuario?.nome ?? ""}</Text>
 
           <Text style={styles.userEmail}>
-            {usuario?.email || "email@estudante.com"}
+            {usuario?.email ?? ""}
           </Text>
 
           {usuario?.emailAlteracaoPendente ? (

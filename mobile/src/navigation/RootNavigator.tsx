@@ -25,6 +25,8 @@ import {
 
 import { onSessionEnded } from "../services/apiClient";
 
+import { createNavigationContainerRef } from "@react-navigation/native";
+
 import { LoginScreen } from "../screens/LoginScreen";
 import { HomeScreen } from "../screens/HomeScreen";
 import { SubjectsScreen } from "../screens/SubjectsScreen";
@@ -56,6 +58,8 @@ import {
 import { NotificationsScreen } from "../screens/NotificationsScreen";
 import { EditTaskScreen } from "../screens/EditTaskScreen";
 
+export const navigationRef =
+  createNavigationContainerRef<RootStackParamList>();
 
 const Stack =
   createNativeStackNavigator<RootStackParamList>();
@@ -181,7 +185,6 @@ const MainTabNavigator: React.FC = () => {
 };
 
 export const RootNavigator: React.FC = () => {
-  const [sessionVersion, setSessionVersion] = useState(0);
   const [
     initialRouteName,
     setInitialRouteName,
@@ -190,29 +193,40 @@ export const RootNavigator: React.FC = () => {
       keyof RootStackParamList | null
     >(null);
 
-  useEffect(() => onSessionEnded(() => {
-    setInitialRouteName("Login");
-    setSessionVersion((version) => version + 1);
-  }), []);
+  useEffect(() => {
+    const unsubscribe = onSessionEnded(() => {
+      setInitialRouteName("Login");
+
+      if (navigationRef.isReady()) {
+        navigationRef.resetRoot({
+          index: 0,
+          routes: [{ name: "Login" }],
+        });
+      }
+    });
+
+    return unsubscribe;
+  }, []);
 
   useEffect(() => {
-    const verificarSessao =
-      async () => {
-        const usuario =
-          await obterUsuarioSessao();
+    const verificarSessao = async () => {
+      try {
+        const usuario = await obterUsuarioSessao();
 
-        if (usuario) {
-          setInitialRouteName(
-            "MainTabs"
-          );
-        } else {
-          setInitialRouteName(
-            "Login"
-          );
-        }
-      };
+        setInitialRouteName(
+          usuario ? "MainTabs" : "Login"
+        );
+      } catch (error) {
+        console.error(
+          "Erro ao verificar sessão inicial:",
+          error
+        );
 
-    verificarSessao();
+        setInitialRouteName("Login");
+      }
+    };
+
+    void verificarSessao();
   }, []);
 
   if (!initialRouteName) {
@@ -232,7 +246,6 @@ export const RootNavigator: React.FC = () => {
 
   return (
     <Stack.Navigator
-      key={sessionVersion}
       initialRouteName={
         initialRouteName
       }
