@@ -4,7 +4,7 @@ import { SafeAreaProvider } from "react-native-safe-area-context";
 import { NavigationContainer } from "@react-navigation/native";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 
-import { RootNavigator } from "./src/navigation/RootNavigator";
+import { navigationRef, RootNavigator } from "./src/navigation/RootNavigator";
 import { configurarNotificacoes } from "./src/services/notificacaoService";
 import { initializeDatabase } from "./src/database/database";
 import { GamificationCelebrationProvider } from "./src/components/GamificationCelebrationProvider";
@@ -41,7 +41,7 @@ export default function App() {
   return (
     <SafeAreaProvider>
       <QueryClientProvider client={queryClient}>
-        <NavigationContainer>
+        <NavigationContainer ref={navigationRef}>
           <StatusBar style="dark" />
           <GamificationCelebrationProvider>
             <RootNavigator />
