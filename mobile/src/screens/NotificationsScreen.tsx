@@ -1,107 +1,416 @@
-import React, { useEffect, useState } from "react";
-import { View, Text, ScrollView, StyleSheet, ActivityIndicator, Pressable } from "react-native";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+
+import React from "react";
+import {
+  View,
+  Text,
+  FlatList,
+  StyleSheet,
+  ActivityIndicator,
+  Pressable,
+} from "react-native";
+import {
+  useInfiniteQuery,
+  useMutation,
+  useQueryClient,
+} from "@tanstack/react-query";
 import { useFocusEffect } from "@react-navigation/native";
+
 import { MobileHeader } from "../components/MobileHeader";
 import { Button } from "../components/Button";
 import type { RootStackScreenProps } from "../types";
-import { getSessionGeneration, hasSession, requireSessionUser } from "../services/apiClient";
-import { listarNotificacoes, marcarNotificacaoLida } from "../services/centralNotificacoesService";
+
+import {
+  getSessionGeneration,
+  hasSession,
+  requireSessionUser,
+} from "../services/apiClient";
+
+import {
+  listarNotificacoes,
+  marcarNotificacaoLida,
+} from "../services/centralNotificacoesService";
+
 import { useNotificacoesNaoLidas } from "../hooks/useNotificacoesNaoLidas";
 
-type Filtro = "todas" | "naoLidas" | "lidas";
-const dataExibicao = (valor: string): string => new Date(valor).toLocaleString("pt-BR", { timeZone: "America/Sao_Paulo" });
+// Formato: dd/MM às HH:mm
+const dataExibicao = (valor: string): string => {
+  const data = new Date(valor);
 
-export function NotificationsScreen({ navigation }: RootStackScreenProps<"Notifications">) {
-  const [page, setPage] = useState(0);
-  const [filtro, setFiltro] = useState<Filtro>("todas");
+  if (Number.isNaN(data.getTime())) {
+    return "";
+  }
+
+  const diaMes = data.toLocaleDateString("pt-BR", {
+    day: "2-digit",
+    month: "2-digit",
+    timeZone: "America/Sao_Paulo",
+  });
+
+  const hora = data.toLocaleTimeString("pt-BR", {
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+    timeZone: "America/Sao_Paulo",
+  });
+
+  return `${diaMes} às ${hora}`;
+};
+
+export function NotificationsScreen({
+  navigation,
+}: RootStackScreenProps<"Notifications">) {
   const usuario = hasSession() ? requireSessionUser() : null;
   const client = useQueryClient();
+
   const total = useNotificacoesNaoLidas();
-  const lista = useQuery({
-    queryKey: ["notificacoes", usuario, getSessionGeneration(), "lista", page, filtro],
-    queryFn: () => listarNotificacoes(page, 20, filtro === "todas" ? undefined : filtro === "lidas"),
+
+  const lista = useInfiniteQuery({
+    queryKey: [
+      "notificacoes",
+      usuario,
+      getSessionGeneration(),
+      "naoLidas",
+    ],
+
+    initialPageParam: 0,
+
+    // Busca somente notificações ainda não lidas.
+    queryFn: ({ pageParam }) =>
+      listarNotificacoes(pageParam, 20, false),
+
+    getNextPageParam: (lastPage, allPages) =>
+      allPages.length < lastPage.totalPages
+        ? allPages.length
+        : undefined,
+
     enabled: usuario !== null,
     retry: false,
   });
-  useFocusEffect(React.useCallback(() => {
-    void lista.refetch();
-    void total.refetch();
-  }, [lista.refetch, total.refetch]));
-  useEffect(() => {
-    if (lista.data && page > Math.max(0, lista.data.totalPages - 1)) setPage(Math.max(0, lista.data.totalPages - 1));
-  }, [lista.data, page]);
+
+  // Atualiza a lista e o contador quando a tela recebe foco.
+  useFocusEffect(
+    React.useCallback(() => {
+      if (usuario !== null) {
+        void lista.refetch();
+        void total.refetch();
+      }
+    }, [usuario, lista.refetch, total.refetch])
+  );
+
+  // Marca a notificação como lida após o clique.
   const leitura = useMutation({
     mutationFn: marcarNotificacaoLida,
+
     onSuccess: async () => {
-      // Refresh the count and filtered page together; marking read is idempotent on the server.
-      await client.invalidateQueries({ queryKey: ["notificacoes", usuario] });
-      if (filtro === "naoLidas" && page > 0 && lista.data?.content.length === 1) setPage(page - 1);
+      await Promise.all([
+        client.invalidateQueries({
+          queryKey: ["notificacoes", usuario],
+        }),
+        total.refetch(),
+      ]);
     },
   });
-  const trocarFiltro = (novo: Filtro) => { setPage(0); setFiltro(novo); leitura.reset(); };
+
   const erro = lista.error ?? leitura.error ?? total.error;
+
+  const notificacoes =
+    lista.data?.pages.flatMap((pagina) => pagina.content) ?? [];
+
+  const quantidade = total.data?.total;
+
   return (
     <View style={styles.container}>
-      <MobileHeader title="Notificações" showBack onBack={() => navigation.goBack()} />
-      <ScrollView contentContainerStyle={styles.content}>
-        <Text style={styles.heading}>Central de notificações</Text>
-        <Text style={styles.subtitle}>
-          {total.data ? `${total.data.total} não lida${total.data.total === 1 ? "" : "s"}. ` : ""}
-          Histórico da sua conta. Horários de São Paulo.
-        </Text>
-        <Text style={styles.subtitle}>Os lembretes locais do celular continuam disponíveis offline. A central precisa de conexão.</Text>
-        <View style={styles.filters}>
-          {([["todas", "Todas"], ["naoLidas", "Não lidas"], ["lidas", "Lidas"]] as const).map(([valor, label]) => (
-            <Pressable key={valor} onPress={() => trocarFiltro(valor)} accessibilityRole="button"
-              accessibilityState={{ selected: filtro === valor }} style={[styles.filter, filtro === valor && styles.selected]}>
-              <Text style={{ color: filtro === valor ? "#FFFFFF" : "#334155" }}>{label}</Text>
-            </Pressable>
-          ))}
-        </View>
-        {usuario === null ? <Text accessibilityRole="alert" style={styles.error}>Sua sessão expirou. Entre novamente.</Text> : null}
-        {erro ? <View style={styles.errorBox}>
-          <Text accessibilityRole="alert" style={styles.error}>{erro instanceof Error ? erro.message : "Não foi possível carregar as notificações."}</Text>
-          <Button title="Tentar novamente" variant="outline" onPress={() => { leitura.reset(); void lista.refetch(); void total.refetch(); }} />
-        </View> : null}
-        {lista.isPending ? <ActivityIndicator accessibilityLabel="Carregando notificações" size="large" color="#2563EB" /> : null}
-        {!lista.isPending && !lista.error && lista.data?.content.length === 0 ?
-          <Text style={styles.empty}>{filtro === "naoLidas" ? "Nenhuma notificação não lida." : "Nenhuma notificação neste filtro."}</Text> : null}
-        {lista.data?.content.map((item) => <View key={item.idNotificacao} style={[styles.card, !item.lida && styles.unread]}>
-          <Text style={styles.status}>{item.lida ? "Lida" : "Não lida"}</Text>
-          <Text style={styles.title}>{item.titulo}</Text>
-          <Text style={styles.message}>{item.mensagem}</Text>
-          <Text style={styles.date}>{dataExibicao(item.processadoEm ?? item.criadoEm)}</Text>
-          {!item.lida ? <Button title="Marcar como lida" variant="outline" size="sm"
-            loading={leitura.isPending && leitura.variables === item.idNotificacao}
-            disabled={leitura.isPending} onPress={() => leitura.mutate(item.idNotificacao)} /> : null}
-        </View>)}
-        {lista.data && lista.data.totalPages > 0 ? <View style={styles.pagination}>
-          <Button title="Anterior" size="sm" variant="outline" disabled={page === 0 || lista.isFetching} onPress={() => setPage(page - 1)} />
-          <Text>Página {page + 1} de {lista.data.totalPages}</Text>
-          <Button title="Próxima" size="sm" variant="outline" disabled={page + 1 >= lista.data.totalPages || lista.isFetching} onPress={() => setPage(page + 1)} />
-        </View> : null}
-        <Button title="Atualizar" variant="ghost" disabled={lista.isFetching} onPress={() => { void lista.refetch(); void total.refetch(); }} />
-      </ScrollView>
+      <MobileHeader
+        title="Notificações"
+        showBack
+        onBack={() => navigation.goBack()}
+      />
+
+      <FlatList
+        data={notificacoes}
+        keyExtractor={(item) => String(item.idNotificacao)}
+        contentContainerStyle={styles.content}
+        showsVerticalScrollIndicator
+
+        onEndReached={() => {
+          if (lista.hasNextPage && !lista.isFetchingNextPage) {
+            void lista.fetchNextPage();
+          }
+        }}
+        onEndReachedThreshold={0.4}
+
+        ListHeaderComponent={
+          <View style={styles.headerContent}>
+            <Text style={styles.heading}>
+              Notificações
+            </Text>
+
+            <Text style={styles.subtitle}>
+              {quantidade === undefined
+                ? "Carregando contagem..."
+                : quantidade === 1
+                  ? "1 notificação não lida"
+                  : `${quantidade} notificações não lidas`}
+            </Text>
+
+            {usuario === null ? (
+              <Text accessibilityRole="alert" style={styles.error}>
+                Sua sessão expirou. Entre novamente.
+              </Text>
+            ) : null}
+
+            {erro ? (
+              <View style={styles.errorBox}>
+                <Text
+                  accessibilityRole="alert"
+                  style={styles.error}
+                >
+                  {erro instanceof Error
+                    ? erro.message
+                    : "Não foi possível carregar as notificações."}
+                </Text>
+
+                <Button
+                  title="Tentar novamente"
+                  variant="outline"
+                  onPress={() => {
+                    leitura.reset();
+                    void lista.refetch();
+                    void total.refetch();
+                  }}
+                />
+              </View>
+            ) : null}
+          </View>
+        }
+
+        renderItem={({ item }) => (
+          <Pressable
+            style={({ pressed }) => [
+              styles.card,
+              pressed && styles.cardPressed,
+            ]}
+            onPress={() => leitura.mutate(item.idNotificacao)}
+            disabled={leitura.isPending}
+            accessibilityRole="button"
+            accessibilityLabel={`Abrir notificação: ${item.titulo}`}
+            accessibilityHint="Marca esta notificação como lida."
+          >
+            <View style={styles.cardHeader}>
+              <View style={styles.unreadIndicator} />
+
+              <Text style={styles.status}>
+                Não lida
+              </Text>
+
+              {leitura.isPending &&
+              leitura.variables === item.idNotificacao ? (
+                <ActivityIndicator
+                  size="small"
+                  color="#2563EB"
+                />
+              ) : null}
+            </View>
+
+            <Text style={styles.title}>
+              {item.titulo}
+            </Text>
+
+            <Text style={styles.message}>
+              {item.mensagem}
+            </Text>
+
+            <Text style={styles.date}>
+              {dataExibicao(item.processadoEm ?? item.criadoEm)}
+            </Text>
+
+            <Text style={styles.actionHint}>
+              Toque para marcar como lida
+            </Text>
+          </Pressable>
+        )}
+
+        ListEmptyComponent={
+          usuario !== null &&
+          !lista.isPending &&
+          !erro ? (
+            <View style={styles.emptyContainer}>
+              <Text style={styles.emptyIcon}>✓</Text>
+
+              <Text style={styles.emptyTitle}>
+                Tudo em dia!
+              </Text>
+
+              <Text style={styles.empty}>
+                Você não possui notificações pendentes.
+              </Text>
+            </View>
+          ) : undefined
+        }
+
+        ListFooterComponent={
+          <View style={styles.footer}>
+            {lista.isPending || lista.isFetchingNextPage ? (
+              <ActivityIndicator
+                size="small"
+                color="#2563EB"
+              />
+            ) : null}
+
+            {lista.isFetchingNextPage ? (
+              <Text style={styles.loadingText}>
+                Carregando mais notificações...
+              </Text>
+            ) : null}
+
+            <Button
+              title="Atualizar"
+              variant="ghost"
+              disabled={lista.isFetching}
+              onPress={() => {
+                void lista.refetch();
+                void total.refetch();
+              }}
+            />
+          </View>
+        }
+      />
     </View>
   );
 }
+
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#F8FAFC" },
-  content: { padding: 16, paddingBottom: 40, maxWidth: 720, width: "100%", alignSelf: "center", gap: 12 },
-  heading: { color: "#0F172A", fontSize: 24, fontWeight: "700" },
-  subtitle: { color: "#64748B", fontSize: 14, lineHeight: 20 },
-  filters: { flexDirection: "row", gap: 8, flexWrap: "wrap" },
-  filter: { borderRadius: 16, backgroundColor: "#E2E8F0", paddingHorizontal: 14, paddingVertical: 9 },
-  selected: { backgroundColor: "#2563EB" },
-  card: { backgroundColor: "#FFFFFF", borderRadius: 12, borderWidth: 1, borderColor: "#E2E8F0", padding: 16, gap: 10 },
-  unread: { backgroundColor: "#EFF6FF", borderColor: "#93C5FD" },
-  status: { color: "#2563EB", fontSize: 12, fontWeight: "600" },
-  title: { color: "#0F172A", fontSize: 17, fontWeight: "700" },
-  message: { color: "#334155", fontSize: 15, lineHeight: 22 },
-  date: { color: "#64748B", fontSize: 12 },
-  errorBox: { gap: 8, padding: 12, borderRadius: 8, backgroundColor: "#FEF2F2" },
-  error: { color: "#B91C1C" },
-  empty: { textAlign: "center", paddingVertical: 36, color: "#64748B" },
-  pagination: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 8 },
+  container: {
+    flex: 1,
+    backgroundColor: "#F8FAFC",
+  },
+
+  content: {
+    padding: 16,
+    paddingBottom: 40,
+    maxWidth: 720,
+    width: "100%",
+    alignSelf: "center",
+    gap: 12,
+  },
+
+  headerContent: {
+    gap: 12,
+  },
+
+  heading: {
+    color: "#0F172A",
+    fontSize: 24,
+    fontWeight: "700",
+  },
+
+  subtitle: {
+    color: "#64748B",
+    fontSize: 14,
+    lineHeight: 20,
+  },
+
+  card: {
+    backgroundColor: "#FFFFFF",
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: "#BFDBFE",
+    padding: 16,
+    gap: 10,
+  },
+
+  cardPressed: {
+    backgroundColor: "#DBEAFE",
+    opacity: 0.8,
+  },
+
+  cardHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+  },
+
+  unreadIndicator: {
+    width: 9,
+    height: 9,
+    borderRadius: 5,
+    backgroundColor: "#2563EB",
+  },
+
+  status: {
+    color: "#2563EB",
+    fontSize: 12,
+    fontWeight: "700",
+    flex: 1,
+  },
+
+  title: {
+    color: "#0F172A",
+    fontSize: 17,
+    fontWeight: "700",
+  },
+
+  message: {
+    color: "#334155",
+    fontSize: 15,
+    lineHeight: 22,
+  },
+
+  date: {
+    color: "#64748B",
+    fontSize: 12,
+  },
+
+  actionHint: {
+    color: "#2563EB",
+    fontSize: 13,
+    fontWeight: "600",
+    marginTop: 4,
+  },
+
+  errorBox: {
+    gap: 8,
+    padding: 12,
+    borderRadius: 8,
+    backgroundColor: "#FEF2F2",
+  },
+
+  error: {
+    color: "#B91C1C",
+  },
+
+  emptyContainer: {
+    alignItems: "center",
+    paddingVertical: 48,
+    gap: 10,
+  },
+
+  emptyIcon: {
+    fontSize: 36,
+    color: "#16A34A",
+    fontWeight: "700",
+  },
+
+  emptyTitle: {
+    color: "#0F172A",
+    fontSize: 19,
+    fontWeight: "700",
+  },
+
+  empty: {
+    textAlign: "center",
+    color: "#64748B",
+    fontSize: 14,
+  },
+
+  footer: {
+    alignItems: "center",
+    gap: 12,
+    paddingVertical: 16,
+  },
+
+  loadingText: {
+    color: "#64748B",
+    fontSize: 13,
+  },
 });
