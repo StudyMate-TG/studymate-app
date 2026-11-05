@@ -12,23 +12,15 @@ rectangle "Sistema StudyMate - Funcionamento Offline" {
 
     usecase "Consultar tarefas\noffline" as UC16
 
-    usecase "Realizar alterações\nem tarefas offline" as UC17
-    usecase "Persistir alteração\nno SQLite" as UC17A
-    usecase "Registrar operação\npendente" as UC17B
+    usecase "Alterar tarefas \noffline" as UC17
 
     usecase "Consultar estado da\nsincronização" as UC19
-
-    UC17 -[hidden]right-> UC17A
-    UC17A -[hidden]down-> UC17B
 
 }
 
 Estudante --> UC16
 Estudante --> UC17
 Estudante --> UC19
-
-UC17 .> UC17A : <<include>>
-UC17 .> UC17B : <<include>>
 
 
 @enduml
