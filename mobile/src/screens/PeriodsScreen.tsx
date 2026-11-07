@@ -6,11 +6,12 @@ import {
   FlatList,
   Pressable,
   Platform,
-  SafeAreaView,
   StyleSheet,
   Text,
   View,
 } from "react-native";
+
+import { SafeAreaView } from "react-native-safe-area-context";
 
 import { useFocusEffect } from "@react-navigation/native";
 
@@ -18,6 +19,7 @@ import {
   ArrowLeft,
   CalendarDays,
   CheckCircle2,
+  Pencil,
   Plus,
   Trash2,
 } from "lucide-react-native";
@@ -218,6 +220,28 @@ const confirmarExclusao = (periodo: PeriodoLetivoResponse) => {
               <Text style={styles.activateButtonText}>Ativar</Text>
             </Pressable>
           )}
+
+          <Pressable
+            disabled={isProcessing}
+            onPress={() =>
+              navigation.navigate("EditPeriod", {
+                idPeriodo: item.idPeriodo,
+              })
+            }
+            style={[
+              styles.actionButton,
+              styles.editButton,
+            ]}
+          >
+            <Pencil
+              size={16}
+              color="#2563EB"
+            />
+
+            <Text style={styles.editButtonText}>
+              Editar
+            </Text>
+          </Pressable>
 
           <Pressable
             disabled={isProcessing}
@@ -423,6 +447,7 @@ const styles = StyleSheet.create({
   },
   cardActions: {
     flexDirection: "row",
+    flexWrap: "wrap",
     justifyContent: "flex-end",
     gap: 10,
     marginTop: 16,
@@ -445,6 +470,18 @@ const styles = StyleSheet.create({
     fontWeight: "700",
     color: "#16A34A",
   },
+
+  editButton: {
+    borderColor: "#BFDBFE",
+    backgroundColor: "#EFF6FF",
+  },
+
+  editButtonText: {
+    fontSize: 13,
+    fontWeight: "700",
+    color: "#2563EB",
+  },
+
   deleteButton: {
     borderColor: "#FECACA",
     backgroundColor: "#FEF2F2",

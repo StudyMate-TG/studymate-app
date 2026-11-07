@@ -30,6 +30,16 @@ export const consultarPeriodoLetivoAtivo = async (
   return handleResponse<PeriodoLetivoResponse>(response);
 };
 
+export const consultarPeriodoLetivoPorId = async (
+  idPeriodo: number
+): Promise<PeriodoLetivoResponse> => {
+  const response = await apiFetch(
+    `${API_BASE_URL}/periodos/${idPeriodo}`
+  );
+
+  return handleResponse<PeriodoLetivoResponse>(response);
+};
+
 export const cadastrarPeriodoLetivo = async (
   payload: PeriodoLetivoRequest
 ): Promise<PeriodoLetivoResponse> => {
@@ -46,6 +56,30 @@ export const cadastrarPeriodoLetivo = async (
       status: payload.status,
     }),
   });
+
+  return handleResponse<PeriodoLetivoResponse>(response);
+};
+
+export const atualizarPeriodoLetivo = async (
+  idPeriodo: number,
+  payload: PeriodoLetivoRequest
+): Promise<PeriodoLetivoResponse> => {
+  const response = await apiFetch(
+    `${API_BASE_URL}/periodos/${idPeriodo}`,
+    {
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        idUsuario: payload.idUsuario,
+        nome: payload.nome.trim(),
+        dataInicio: payload.dataInicio,
+        dataFim: payload.dataFim,
+        status: payload.status,
+      }),
+    }
+  );
 
   return handleResponse<PeriodoLetivoResponse>(response);
 };
