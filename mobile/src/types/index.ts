@@ -122,10 +122,14 @@ export type RootStackParamList = {
 
   NewPeriod: undefined;
 
+  EditPeriod: {
+    idPeriodo: number;
+  };
+
   ClassSchedules: {
-  idDisciplina: number;
-  nomeDisciplina: string;
-};
+    idDisciplina: number;
+    nomeDisciplina: string;
+  };
 
   NewClassSchedule: {
     idDisciplina: number;
