@@ -18,6 +18,7 @@ import {
   Circle,
   Clock,
   MapPin,
+  GraduationCap,
 } from "lucide-react-native";
 
 import { useIsFocused, useNavigation } from "@react-navigation/native";
@@ -42,6 +43,21 @@ import type {
   HorarioAulaResponse,
 } from "../types";
 
+import {
+  listarAvaliacoes,
+} from "../services/avaliacaoService";
+
+import type {
+  AvaliacaoResponse,
+} from "../services/avaliacaoService";
+
+import {
+  listarDisciplinas,
+} from "../services/disciplinaService";
+
+type AvaliacaoAgenda = AvaliacaoResponse & {
+  nomeDisciplina: string;
+};
 
 export const CalendarScreen: React.FC = () => {
   const [selectedDate, setSelectedDate] = useState(new Date());
@@ -56,6 +72,12 @@ const [
   horariosAula,
   setHorariosAula,
 ] = useState<HorarioAulaResponse[]>([]);
+
+const [
+  avaliacoes,
+  setAvaliacoes,
+] = useState<AvaliacaoAgenda[]>([]);
+
 const [mensagemStatus, setMensagemStatus] = useState("");
 const [erroStatus, setErroStatus] = useState("");
 
@@ -144,6 +166,88 @@ useEffect(() => {
 
   if (isFocused) {
     void carregarHorarios();
+  }
+
+  return () => {
+    ativo = false;
+  };
+}, [isFocused]);
+
+useEffect(() => {
+  let ativo = true;
+
+  const carregarAvaliacoes = async () => {
+    try {
+      const usuario =
+        await obterUsuarioSessao();
+
+      if (!ativo) {
+        return;
+      }
+
+      if (!usuario?.idUsuario) {
+        setAvaliacoes([]);
+        return;
+      }
+
+      const disciplinas =
+        await listarDisciplinas(
+          usuario.idUsuario
+        );
+
+      const resultados =
+        await Promise.all(
+          disciplinas.map(
+            async (disciplina) => {
+              try {
+                const dados =
+                  await listarAvaliacoes(
+                    usuario.idUsuario,
+                    disciplina.idDisciplina
+                  );
+
+                return dados.map(
+                  (avaliacao) => ({
+                    ...avaliacao,
+                    nomeDisciplina:
+                      disciplina.nome,
+                  })
+                );
+              } catch (error) {
+                console.error(
+                  `Erro ao carregar avaliações da disciplina ${disciplina.idDisciplina}:`,
+                  error
+                );
+
+                return [];
+              }
+            }
+          )
+        );
+
+      if (!ativo) {
+        return;
+      }
+
+      setAvaliacoes(
+        resultados.flat()
+      );
+    } catch (error) {
+      if (!ativo) {
+        return;
+      }
+
+      console.error(
+        "Erro ao carregar avaliações da agenda:",
+        error
+      );
+
+      setAvaliacoes([]);
+    }
+  };
+
+  if (isFocused) {
+    void carregarAvaliacoes();
   }
 
   return () => {
@@ -259,6 +363,28 @@ const tarefasDoDia = useMemo(() => {
   });
 }, [tarefas, selectedDate]);
 
+const avaliacoesDoDia = useMemo(() => {
+  const dataSelecionada =
+    formatarDataIso(selectedDate);
+
+  return avaliacoes
+    .filter(
+      (avaliacao) =>
+        avaliacao.dataAvaliacao
+          .substring(0, 10) ===
+        dataSelecionada
+    )
+    .sort((a, b) =>
+      a.nome.localeCompare(
+        b.nome,
+        "pt-BR"
+      )
+    );
+}, [
+  avaliacoes,
+  selectedDate,
+]);
+
 const horariosDoDia = useMemo(() => {
   const diaSemanaSelecionado =
     selectedDate.getDay();
@@ -316,6 +442,7 @@ const horariosDoDia = useMemo(() => {
     isSelected: boolean;
     hasTask: boolean;
     hasClass: boolean;
+    hasEvaluation: boolean;
   } | null> = [];
 
   // Espaços vazios antes do primeiro dia do mês
@@ -355,6 +482,14 @@ const horariosDoDia = useMemo(() => {
           )
       );
 
+    const hasEvaluation =
+      avaliacoes.some(
+        (avaliacao) =>
+          avaliacao.dataAvaliacao
+            .substring(0, 10) ===
+          dataFormatada
+      );
+
     dias.push({
       fullDate: date,
       key: dataFormatada,
@@ -362,6 +497,7 @@ const horariosDoDia = useMemo(() => {
       isSelected,
       hasTask,
       hasClass,
+      hasEvaluation,
     });
   }
 
@@ -370,6 +506,7 @@ const horariosDoDia = useMemo(() => {
   selectedDate,
   tarefas,
   horariosAula,
+  avaliacoes,
 ]);
 
   //mudança dia 07/10
@@ -493,14 +630,23 @@ const handleAlternarStatusTarefa =
     );
   }
 
+  if (avaliacoesDoDia.length === 1) {
+    partes.push("1 avaliação");
+  } else if (avaliacoesDoDia.length > 1) {
+    partes.push(
+      `${avaliacoesDoDia.length} avaliações`
+    );
+  }
+
   if (partes.length === 0) {
-    return "Nenhuma tarefa ou aula neste dia.";
+    return "Nenhum compromisso neste dia.";
   }
 
   return `${partes.join(" • ")} neste dia.`;
 }, [
   tarefasDoDia,
   horariosDoDia,
+  avaliacoesDoDia,
 ]);
   
   return (
@@ -594,6 +740,16 @@ const handleAlternarStatusTarefa =
                   ]}
                 />
               )}
+
+              {day.hasEvaluation && (
+                <View
+                  style={[
+                    styles.evaluationDot,
+                    day.isSelected &&
+                      styles.evaluationDotSelected,
+                  ]}
+                />
+              )}
             </View>
           </Pressable>
         </View>
@@ -616,14 +772,15 @@ const handleAlternarStatusTarefa =
         </Card>
 
        {tarefasDoDia.length === 0 &&
-        horariosDoDia.length === 0 ? (
+        horariosDoDia.length === 0 &&
+        avaliacoesDoDia.length === 0 ? (
         <Card style={styles.eventsCard}>
           <Text style={styles.eventsEmptyTitle}>
             Nenhum compromisso para este dia
           </Text>
 
           <Text style={styles.eventsEmptyText}>
-            Não existem aulas ou tarefas com entrega na data selecionada.
+            Não existem aulas, tarefas ou avaliações com entrega na data selecionada.
           </Text>
         </Card>
 ) : (
@@ -676,6 +833,52 @@ const handleAlternarStatusTarefa =
           </View>
         </View>
       </Card>
+    ))}
+
+    {avaliacoesDoDia.map((avaliacao) => (
+      <Pressable
+        key={`avaliacao-${avaliacao.idAvaliacao}`}
+        onPress={() =>
+          navigation.navigate(
+            "EditEvaluation",
+            {
+              idAvaliacao:
+                avaliacao.idAvaliacao,
+              idDisciplina:
+                avaliacao.idDisciplina,
+              nomeDisciplina:
+                avaliacao.nomeDisciplina,
+            }
+          )
+        }
+      >
+        <Card style={styles.evaluationCard}>
+          <View style={styles.evaluationHeader}>
+            <GraduationCap
+              size={20}
+              color="#7C3AED"
+            />
+
+            <View style={styles.evaluationContent}>
+              <Text style={styles.evaluationLabel}>
+                Avaliação
+              </Text>
+
+              <Text style={styles.evaluationTitle}>
+                {avaliacao.nome}
+              </Text>
+
+              <Text style={styles.evaluationSubject}>
+                {avaliacao.nomeDisciplina}
+              </Text>
+
+              <Text style={styles.evaluationType}>
+                {avaliacao.tipo}
+              </Text>
+            </View>
+          </View>
+        </Card>
+      </Pressable>
     ))}
 
     {tarefasDoDia.map((tarefa) => {
@@ -1120,6 +1323,60 @@ const styles = StyleSheet.create({
     marginTop: 8,
     marginBottom: 12,
     alignItems: "center",
+  },
+
+  evaluationCard: {
+    marginBottom: 12,
+    borderColor: "#DDD6FE",
+    backgroundColor: "#F5F3FF",
+  },
+
+  evaluationHeader: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    gap: 10,
+  },
+
+  evaluationContent: {
+    flex: 1,
+  },
+
+  evaluationLabel: {
+    fontSize: 11,
+    fontWeight: "700",
+    color: "#7C3AED",
+    textTransform: "uppercase",
+    marginBottom: 4,
+  },
+
+  evaluationTitle: {
+    fontSize: 15,
+    fontWeight: "700",
+    color: "#0F172A",
+  },
+
+  evaluationSubject: {
+    marginTop: 4,
+    fontSize: 13,
+    color: "#64748B",
+  },
+
+  evaluationType: {
+    marginTop: 3,
+    fontSize: 12,
+    fontWeight: "600",
+    color: "#6D28D9",
+  },
+
+  evaluationDot: {
+    width: 5,
+    height: 5,
+    borderRadius: 3,
+    backgroundColor: "#7C3AED",
+  },
+
+  evaluationDotSelected: {
+    backgroundColor: "#DDD6FE",
   },
 
 });
