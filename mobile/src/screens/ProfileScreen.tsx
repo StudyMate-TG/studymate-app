@@ -31,11 +31,8 @@ import { Button } from "../components/Button";
 import {
   User,
   Bell,
-  Moon,
   LogOut,
   ChevronRight,
-  Settings,
-  HelpCircle,
   CalendarDays,
 } from "lucide-react-native";
 
@@ -118,11 +115,6 @@ export const ProfileScreen: React.FC = () => {
     );
   };
 
-  const handleComingSoon = () => {
-    showAlert("Info", "Funcionalidade disponível em breve.");
-  };
-
-
   const menuItems = [
     {
       icon: <User size={20} color="#64748B" />,
@@ -138,21 +130,6 @@ export const ProfileScreen: React.FC = () => {
       icon: <Bell size={20} color="#64748B" />,
       label: "Notificações",
       onPress: () => navigation.navigate("Notifications"),
-    },
-    {
-      icon: <Moon size={20} color="#64748B" />,
-      label: "Modo Escuro",
-      onPress: handleComingSoon,
-    },
-    {
-      icon: <Settings size={20} color="#64748B" />,
-      label: "Configurações",
-      onPress: handleComingSoon,
-    },
-    {
-      icon: <HelpCircle size={20} color="#64748B" />,
-      label: "Ajuda e Suporte",
-      onPress: handleComingSoon,
     },
   ];
 
@@ -217,15 +194,6 @@ export const ProfileScreen: React.FC = () => {
               perfil.
             </Text>
           )}
-        </Card>
-
-        <Card style={styles.infoCard}>
-          <Text style={styles.infoTitle}>Resumo acadêmico</Text>
-
-          <Text style={styles.infoSubtitle}>
-            Média geral, presença e tarefas concluídas serão exibidas quando
-            houver dados cadastrados.
-          </Text>
         </Card>
 
         <Card style={styles.menuCard}>
