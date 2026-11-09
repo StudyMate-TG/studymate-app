@@ -99,6 +99,14 @@ export type RootStackParamList = {
     limiteFaltas: number;
   };
 
+  EditAbsence: {
+    idFalta: number;
+    idDisciplina: number;
+    nomeDisciplina: string;
+    dataFalta: string;
+    quantidadeAulas: number;
+  };
+
   Evaluations: {
     idDisciplina: number;
     nomeDisciplina: string;
