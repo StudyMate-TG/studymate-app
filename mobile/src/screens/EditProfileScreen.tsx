@@ -164,16 +164,6 @@ export const EditProfileScreen: React.FC = () => {
           <View style={styles.avatarCircle}>
             <Text style={styles.avatarEmoji}>👨‍🎓</Text>
           </View>
-
-          <Button
-            title="Alterar Foto"
-            variant="outline"
-            size="sm"
-            onPress={() =>
-              showAlert("Info", "Funcionalidade disponível em breve.")
-            }
-            style={styles.changePhotoButton}
-          />
         </Card>
 
         {!emailPendente ? (
@@ -287,10 +277,6 @@ const styles = StyleSheet.create({
 
   avatarEmoji: {
     fontSize: 40,
-  },
-
-  changePhotoButton: {
-    paddingHorizontal: 16,
   },
 
   formCard: {
