@@ -64,15 +64,15 @@ export const EditPeriodScreen: React.FC<Props> = ({
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-const atualizarCampo = (
-  campo: keyof FormState,
-  valor: string
-) => {
-  setForm((estadoAtual) => ({
-     ...estadoAtual,
-    [campo]: valor,
-   }));
- };
+  const atualizarCampo = (
+    campo: keyof FormState,
+    valor: string
+  ) => {
+    setForm((estadoAtual) => ({
+      ...estadoAtual,
+      [campo]: valor,
+    }));
+  };
 
   const selecionarStatus = (status: PeriodoLetivoStatus) => {
     setForm((estadoAtual) => ({
@@ -116,14 +116,14 @@ const atualizarCampo = (
 }, [idPeriodo, navigation]);
 
   const handleSubmit = async () => {
-  if (isSubmitting) {
-    return;
-  }
+    if (isSubmitting) {
+      return;
+    }
 
-  if (!form.nome.trim()) {
-    Alert.alert("Atenção", "Informe o nome do período letivo.");
-    return;
-  }
+    if (!form.nome.trim()) {
+      Alert.alert("Atenção", "Informe o nome do período letivo.");
+      return;
+    }
 
   const dataInicio =
     converterDataParaApi(form.dataInicio);

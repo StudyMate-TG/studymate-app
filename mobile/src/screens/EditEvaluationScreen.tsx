@@ -9,13 +9,14 @@ import {
   TextInput,
   TouchableOpacity,
   StyleSheet,
-  SafeAreaView,
   ScrollView,
   Alert,
   KeyboardAvoidingView,
   Platform,
   ActivityIndicator,
 } from "react-native";
+
+import { SafeAreaView } from "react-native-safe-area-context";
 
 import {
   ArrowLeft,
