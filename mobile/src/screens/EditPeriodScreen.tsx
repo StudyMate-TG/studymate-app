@@ -32,6 +32,12 @@ import {
   consultarPeriodoLetivoPorId,
 } from "../services/periodoLetivoService";
 
+import {
+  formatarDataEstudo,
+  formatarEntradaData,
+  converterDataParaApi,
+} from "../utils/dataEstudoUtils";
+
 type Props = RootStackScreenProps<"EditPeriod">;
 
 type FormState = {
@@ -58,15 +64,15 @@ export const EditPeriodScreen: React.FC<Props> = ({
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-const atualizarCampo = (
-  campo: keyof FormState,
-  valor: string
-) => {
-  setForm((estadoAtual) => ({
-     ...estadoAtual,
-    [campo]: valor,
-   }));
- };
+  const atualizarCampo = (
+    campo: keyof FormState,
+    valor: string
+  ) => {
+    setForm((estadoAtual) => ({
+      ...estadoAtual,
+      [campo]: valor,
+    }));
+  };
 
   const selecionarStatus = (status: PeriodoLetivoStatus) => {
     setForm((estadoAtual) => ({
@@ -85,8 +91,12 @@ const atualizarCampo = (
 
         setForm({
           nome: periodo.nome,
-          dataInicio: periodo.dataInicio,
-          dataFim: periodo.dataFim,
+          dataInicio: formatarDataEstudo(
+            periodo.dataInicio
+          ),
+          dataFim: formatarDataEstudo(
+            periodo.dataFim
+          ),
           status: periodo.status,
         });
       } catch (erro) {
@@ -105,34 +115,39 @@ const atualizarCampo = (
   void carregarPeriodo();
 }, [idPeriodo, navigation]);
 
-  const validarData = (data: string) => {
-    return /^\d{4}-\d{2}-\d{2}$/.test(data);
-  };
-
   const handleSubmit = async () => {
-  if (isSubmitting) {
-    return;
-  }
+    if (isSubmitting) {
+      return;
+    }
 
-  if (!form.nome.trim()) {
-    Alert.alert("Atenção", "Informe o nome do período letivo.");
-    return;
-  }
+    if (!form.nome.trim()) {
+      Alert.alert("Atenção", "Informe o nome do período letivo.");
+      return;
+    }
 
-  if (!validarData(form.dataInicio)) {
+  const dataInicio =
+    converterDataParaApi(form.dataInicio);
+
+  const dataFim =
+    converterDataParaApi(form.dataFim);
+
+  if (!dataInicio) {
     Alert.alert(
       "Atenção",
-      "Informe a data de início no formato AAAA-MM-DD."
+      "Informe uma data de início válida no formato DD/MM/AAAA."
     );
     return;
   }
 
-  if (!validarData(form.dataFim)) {
-    Alert.alert("Atenção", "Informe a data de fim no formato AAAA-MM-DD.");
+  if (!dataFim) {
+    Alert.alert(
+      "Atenção",
+      "Informe uma data de fim válida no formato DD/MM/AAAA."
+    );
     return;
   }
 
-  if (form.dataFim < form.dataInicio) {
+  if (dataFim < dataInicio) {
     Alert.alert(
       "Atenção",
       "A data de fim não pode ser anterior à data de início."
@@ -153,8 +168,8 @@ const atualizarCampo = (
     await atualizarPeriodoLetivo(idPeriodo, {
       idUsuario: usuario.idUsuario,
       nome: form.nome.trim(),
-      dataInicio: form.dataInicio,
-      dataFim: form.dataFim,
+      dataInicio,
+      dataFim,
       status: form.status,
     });
 
@@ -235,11 +250,16 @@ if (isLoading) {
 
             <TextInput
               value={form.dataInicio}
-              onChangeText={(valor) => atualizarCampo("dataInicio", valor)}
-              placeholder="AAAA-MM-DD"
+              onChangeText={(valor) =>
+                atualizarCampo(
+                  "dataInicio",
+                  formatarEntradaData(valor)
+                )
+              }
+              placeholder="DD/MM/AAAA"
               placeholderTextColor="#94A3B8"
-              autoCapitalize="none"
-              keyboardType="numbers-and-punctuation"
+              keyboardType="number-pad"
+              maxLength={10}
               style={styles.input}
             />
           </View>
@@ -249,11 +269,16 @@ if (isLoading) {
 
             <TextInput
               value={form.dataFim}
-              onChangeText={(valor) => atualizarCampo("dataFim", valor)}
-              placeholder="AAAA-MM-DD"
+              onChangeText={(valor) =>
+                atualizarCampo(
+                  "dataFim",
+                  formatarEntradaData(valor)
+                )
+              }
+              placeholder="DD/MM/AAAA"
               placeholderTextColor="#94A3B8"
-              autoCapitalize="none"
-              keyboardType="numbers-and-punctuation"
+              keyboardType="number-pad"
+              maxLength={10}
               style={styles.input}
             />
           </View>

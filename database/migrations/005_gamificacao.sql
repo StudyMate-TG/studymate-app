@@ -36,10 +36,12 @@ BEGIN
         id_disciplina NUMBER(38,0) NOT NULL,
         nome_disciplina VARCHAR2(100 CHAR) NOT NULL,
         data_presenca DATE NOT NULL,
+        quantidade_aulas NUMBER(38,0) DEFAULT 1 NOT NULL,
         xp_gerado NUMBER(10,0) NOT NULL,
         CONSTRAINT pk_presenca_aula PRIMARY KEY (id_presenca),
         CONSTRAINT fk_presenca_usuario FOREIGN KEY (id_usuario) REFERENCES usuario(id_usuario) ON DELETE CASCADE,
         CONSTRAINT ck_presenca_xp CHECK (xp_gerado>0),
+        CONSTRAINT ck_presenca_quantidade CHECK (quantidade_aulas > 0),
         CONSTRAINT uk_presenca_dia UNIQUE (id_usuario,id_disciplina,data_presenca)
     )~');
 END;

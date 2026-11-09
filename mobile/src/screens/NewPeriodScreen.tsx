@@ -25,6 +25,11 @@ import { obterUsuarioSessao } from "../services/authService";
 
 import { cadastrarPeriodoLetivo } from "../services/periodoLetivoService";
 
+import {
+  formatarEntradaData,
+  converterDataParaApi,
+} from "../utils/dataEstudoUtils";
+
 type Props = RootStackScreenProps<"NewPeriod">;
 
 type FormState = {
@@ -59,10 +64,6 @@ export const NewPeriodScreen: React.FC<Props> = ({ navigation }) => {
     }));
   };
 
-  const validarData = (data: string) => {
-    return /^\d{4}-\d{2}-\d{2}$/.test(data);
-  };
-
   const handleSubmit = async () => {
   if (isSubmitting) {
     return;
@@ -73,20 +74,29 @@ export const NewPeriodScreen: React.FC<Props> = ({ navigation }) => {
     return;
   }
 
-  if (!validarData(form.dataInicio)) {
+  const dataInicio =
+    converterDataParaApi(form.dataInicio);
+
+  const dataFim =
+    converterDataParaApi(form.dataFim);
+
+  if (!dataInicio) {
     Alert.alert(
       "Atenção",
-      "Informe a data de início no formato AAAA-MM-DD."
+      "Informe uma data de início válida no formato DD/MM/AAAA."
     );
     return;
   }
 
-  if (!validarData(form.dataFim)) {
-    Alert.alert("Atenção", "Informe a data de fim no formato AAAA-MM-DD.");
+  if (!dataFim) {
+    Alert.alert(
+      "Atenção",
+      "Informe uma data de fim válida no formato DD/MM/AAAA."
+    );
     return;
   }
 
-  if (form.dataFim < form.dataInicio) {
+  if (dataFim < dataInicio) {
     Alert.alert(
       "Atenção",
       "A data de fim não pode ser anterior à data de início."
@@ -107,8 +117,8 @@ export const NewPeriodScreen: React.FC<Props> = ({ navigation }) => {
     await cadastrarPeriodoLetivo({
       idUsuario: usuario.idUsuario,
       nome: form.nome.trim(),
-      dataInicio: form.dataInicio,
-      dataFim: form.dataFim,
+      dataInicio,
+      dataFim,
       status: form.status,
     });
 
@@ -173,11 +183,16 @@ export const NewPeriodScreen: React.FC<Props> = ({ navigation }) => {
 
             <TextInput
               value={form.dataInicio}
-              onChangeText={(valor) => atualizarCampo("dataInicio", valor)}
-              placeholder="AAAA-MM-DD"
+              onChangeText={(valor) =>
+                atualizarCampo(
+                  "dataInicio",
+                  formatarEntradaData(valor)
+                )
+              }
+              placeholder="DD/MM/AAAA"
               placeholderTextColor="#94A3B8"
-              autoCapitalize="none"
-              keyboardType="numbers-and-punctuation"
+              keyboardType="number-pad"
+              maxLength={10}
               style={styles.input}
             />
           </View>
@@ -187,11 +202,16 @@ export const NewPeriodScreen: React.FC<Props> = ({ navigation }) => {
 
             <TextInput
               value={form.dataFim}
-              onChangeText={(valor) => atualizarCampo("dataFim", valor)}
-              placeholder="AAAA-MM-DD"
+              onChangeText={(valor) =>
+                atualizarCampo(
+                  "dataFim",
+                  formatarEntradaData(valor)
+                )
+              }
+              placeholder="DD/MM/AAAA"
               placeholderTextColor="#94A3B8"
-              autoCapitalize="none"
-              keyboardType="numbers-and-punctuation"
+              keyboardType="number-pad"
+              maxLength={10}
               style={styles.input}
             />
           </View>

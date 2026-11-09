@@ -298,16 +298,13 @@ const handleSubmit = async () => {
   const quantidade = Number(quantidadeAulas);
 
   if (
-    tipoRegistro === "FALTA" &&
-    (
-      Number.isNaN(quantidade) ||
-      !Number.isInteger(quantidade) ||
-      quantidade <= 0
-    )
+    Number.isNaN(quantidade) ||
+    !Number.isInteger(quantidade) ||
+    quantidade <= 0
   ) {
     showAlert(
       "Atenção",
-      "Informe uma quantidade válida de aulas perdidas."
+      "Informe uma quantidade válida de aulas."
     );
 
     return;
@@ -322,6 +319,7 @@ const handleSubmit = async () => {
       const presenca = await cadastrarPresenca(idUsuario, {
         idDisciplina,
         dataPresenca: dataApi,
+        quantidadeAulas: quantidade,
       });
 
       setXpRecebido(presenca.xpGerado);
@@ -407,8 +405,16 @@ const handleSubmit = async () => {
 
           <Text style={styles.successSubtitle}>
             {tipoRegistro === "PRESENCA"
-              ? "Sua presença foi registrada em "
-              : "A falta foi registrada em "}
+              ? `${quantidadeAulas} ${
+                  Number(quantidadeAulas) === 1
+                    ? "aula assistida"
+                    : "aulas assistidas"
+                } em `
+              : `${quantidadeAulas} ${
+                  Number(quantidadeAulas) === 1
+                    ? "aula perdida"
+                    : "aulas perdidas"
+                } em `}
             {disciplinaSelecionada?.nome ?? "disciplina selecionada"}.
           </Text>
 
@@ -638,15 +644,14 @@ const handleSubmit = async () => {
             </>
           )}
 
-          <View
-            style={
-              styles.fieldSpacing
-            }
-          >
+          <View style={styles.fieldSpacing}>
             <Input
-              label={tipoRegistro === "PRESENCA" ? "Data da presença" : "Data da Falta"}
+              label={
+                tipoRegistro === "PRESENCA"
+                  ? "Data da presença"
+                  : "Data da falta"
+              }
               placeholder="DD/MM/AAAA"
-              
               value={
                 tipoRegistro === "PRESENCA"
                   ? formatarDataEstudo(dataPresencaHoje)
@@ -654,29 +659,26 @@ const handleSubmit = async () => {
               }
               editable={tipoRegistro === "FALTA"}
               onChangeText={setDataFalta}
-              />
-              </View>
+            />
+          </View>
 
-              {tipoRegistro === "FALTA" && (
-                <View style={styles.fieldSpacing}>
-
+          <View style={styles.fieldSpacing}>
             <Input
-              label="Quantidade de aulas perdidas"
+              label={
+                tipoRegistro === "PRESENCA"
+                  ? "Quantidade de aulas assistidas"
+                  : "Quantidade de aulas perdidas"
+              }
               placeholder="Ex: 2"
-              value={
-                quantidadeAulas
-              }
-              onChangeText={
-                setQuantidadeAulas
-              }
+              value={quantidadeAulas}
+              onChangeText={setQuantidadeAulas}
               keyboardType="numeric"
             />
           </View>
-        )}
 
           <Text style={styles.helpText}>
             {tipoRegistro === "PRESENCA"
-              ? "Presenças somente hoje, no horário de Brasília: +20 XP uma vez por disciplina. A atividade de hoje mantém sua ofensiva."
+              ? "Informe quantas aulas desta disciplina você assistiu hoje. O XP é concedido uma única vez por disciplina no dia."
               : "Informe quantas aulas foram perdidas nessa data."}
           </Text>
 

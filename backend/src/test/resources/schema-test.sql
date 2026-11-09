@@ -116,6 +116,7 @@ CREATE TABLE presenca_aula (
  id_disciplina INTEGER NOT NULL,
  nome_disciplina VARCHAR(100) NOT NULL,
  data_presenca DATE NOT NULL,
+ quantidade_aulas INTEGER DEFAULT 1 NOT NULL CHECK (quantidade_aulas > 0),
  xp_gerado INTEGER NOT NULL CHECK (xp_gerado > 0),
  CONSTRAINT uk_presenca_dia UNIQUE (id_usuario,id_disciplina,data_presenca)
 );
