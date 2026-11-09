@@ -19,6 +19,7 @@ import {
 import {
   CalendarDays,
   CheckCircle2,
+  Pencil,
   X,
 } from "lucide-react-native";
 
@@ -47,6 +48,10 @@ import {
 import {
   Card,
 } from "../components/Card";
+
+import {
+  Button,
+} from "../components/Button";
 
 type Props =
   RootStackScreenProps<"FrequencyHistory">;
@@ -341,12 +346,49 @@ export const FrequencyHistoryScreen:
                   </Text>
                 </View>
               ) : (
-                <Text style={styles.detailText}>
-                  {item.falta.quantidadeAulas}{" "}
-                  {item.falta.quantidadeAulas === 1
-                    ? "aula perdida"
-                    : "aulas perdidas"}
-                </Text>
+                <View>
+                  <Text
+                    style={
+                      styles.detailText
+                    }
+                  >
+                    {item.falta.quantidadeAulas}{" "}
+                    {item.falta.quantidadeAulas === 1
+                      ? "aula perdida"
+                      : "aulas perdidas"}
+                  </Text>
+
+                  <Button
+                    title="Editar"
+                    variant="outline"
+                    size="sm"
+                    icon={
+                      <Pencil
+                        size={14}
+                        color="#2563EB"
+                      />
+                    }
+                    onPress={() =>
+                      navigation.navigate(
+                        "EditAbsence",
+                        {
+                          idFalta:
+                            item.falta.idFalta,
+                          idDisciplina,
+                          nomeDisciplina,
+                          dataFalta:
+                            item.falta.dataFalta,
+                          quantidadeAulas:
+                            item.falta
+                              .quantidadeAulas,
+                        }
+                      )
+                    }
+                    style={
+                      styles.editButton
+                    }
+                  />
+                </View>
               )}
             </View>
           </View>
@@ -712,5 +754,10 @@ const styles =
       marginBottom: 14,
       color: "#DC2626",
       fontSize: 13,
+    },
+
+    editButton: {
+      marginTop: 8,
+      alignSelf: "flex-start",
     },
   });
