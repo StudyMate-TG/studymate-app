@@ -1,13 +1,14 @@
 {
   "expo": {
-    "name": "mobile",
+    "name": "StudyMate",
     "slug": "mobile",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "bundleIdentifier": "com.studymate.app"
     },
     "android": {
       "adaptiveIcon": {
