@@ -44,7 +44,8 @@ const buscarDisciplinasRemotas = async (
 
 export const listarDisciplinas = async (
   idUsuario: number,
-  termo?: string
+  termo?: string,
+  forceRefresh = false
 ): Promise<DisciplinaResponse[]> => {
   const termoTratado =
     termo?.trim();
@@ -77,6 +78,32 @@ export const listarDisciplinas = async (
     );
   };
 
+  if (forceRefresh) {
+    try {
+      const remotas =
+        await buscarDisciplinasRemotas(
+          idUsuario,
+          termoTratado
+        );
+
+      await salvarCacheDisciplinas(
+        idUsuario,
+        remotas,
+        !termoTratado
+      );
+
+      return remotas;
+    } catch (error) {
+      console.warn(
+        "Não foi possível atualizar as disciplinas pela API.",
+        error
+      );
+
+      return filtrarLocais(
+        disciplinasLocais
+      );
+    }
+  }
   /*
    * Já existe cache:
    * devolvemos imediatamente e

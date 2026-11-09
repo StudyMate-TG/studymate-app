@@ -8,12 +8,28 @@ export type PresencaResponse = {
   idDisciplina: number;
   nomeDisciplina: string;
   dataPresenca: string;
+  quantidadeAulas: number;
   xpGerado: number;
+};
+
+export const listarPresencas = async (
+  idUsuario: number,
+  idDisciplina: number
+): Promise<PresencaResponse[]> => {
+  requireSessionUser(idUsuario);
+
+  const response = await apiFetch(
+    `${API_BASE_URL}/presencas?idDisciplina=${idDisciplina}`
+  );
+
+  return handleResponse<PresencaResponse[]>(
+    response
+  );
 };
 
 export const cadastrarPresenca = async (
   idUsuario: number,
-  payload: { idDisciplina: number; dataPresenca: string }
+  payload: { idDisciplina: number; dataPresenca: string; quantidadeAulas: number; }
 ): Promise<PresencaResponse> => {
   requireSessionUser(idUsuario);
   if (payload.dataPresenca !== obterDataHojeSaoPaulo()) {

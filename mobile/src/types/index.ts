@@ -93,6 +93,12 @@ export type RootStackParamList = {
 
   NewAttendance: undefined;
 
+  FrequencyHistory: {
+    idDisciplina: number;
+    nomeDisciplina: string;
+    limiteFaltas: number;
+  };
+
   Evaluations: {
     idDisciplina: number;
     nomeDisciplina: string;

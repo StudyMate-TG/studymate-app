@@ -1,5 +1,5 @@
 import React, {
-  useEffect,
+  useCallback,
   useState,
 } from "react";
 
@@ -16,7 +16,7 @@ import {
 
 import {
   useNavigation,
-  useIsFocused,
+  useFocusEffect,
 } from "@react-navigation/native";
 
 import type {
@@ -58,6 +58,7 @@ import {
   Trash2,
   Pencil,
   GraduationCap,
+  CheckCircle2,
 } from "lucide-react-native";
 
 export const SubjectsScreen: React.FC = () => {
@@ -67,9 +68,6 @@ export const SubjectsScreen: React.FC = () => {
         RootStackParamList
       >
     >();
-
-  const isFocused =
-    useIsFocused();
 
   const [
     disciplinas,
@@ -144,7 +142,8 @@ export const SubjectsScreen: React.FC = () => {
         const dados =
           await listarDisciplinas(
             idUsuario,
-            termo
+            termo,
+            true
           );
 
         setDisciplinas(
@@ -204,15 +203,20 @@ export const SubjectsScreen: React.FC = () => {
                     total,
                   };
                 } catch (error) {
+                  if (
+                    error instanceof Error &&
+                    error.message === "Disciplina não encontrada."
+                  ) {
+                    return null;
+                  }
+
                   console.error(
                     `Erro ao carregar faltas da disciplina ${disciplina.idDisciplina}:`,
                     error
                   );
 
                   return {
-                    idDisciplina:
-                      disciplina.idDisciplina,
-
+                    idDisciplina: disciplina.idDisciplina,
                     total: 0,
                   };
                 }
@@ -226,13 +230,14 @@ export const SubjectsScreen: React.FC = () => {
             number
           > = {};
 
-        totais.forEach(
-          (item) => {
-            mapaFaltas[
-              item.idDisciplina
-            ] = item.total;
+        totais.forEach((item) => {
+          if (!item) {
+            return;
           }
-        );
+
+          mapaFaltas[item.idDisciplina] =
+            item.total;
+        });
 
         setFaltasPorDisciplina(
           mapaFaltas
@@ -268,9 +273,21 @@ export const SubjectsScreen: React.FC = () => {
           idUsuario
         );
 
-        await carregarDisciplinas(
-          termoBusca
+        setDisciplinas((atuais) =>
+          atuais.filter(
+            (disciplina) =>
+              disciplina.idDisciplina !== idDisciplina
+          )
         );
+
+        setFaltasPorDisciplina((atuais) => {
+          const atualizado = { ...atuais };
+
+          delete atualizado[idDisciplina];
+
+          return atualizado;
+        });
+
       } catch (error) {
         showAlert(
           "Erro",
@@ -346,13 +363,28 @@ export const SubjectsScreen: React.FC = () => {
     );
   };
 
-  useEffect(() => {
-    if (isFocused) {
-      carregarDisciplinas(
-        termoBusca
-      );
-    }
-  }, [isFocused]);
+  const abrirFrequencia = (
+    disciplina: DisciplinaResponse
+  ) => {
+    navigation.navigate(
+      "FrequencyHistory",
+      {
+        idDisciplina:
+          disciplina.idDisciplina,
+        nomeDisciplina:
+          disciplina.nome,
+        limiteFaltas:
+          disciplina.limiteFaltas ?? 0,
+      }
+    );
+  };
+
+  useFocusEffect(
+    useCallback(() => {
+      setTermoBusca("");
+      void carregarDisciplinas("");
+    }, [])
+  );
 
   const renderDisciplinaItem = ({
     item,
@@ -613,6 +645,24 @@ export const SubjectsScreen: React.FC = () => {
               styles.actionsRow
             }
           >
+            <Button
+              title="Frequência"
+              variant="outline"
+              size="sm"
+              icon={
+                <CheckCircle2
+                  size={14}
+                  color="#2563EB"
+                />
+              }
+              onPress={() =>
+                abrirFrequencia(item)
+              }
+              style={
+                styles.actionButton
+              }
+            />
+
             <Button
               title="Avaliações"
               variant="outline"

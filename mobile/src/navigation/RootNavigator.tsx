@@ -46,6 +46,7 @@ import { EditEvaluationScreen } from "../screens/EditEvaluationScreen";
 import { ClassSchedulesScreen } from "../screens/ClassSchedulesScreen";
 import { NewClassScheduleScreen } from "../screens/NewClassScheduleScreen";
 import { EditClassScheduleScreen } from "../screens/EditClassScheduleScreen";
+import { FrequencyHistoryScreen } from "../screens/FrequencyHistoryScreen";
 
 import {
   Home,
@@ -284,6 +285,11 @@ export const RootNavigator: React.FC = () => {
       <Stack.Screen
         name="NewAttendance"
         component={NewAttendanceScreen}
+      />
+
+      <Stack.Screen
+        name="FrequencyHistory"
+        component={FrequencyHistoryScreen}
       />
 
       <Stack.Screen
