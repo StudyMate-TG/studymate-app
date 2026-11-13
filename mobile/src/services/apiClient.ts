@@ -91,11 +91,23 @@ export const apiFetch = async (
     headers.set("Authorization", `Bearer ${requestToken}`);
   }
   const response = await fetch(url, { ...init, headers });
+
   if (response.status === 401) {
-    if (sessionGeneration === requestGeneration) clearAccessToken("Sua sessão expirou. Entre novamente.");
-    throw new Error(authenticated
-      ? "Sua sessão terminou. Entre novamente."
-      : "Não foi possível entrar. Confira suas credenciais e a confirmação do e-mail.");
+    if (authenticated) {
+      if (sessionGeneration === requestGeneration) {
+        clearAccessToken(
+          "Sua sessão expirou. Entre novamente."
+        );
+      }
+
+      throw new Error(
+        "Sua sessão terminou. Entre novamente."
+      );
+    }
+
+    throw new Error(
+      "Não foi possível entrar. Confira seu e-mail e senha."
+    );
   }
   if (authenticated && sessionGeneration !== requestGeneration) {
     throw new Error("A sessão mudou. Abra novamente os dados da sua conta.");
