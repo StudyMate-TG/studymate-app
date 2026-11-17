@@ -1,0 +1,20 @@
+
+services:
+  oracle:
+    image: gvenzl/oracle-xe:21-slim
+    restart: unless-stopped
+    environment:
+      ORACLE_PASSWORD: ${ORACLE_PASSWORD:?Defina ORACLE_PASSWORD}
+      APP_USER: ${DB_USER:?Defina DB_USER}
+      APP_USER_PASSWORD: ${DB_PASSWORD:?Defina DB_PASSWORD}
+    volumes:
+      - oracle_data:/opt/oracle/oradata
+    healthcheck:
+      test: ["CMD", "healthcheck.sh"]
+      interval: 30s
+      timeout: 10s
+      retries: 20
+      start_period: 180s
+
+volumes:
+  oracle_data:
